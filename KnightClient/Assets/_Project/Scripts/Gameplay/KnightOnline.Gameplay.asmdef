@@ -1,0 +1,20 @@
+{
+    "name": "KnightOnline.Gameplay",
+    "rootNamespace": "",
+    "references": [
+        "GUID:51a36a34d55b8154da11253627c09266",
+        "GUID:211bbda2191a6ec4d805702e7df11c46",
+        "GUID:020622ded56aaed41802739afe25dba7",
+        "GUID:58fe6eb53de9d3145b839116a16256b0",
+        "GUID:4c8dd1481f835234aab8317e238c3625"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,16 @@
+{
+    "name": "KnightOnline.Input",
+    "rootNamespace": "",
+    "references": [
+        "GUID:51a36a34d55b8154da11253627c09266"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
