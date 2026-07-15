@@ -1,0 +1,1 @@
+# KnightShared - Shared Libraries
