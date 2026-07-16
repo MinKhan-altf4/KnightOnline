@@ -1,0 +1,15 @@
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.GeneratedMSBuildEditorConfig.editorconfig
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.AssemblyInfoInputs.cache
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.AssemblyInfo.cs
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.csproj.CoreCompileInputs.cache
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.sourcelink.json
+D:\Project\KnightOnline\KnightServer\bin\Debug\net8.0\KnightServer.exe
+D:\Project\KnightOnline\KnightServer\bin\Debug\net8.0\KnightServer.deps.json
+D:\Project\KnightOnline\KnightServer\bin\Debug\net8.0\KnightServer.runtimeconfig.json
+D:\Project\KnightOnline\KnightServer\bin\Debug\net8.0\KnightServer.dll
+D:\Project\KnightOnline\KnightServer\bin\Debug\net8.0\KnightServer.pdb
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.dll
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\refint\KnightServer.dll
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.pdb
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\KnightServer.genruntimeconfig.cache
+D:\Project\KnightOnline\KnightServer\obj\Debug\net8.0\ref\KnightServer.dll
