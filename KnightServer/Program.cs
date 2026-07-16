@@ -37,17 +37,19 @@ public static class Program
 
             try
             {
-                // Đọc 1 envelope duy nhất cho bước test này.
-                // Sẽ nâng cấp thành vòng lặp đọc liên tục khi có nhiều loại packet hơn.
-                var envelope = await ReadEnvelopeAsync(stream);
-
-                if (envelope is null)
+                // Vòng lặp liên tục để xử lý nhiều packet từ client
+                while (tcpClient.Connected)
                 {
-                    Console.WriteLine("[Server] Không đọc được envelope, đóng kết nối.");
-                    return;
-                }
+                    var envelope = await ReadEnvelopeAsync(stream);
 
-                await HandlePacketAsync(stream, envelope);
+                    if (envelope is null)
+                    {
+                        Console.WriteLine("[Server] Không đọc được envelope, đóng kết nối.");
+                        break;
+                    }
+
+                    await HandlePacketAsync(stream, envelope);
+                }
             }
             catch (Exception ex)
             {

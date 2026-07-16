@@ -1,0 +1,19 @@
+{
+    "name": "KnightOnline.Client.Root",
+    "rootNamespace": "KnightOnline.Client.Root",
+    "references": [
+        "GUID:51a36a34d55b8154da11253627c09266",
+        "GUID:58fe6eb53de9d3145b839116a16256b0",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:b0214a6008ed146ff8f122a6a9c2f6cc"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

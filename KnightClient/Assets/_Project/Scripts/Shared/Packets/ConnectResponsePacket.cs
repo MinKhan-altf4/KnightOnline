@@ -9,7 +9,7 @@ namespace KnightOnline.Client.Shared.Packets
 
     public sealed class ConnectResponsePacket
     {
-        public required ConnectResult Result { get; set; }
-        public required string Message { get; set; }
+        public ConnectResult Result { get; set; }
+        public string Message { get; set; }
     }
 }
