@@ -1,6 +1,6 @@
 {
-    "name": "KnightOnline.Network",
-    "rootNamespace": "",
+    "name": "KnightOnline.Client.Audio",
+    "rootNamespace": "KnightOnline.Client.Audio",
     "references": [
         "GUID:51a36a34d55b8154da11253627c09266"
     ],

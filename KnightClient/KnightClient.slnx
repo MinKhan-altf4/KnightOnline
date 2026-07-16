@@ -1,6 +1,6 @@
 ﻿<Solution>
-  <Project Path="NewAssembly.csproj" />
-  <Project Path="KnightOnline.Data.csproj" />
+  <Project Path="KnightOnline.Client.Core.csproj" />
+  <Project Path="KnightOnline.Client.Data.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
 </Solution>
