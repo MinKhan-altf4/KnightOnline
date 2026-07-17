@@ -21,5 +21,6 @@ namespace KnightOnline.Client.Gameplay.Services
         {
             return _networkClient.SendCreateCharacterRequestAsync(characterName);
         }
+        
     }
 }
