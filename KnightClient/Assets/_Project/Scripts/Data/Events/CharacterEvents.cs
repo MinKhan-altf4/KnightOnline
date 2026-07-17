@@ -1,5 +1,6 @@
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Models;
+using System.Collections.Generic;
 
 namespace KnightOnline.Client.Data.Events
 {
@@ -18,6 +19,26 @@ namespace KnightOnline.Client.Data.Events
         {
             Success = success;
             Message = message;
+            Character = character;
+        }
+    }
+
+    public readonly struct CharacterListReceivedEvent : IStickyGameEvent
+    {
+        public readonly IReadOnlyList<CharacterData> Characters;
+
+        public CharacterListReceivedEvent(IReadOnlyList<CharacterData> characters)
+        {
+            Characters = characters;
+        }
+    }
+
+    public readonly struct CharacterSelectedEvent : IStickyGameEvent
+    {
+        public readonly CharacterData Character;
+
+        public CharacterSelectedEvent(CharacterData character)
+        {
             Character = character;
         }
     }

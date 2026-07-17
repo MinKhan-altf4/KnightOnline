@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -14,149 +14,109 @@ public static class Program
     {
         var listener = new TcpListener(IPAddress.Any, Port);
         listener.Start();
+        Console.WriteLine($"[Server] Listening on port {Port}.");
 
-        Console.WriteLine($"[Server] Đang lắng nghe tại port {Port}...");
-
-        // Vòng lặp chính: chấp nhận kết nối mới liên tục.
-        // Mỗi client được xử lý trên 1 Task riêng, không chặn việc nhận client tiếp theo.
         while (true)
-        {
-            var tcpClient = await listener.AcceptTcpClientAsync();
-            Console.WriteLine("[Server] Có client mới kết nối.");
-
-            // "Fire and forget" có kiểm soát - không await ở đây để không chặn vòng lặp Accept.
-            _ = HandleClientAsync(tcpClient);
-        }
+            _ = HandleClientAsync(await listener.AcceptTcpClientAsync());
     }
 
     private static async Task HandleClientAsync(TcpClient tcpClient)
     {
-        using (tcpClient)
-        {
-            var stream = tcpClient.GetStream();
+        // Intentionally per connection for this in-memory prototype.  Reconnects start with
+        // an empty roster; replace this store with account-keyed persistence when login exists.
+        var characters = new Dictionary<string, CharacterSummaryPacket>(StringComparer.OrdinalIgnoreCase);
 
+        using (tcpClient)
+        using (var stream = tcpClient.GetStream())
+        {
             try
             {
-                // Vòng lặp liên tục để xử lý nhiều packet từ client
                 while (tcpClient.Connected)
                 {
                     var envelope = await ReadEnvelopeAsync(stream);
-
-                    if (envelope is null)
-                    {
-                        Console.WriteLine("[Server] Không đọc được envelope, đóng kết nối.");
-                        break;
-                    }
-
-                    await HandlePacketAsync(stream, envelope);
+                    if (envelope == null) break;
+                    await HandlePacketAsync(stream, envelope, characters);
                 }
             }
             catch (Exception ex)
             {
-                // Bắt lỗi ở tầng ngoài cùng - 1 client gửi dữ liệu hỏng
-                // không được phép làm sập toàn bộ server.
-                Console.WriteLine($"[Server] Lỗi xử lý client: {ex.Message}");
+                Console.WriteLine($"[Server] Client processing error: {ex.Message}");
             }
         }
-
-        Console.WriteLine("[Server] Client đã ngắt kết nối.");
     }
 
-    private static async Task HandlePacketAsync(NetworkStream stream, PacketEnvelope envelope)
-{
-    switch (envelope.Type)
+    private static async Task HandlePacketAsync(
+        NetworkStream stream,
+        PacketEnvelope envelope,
+        Dictionary<string, CharacterSummaryPacket> characters)
     {
-        case PacketType.ConnectRequest:
-            var request = JsonSerializer.Deserialize<ConnectRequestPacket>(envelope.Payload);
+        switch (envelope.Type)
+        {
+            case PacketType.ConnectRequest:
+                var connect = JsonSerializer.Deserialize<ConnectRequestPacket>(envelope.Payload);
+                if (connect == null) return;
+                await SendEnvelopeAsync(stream, PacketType.ConnectResponse,
+                    new ConnectResponsePacket(ConnectResult.Success, "Welcome to KnightOnline!"));
+                break;
 
-            if (request is null)
-            {
-                Console.WriteLine("[Server] ConnectRequest payload không hợp lệ.");
-                return;
-            }
+            case PacketType.CreateCharacterRequest:
+                var create = JsonSerializer.Deserialize<CreateCharacterRequestPacket>(envelope.Payload);
+                if (create == null) return;
 
-            Console.WriteLine($"[Server] Nhận ConnectRequest từ client version {request.ClientVersion}");
+                var name = create.CharacterName?.Trim() ?? string.Empty;
+                CreateCharacterResponsePacket createResponse;
+                if (name.Length == 0)
+                    createResponse = new(CreateCharacterResult.NameEmpty, "Character name cannot be empty.");
+                else if (name.Length > 20)
+                    createResponse = new(CreateCharacterResult.NameTooLong, "Character name is limited to 20 characters.");
+                else if (characters.ContainsKey(name))
+                    createResponse = new(CreateCharacterResult.NameAlreadyTaken, "That character name already exists.");
+                else
+                {
+                    characters.Add(name, new CharacterSummaryPacket(name));
+                    createResponse = new(CreateCharacterResult.Success, name);
+                }
 
-            var response = new ConnectResponsePacket(
-                ConnectResult.Success,
-                "Chào mừng đến với KnightOnline!");
+                await SendEnvelopeAsync(stream, PacketType.CreateCharacterResponse, createResponse);
+                break;
 
-            await SendEnvelopeAsync(stream, PacketType.ConnectResponse, response);
-            break;
-
-        case PacketType.CreateCharacterRequest:
-            var charRequest = JsonSerializer.Deserialize<CreateCharacterRequestPacket>(envelope.Payload);
-
-            if (charRequest is null)
-            {
-                Console.WriteLine("[Server] CreateCharacterRequest payload không hợp lệ.");
-                return;
-            }
-
-            Console.WriteLine($"[Server] Yêu cầu tạo nhân vật: '{charRequest.CharacterName}'");
-
-            CreateCharacterResponsePacket charResponse;
-
-            if (string.IsNullOrWhiteSpace(charRequest.CharacterName))
-            {
-                charResponse = new CreateCharacterResponsePacket(CreateCharacterResult.NameEmpty, "Tên nhân vật không được để trống.");
-            }
-            else if (charRequest.CharacterName.Length > 20)
-            {
-                charResponse = new CreateCharacterResponsePacket(CreateCharacterResult.NameTooLong, "Tên nhân vật quá dài (tối đa 20 ký tự).");
-            }
-            else
-            {
-                charResponse = new CreateCharacterResponsePacket(CreateCharacterResult.Success, charRequest.CharacterName);
-            }
-
-            await SendEnvelopeAsync(stream, PacketType.CreateCharacterResponse, charResponse);
-            break;
-
-        default:
-            Console.WriteLine($"[Server] Nhận packet chưa được xử lý: {envelope.Type}");
-            break;
+            case PacketType.ListCharactersRequest:
+                await SendEnvelopeAsync(stream, PacketType.ListCharactersResponse,
+                    new ListCharactersResponsePacket(characters.Values.ToArray()));
+                break;
+        }
     }
-}
 
     private static async Task<PacketEnvelope?> ReadEnvelopeAsync(NetworkStream stream)
     {
-        // Giao thức đơn giản cho giai đoạn học tập: đọc 4 byte đầu là độ dài (int),
-        // sau đó đọc đúng số byte đó làm nội dung JSON của PacketEnvelope.
-        // Đây gọi là "length-prefixed framing" - cách phổ biến nhất để biết
-        // khi nào 1 message kết thúc trên luồng TCP (vốn không có khái niệm "message", chỉ có byte stream).
         var lengthBuffer = new byte[4];
-        int read = await stream.ReadAsync(lengthBuffer, 0, 4);
-        if (read < 4) return null;
+        if (!await ReadExactlyAsync(stream, lengthBuffer)) return null;
+        var length = BitConverter.ToInt32(lengthBuffer, 0);
+        if (length <= 0 || length > 1024 * 1024) throw new InvalidDataException("Invalid packet length.");
 
-        int length = BitConverter.ToInt32(lengthBuffer, 0);
         var payloadBuffer = new byte[length];
-        int totalRead = 0;
+        if (!await ReadExactlyAsync(stream, payloadBuffer)) return null;
+        return JsonSerializer.Deserialize<PacketEnvelope>(Encoding.UTF8.GetString(payloadBuffer));
+    }
 
-        while (totalRead < length)
+    private static async Task<bool> ReadExactlyAsync(NetworkStream stream, byte[] buffer)
+    {
+        var totalRead = 0;
+        while (totalRead < buffer.Length)
         {
-            int bytesRead = await stream.ReadAsync(payloadBuffer, totalRead, length - totalRead);
-            if (bytesRead == 0) return null;
-            totalRead += bytesRead;
+            var read = await stream.ReadAsync(buffer.AsMemory(totalRead));
+            if (read == 0) return false;
+            totalRead += read;
         }
-
-        var json = Encoding.UTF8.GetString(payloadBuffer);
-        return JsonSerializer.Deserialize<PacketEnvelope>(json);
+        return true;
     }
 
     private static async Task SendEnvelopeAsync<T>(NetworkStream stream, PacketType type, T payload)
     {
         var payloadJson = JsonSerializer.Serialize(payload);
-
-        // Đổi sang constructor - PacketEnvelope không còn set-able property nữa.
-        var envelope = new PacketEnvelope(type, payloadJson);
-
-        var envelopeJson = JsonSerializer.Serialize(envelope);
-        var envelopeBytes = Encoding.UTF8.GetBytes(envelopeJson);
-
-        var lengthPrefix = BitConverter.GetBytes(envelopeBytes.Length);
-
-        await stream.WriteAsync(lengthPrefix, 0, 4);
-        await stream.WriteAsync(envelopeBytes, 0, envelopeBytes.Length);
+        var envelopeJson = JsonSerializer.Serialize(new PacketEnvelope(type, payloadJson));
+        var bytes = Encoding.UTF8.GetBytes(envelopeJson);
+        await stream.WriteAsync(BitConverter.GetBytes(bytes.Length));
+        await stream.WriteAsync(bytes);
     }
 }

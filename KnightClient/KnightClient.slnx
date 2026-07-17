@@ -3,9 +3,9 @@
   <Project Path="KnightOnline.Client.UI.csproj" />
   <Project Path="KnightOnline.Client.Core.csproj" />
   <Project Path="KnightOnline.Client.Data.csproj" />
+  <Project Path="KnightOnline.Client.Gameplay.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="KnightOnline.Client.Root.csproj" />
   <Project Path="KnightOnline.Client.Network.csproj" />
-  <Project Path="KnightOnline.Client.Gameplay.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
 </Solution>

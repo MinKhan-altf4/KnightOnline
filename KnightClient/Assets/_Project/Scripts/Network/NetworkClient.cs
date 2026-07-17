@@ -1,75 +1,59 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
-using VContainer;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
-using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Client.Data.Models;
+using KnightOnline.Client.Shared.Packets;
+using UnityEngine;
+using VContainer;
 
 namespace KnightOnline.Client.Network
 {
     public class NetworkClient : MonoBehaviour
     {
-        private TcpClient _tcpClient;
-        private NetworkStream _stream;
-        private CancellationTokenSource _cts;
-        private bool _isDisconnecting = false;
         private const string ServerIp = "127.0.0.1";
         private const int Port = 7777;
 
+        private TcpClient _tcpClient;
+        private NetworkStream _stream;
+        private CancellationTokenSource _cts;
+        private bool _isDisconnecting;
         private IEventBus _eventBus;
 
-        private const bool VerboseLog = false; // Bật true khi cần debug sâu network
-
-        // MonoBehaviour không dùng được constructor injection.
-        // VContainer gọi method này tự động ngay sau khi Instantiate,
-        // trước khi bất kỳ MonoBehaviour lifecycle nào (Awake/Start) chạy.
         [Inject]
-        public void Construct(IEventBus eventBus)
-        {
-            _eventBus = eventBus;
-        }
+        public void Construct(IEventBus eventBus) => _eventBus = eventBus;
 
         public async UniTask ConnectAsync()
         {
             try
             {
-                Debug.Log($"<color=cyan>[Network]</color> Đang kết nối tới Server {ServerIp}:{Port}...");
+                _isDisconnecting = false;
                 _tcpClient = new TcpClient();
                 _cts = new CancellationTokenSource();
-
                 await _tcpClient.ConnectAsync(ServerIp, Port);
                 _stream = _tcpClient.GetStream();
-
-                Debug.Log("<color=cyan>[Network]</color> Kết nối thành công! Đang gửi ConnectRequest...");
-
                 _ = ReceiveLoopAsync(_cts.Token);
-
-               var request = new ConnectRequestPacket("1.0.0");
-                await SendPacketAsync(PacketType.ConnectRequest, request);
+                await SendPacketAsync(PacketType.ConnectRequest, new ConnectRequestPacket("1.0.0"));
             }
             catch (Exception ex)
             {
-                Debug.LogError($"<color=red>[Network]</color> Lỗi kết nối: {ex.Message}");
-
-                // Publish để UI biết kết nối thất bại ngay từ bước đầu,
-                // không chỉ log rồi im lặng.
-                _eventBus.Publish(new ServerConnectionResultEvent(
-                    ConnectResult.NetworkError,
-                    $"Không thể kết nối: {ex.Message}"));
+                Debug.LogError($"[Network] Connection error: {ex.Message}");
+                _eventBus.Publish(new ServerConnectionResultEvent(ConnectResult.NetworkError, ex.Message));
             }
         }
-public async UniTask SendCreateCharacterRequestAsync(string characterName)
-{
-    var request = new CreateCharacterRequestPacket(characterName);
-    await SendPacketAsync(PacketType.CreateCharacterRequest, request);
-}
+
+        public UniTask SendCreateCharacterRequestAsync(string characterName) =>
+            SendPacketAsync(PacketType.CreateCharacterRequest, new CreateCharacterRequestPacket(characterName));
+
+        public UniTask SendListCharactersRequestAsync() =>
+            SendPacketAsync(PacketType.ListCharactersRequest, new ListCharactersRequestPacket());
+
         private async UniTask ReceiveLoopAsync(CancellationToken ct)
         {
             try
@@ -77,32 +61,16 @@ public async UniTask SendCreateCharacterRequestAsync(string characterName)
                 while (_tcpClient != null && _tcpClient.Connected && !ct.IsCancellationRequested)
                 {
                     var envelope = await ReadEnvelopeAsync(ct);
-                    if (envelope == null)
-                    {
-                        Debug.LogWarning("<color=orange>[Network]</color> Server ngắt kết nối.");
-                        break;
-                    }
-
+                    if (envelope == null) break;
                     HandlePacket(envelope);
                 }
             }
-            catch (OperationCanceledException)
-            {
-                Debug.Log("<color=yellow>[Network]</color> ReceiveLoop đã bị hủy.");
-            }
-            catch (ObjectDisposedException)
-            {
-                Debug.Log("<color=yellow>[Network]</color> Stream đã bị đóng.");
-            }
-            catch (IOException ioEx)
-            {
-                if (!ct.IsCancellationRequested)
-                    Debug.LogError($"<color=red>[Network]</color> I/O Error: {ioEx.Message}");
-            }
+            catch (OperationCanceledException) { }
+            catch (ObjectDisposedException) { }
+            catch (IOException ex) when (ct.IsCancellationRequested) { }
             catch (Exception ex)
             {
-                if (!ct.IsCancellationRequested)
-                    Debug.LogError($"<color=red>[Network]</color> Mất kết nối tới Server: {ex.Message}");
+                if (!ct.IsCancellationRequested) Debug.LogError($"[Network] Receive error: {ex.Message}");
             }
             finally
             {
@@ -112,134 +80,86 @@ public async UniTask SendCreateCharacterRequestAsync(string characterName)
 
         private async UniTask<PacketEnvelope> ReadEnvelopeAsync(CancellationToken ct)
         {
-            try
-            {
-                var lengthBuffer = new byte[4];
-                int read = await _stream.ReadAsync(lengthBuffer, 0, 4, ct);
-                if (read < 4) return null;
+            var lengthBuffer = new byte[4];
+            if (await ReadExactlyAsync(lengthBuffer, ct) == false) return null;
+            var length = BitConverter.ToInt32(lengthBuffer, 0);
+            if (length <= 0 || length > 1024 * 1024) throw new InvalidDataException("Invalid packet length.");
 
-                int length = BitConverter.ToInt32(lengthBuffer, 0);
-                var payloadBuffer = new byte[length];
-                int totalRead = 0;
-
-                while (totalRead < length)
-                {
-                    int bytesRead = await _stream.ReadAsync(payloadBuffer, totalRead, length - totalRead, ct);
-                    if (bytesRead == 0) return null;
-                    totalRead += bytesRead;
-                }
-
-                var json = Encoding.UTF8.GetString(payloadBuffer);
-                return JsonSerializer.Deserialize<PacketEnvelope>(json);
-            }
-            catch (OperationCanceledException)
-            {
-                return null;
-            }
-            catch (ObjectDisposedException)
-            {
-                return null;
-            }
-            catch (IOException ioEx)
-            {
-                if (!_isDisconnecting)
-                    Debug.LogError($"<color=red>[Network]</color> Lỗi I/O bất ngờ: {ioEx.Message}");
-                return null;
-            }
+            var payloadBuffer = new byte[length];
+            if (await ReadExactlyAsync(payloadBuffer, ct) == false) return null;
+            return JsonSerializer.Deserialize<PacketEnvelope>(Encoding.UTF8.GetString(payloadBuffer));
         }
 
-        // Không còn try-catch nuốt lỗi ở đây - để exception bay lên cho
-        // caller (ConnectAsync) quyết định xử lý, tránh tình trạng
-        // "gửi thất bại nhưng vẫn log như đã gửi thành công".
+        private async UniTask<bool> ReadExactlyAsync(byte[] buffer, CancellationToken ct)
+        {
+            var totalRead = 0;
+            while (totalRead < buffer.Length)
+            {
+                var read = await _stream.ReadAsync(buffer, totalRead, buffer.Length - totalRead, ct);
+                if (read == 0) return false;
+                totalRead += read;
+            }
+            return true;
+        }
+
         private async UniTask SendPacketAsync<T>(PacketType type, T payload)
         {
+            if (_stream == null) throw new InvalidOperationException("Not connected to server.");
             var payloadJson = JsonSerializer.Serialize(payload);
-            var envelope = new PacketEnvelope(type, payloadJson);
-            var envelopeJson = JsonSerializer.Serialize(envelope);
-            var envelopeBytes = Encoding.UTF8.GetBytes(envelopeJson);
-            var lengthPrefix = BitConverter.GetBytes(envelopeBytes.Length);
-
-            await _stream.WriteAsync(lengthPrefix, 0, 4);
-            await _stream.WriteAsync(envelopeBytes, 0, envelopeBytes.Length);
+            var envelopeJson = JsonSerializer.Serialize(new PacketEnvelope(type, payloadJson));
+            var bytes = Encoding.UTF8.GetBytes(envelopeJson);
+            await _stream.WriteAsync(BitConverter.GetBytes(bytes.Length), 0, 4);
+            await _stream.WriteAsync(bytes, 0, bytes.Length);
         }
 
         private void HandlePacket(PacketEnvelope envelope)
-{
-    switch (envelope.Type)
-    {
-        case PacketType.ConnectResponse:
-            var response = JsonSerializer.Deserialize<ConnectResponsePacket>(envelope.Payload);
-            if (response is null)
+        {
+            switch (envelope.Type)
             {
-                Debug.LogWarning("<color=orange>[Network]</color> ConnectResponse payload không hợp lệ.");
-                return;
+                case PacketType.ConnectResponse:
+                    var connect = JsonSerializer.Deserialize<ConnectResponsePacket>(envelope.Payload);
+                    if (connect != null)
+                        _eventBus.Publish(new ServerConnectionResultEvent(connect.Result, connect.Message));
+                    break;
+
+                case PacketType.CreateCharacterResponse:
+                    var create = JsonSerializer.Deserialize<CreateCharacterResponsePacket>(envelope.Payload);
+                    if (create != null)
+                    {
+                        var success = create.Result == CreateCharacterResult.Success;
+                        _eventBus.Publish(new CharacterCreationResultEvent(success, create.Message,
+                            success ? new CharacterData(create.Message) : null));
+                    }
+                    break;
+
+                case PacketType.ListCharactersResponse:
+                    var list = JsonSerializer.Deserialize<ListCharactersResponsePacket>(envelope.Payload);
+                    if (list != null)
+                    {
+                        var characters = new List<CharacterData>(list.Characters.Count);
+                        foreach (var entry in list.Characters)
+                            if (!string.IsNullOrWhiteSpace(entry.CharacterName))
+                                characters.Add(new CharacterData(entry.CharacterName));
+                        _eventBus.Publish(new CharacterListReceivedEvent(characters));
+                    }
+                    break;
             }
-            Debug.Log($"<color=green>[Network]</color> Server phản hồi: {response.Message} ({response.Result})");
-            _eventBus.Publish(new ServerConnectionResultEvent(response.Result, response.Message));
-            break;
-
-        case PacketType.CreateCharacterResponse:
-            var charResponse = JsonSerializer.Deserialize<CreateCharacterResponsePacket>(envelope.Payload);
-            if (charResponse is null)
-            {
-                Debug.LogWarning("<color=orange>[Network]</color> CreateCharacterResponse payload không hợp lệ.");
-                return;
-            }
-
-            bool success = charResponse.Result == CreateCharacterResult.Success;
-            // Network "phiên dịch" packet thô thành domain model CharacterData
-            // trước khi publish - Gameplay/UI không cần biết về CreateCharacterResult,
-            // chỉ cần biết Success/Fail + dữ liệu nhân vật nếu có.
-            var character = success ? new CharacterData(charResponse.Message) : null;
-
-            Debug.Log($"<color=green>[Network]</color> Tạo nhân vật: {charResponse.Message} ({charResponse.Result})");
-            _eventBus.Publish(new CharacterCreationResultEvent(success, charResponse.Message, character));
-            break;
-
-        default:
-            Debug.Log($"<color=yellow>[Network]</color> Nhận packet chưa được xử lý: {envelope.Type}");
-            break;
-    }
-}
+        }
 
         public void Disconnect()
         {
+            if (_isDisconnecting) return;
             _isDisconnecting = true;
-
-            try
-            {
-                try
-                {
-                    if (_cts != null && !_cts.IsCancellationRequested)
-                        _cts.Cancel();
-                }
-                catch (ObjectDisposedException) { }
-                finally
-                {
-                    _cts?.Dispose();
-                }
-
-                _stream?.Dispose();
-                _stream = null;
-
-                _tcpClient?.Close();
-                _tcpClient?.Dispose();
-                _tcpClient = null;
-
-                Debug.Log("<color=yellow>[Network]</color> Đã ngắt kết nối.");
-
-                // Publish để UI biết mất kết nối, không chỉ Client tự biết.
-                _eventBus?.Publish(new ServerDisconnectedEvent());
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"<color=orange>[Network]</color> Exception khi disconnect: {ex.Message}");
-            }
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = null;
+            _stream?.Dispose();
+            _stream = null;
+            _tcpClient?.Dispose();
+            _tcpClient = null;
+            _eventBus?.Publish(new ServerDisconnectedEvent());
         }
 
-        private void OnDestroy()
-        {
-            Disconnect();
-        }
+        private void OnDestroy() => Disconnect();
     }
 }
