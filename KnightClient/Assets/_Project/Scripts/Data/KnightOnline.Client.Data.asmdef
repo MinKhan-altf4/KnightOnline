@@ -1,7 +1,10 @@
 {
     "name": "KnightOnline.Client.Data",
     "rootNamespace": "KnightOnline.Client.Data",
-    "references": [],
+    "references": [
+        "GUID:51a36a34d55b8154da11253627c09266",
+        "GUID:b53a95f8ce6543448bcf5f31a33fd2e3"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

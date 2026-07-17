@@ -6,4 +6,5 @@
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="KnightOnline.Client.Root.csproj" />
   <Project Path="KnightOnline.Client.Network.csproj" />
+  <Project Path="KnightOnline.Client.UI.csproj" />
 </Solution>
