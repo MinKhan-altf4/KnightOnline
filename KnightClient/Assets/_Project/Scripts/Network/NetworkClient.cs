@@ -10,6 +10,7 @@ using VContainer;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Shared.Packets;
+using KnightOnline.Client.Data.Models;
 
 namespace KnightOnline.Client.Network
 {
@@ -23,6 +24,8 @@ namespace KnightOnline.Client.Network
         private const int Port = 7777;
 
         private IEventBus _eventBus;
+
+        private const bool VerboseLog = false; // Bật true khi cần debug sâu network
 
         // MonoBehaviour không dùng được constructor injection.
         // VContainer gọi method này tự động ngay sau khi Instantiate,
@@ -48,7 +51,7 @@ namespace KnightOnline.Client.Network
 
                 _ = ReceiveLoopAsync(_cts.Token);
 
-                var request = new ConnectRequestPacket { ClientVersion = "1.0.0" };
+               var request = new ConnectRequestPacket("1.0.0");
                 await SendPacketAsync(PacketType.ConnectRequest, request);
             }
             catch (Exception ex)
@@ -58,11 +61,15 @@ namespace KnightOnline.Client.Network
                 // Publish để UI biết kết nối thất bại ngay từ bước đầu,
                 // không chỉ log rồi im lặng.
                 _eventBus.Publish(new ServerConnectionResultEvent(
-                    ConnectResult.ServerFull, // tạm dùng, sẽ có ConnectResult.NetworkError riêng khi mở rộng enum
+                    ConnectResult.NetworkError,
                     $"Không thể kết nối: {ex.Message}"));
             }
         }
-
+public async UniTask SendCreateCharacterRequestAsync(string characterName)
+{
+    var request = new CreateCharacterRequestPacket(characterName);
+    await SendPacketAsync(PacketType.CreateCharacterRequest, request);
+}
         private async UniTask ReceiveLoopAsync(CancellationToken ct)
         {
             try
@@ -147,7 +154,7 @@ namespace KnightOnline.Client.Network
         private async UniTask SendPacketAsync<T>(PacketType type, T payload)
         {
             var payloadJson = JsonSerializer.Serialize(payload);
-            var envelope = new PacketEnvelope { Type = type, Payload = payloadJson };
+            var envelope = new PacketEnvelope(type, payloadJson);
             var envelopeJson = JsonSerializer.Serialize(envelope);
             var envelopeBytes = Encoding.UTF8.GetBytes(envelopeJson);
             var lengthPrefix = BitConverter.GetBytes(envelopeBytes.Length);
@@ -157,30 +164,43 @@ namespace KnightOnline.Client.Network
         }
 
         private void HandlePacket(PacketEnvelope envelope)
-        {
-            switch (envelope.Type)
+{
+    switch (envelope.Type)
+    {
+        case PacketType.ConnectResponse:
+            var response = JsonSerializer.Deserialize<ConnectResponsePacket>(envelope.Payload);
+            if (response is null)
             {
-                case PacketType.ConnectResponse:
-                    var response = JsonSerializer.Deserialize<ConnectResponsePacket>(envelope.Payload);
-
-                    if (response is null)
-                    {
-                        Debug.LogWarning("<color=orange>[Network]</color> ConnectResponse payload không hợp lệ.");
-                        return;
-                    }
-
-                    Debug.Log($"<color=green>[Network]</color> Server phản hồi: {response.Message} ({response.Result})");
-
-                    // Đây là điểm mấu chốt: publish qua EventBus thay vì chỉ log.
-                    // UI sẽ subscribe ServerConnectionResultEvent để cập nhật màn hình Login.
-                    _eventBus.Publish(new ServerConnectionResultEvent(response.Result, response.Message));
-                    break;
-
-                default:
-                    Debug.Log($"<color=yellow>[Network]</color> Nhận packet chưa được xử lý: {envelope.Type}");
-                    break;
+                Debug.LogWarning("<color=orange>[Network]</color> ConnectResponse payload không hợp lệ.");
+                return;
             }
-        }
+            Debug.Log($"<color=green>[Network]</color> Server phản hồi: {response.Message} ({response.Result})");
+            _eventBus.Publish(new ServerConnectionResultEvent(response.Result, response.Message));
+            break;
+
+        case PacketType.CreateCharacterResponse:
+            var charResponse = JsonSerializer.Deserialize<CreateCharacterResponsePacket>(envelope.Payload);
+            if (charResponse is null)
+            {
+                Debug.LogWarning("<color=orange>[Network]</color> CreateCharacterResponse payload không hợp lệ.");
+                return;
+            }
+
+            bool success = charResponse.Result == CreateCharacterResult.Success;
+            // Network "phiên dịch" packet thô thành domain model CharacterData
+            // trước khi publish - Gameplay/UI không cần biết về CreateCharacterResult,
+            // chỉ cần biết Success/Fail + dữ liệu nhân vật nếu có.
+            var character = success ? new CharacterData(charResponse.Message) : null;
+
+            Debug.Log($"<color=green>[Network]</color> Tạo nhân vật: {charResponse.Message} ({charResponse.Result})");
+            _eventBus.Publish(new CharacterCreationResultEvent(success, charResponse.Message, character));
+            break;
+
+        default:
+            Debug.Log($"<color=yellow>[Network]</color> Nhận packet chưa được xử lý: {envelope.Type}");
+            break;
+    }
+}
 
         public void Disconnect()
         {

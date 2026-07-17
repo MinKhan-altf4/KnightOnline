@@ -63,34 +63,61 @@ public static class Program
     }
 
     private static async Task HandlePacketAsync(NetworkStream stream, PacketEnvelope envelope)
+{
+    switch (envelope.Type)
     {
-        switch (envelope.Type)
-        {
-            case PacketType.ConnectRequest:
-                var request = JsonSerializer.Deserialize<ConnectRequestPacket>(envelope.Payload);
+        case PacketType.ConnectRequest:
+            var request = JsonSerializer.Deserialize<ConnectRequestPacket>(envelope.Payload);
 
-                if (request is null)
-                {
-                    Console.WriteLine("[Server] ConnectRequest payload không hợp lệ.");
-                    return;
-                }
+            if (request is null)
+            {
+                Console.WriteLine("[Server] ConnectRequest payload không hợp lệ.");
+                return;
+            }
 
-                Console.WriteLine($"[Server] Nhận ConnectRequest từ client version {request.ClientVersion}");
+            Console.WriteLine($"[Server] Nhận ConnectRequest từ client version {request.ClientVersion}");
 
-                var response = new ConnectResponsePacket
-                {
-                    Result = ConnectResult.Success,
-                    Message = "Chào mừng đến với KnightOnline!"
-                };
+            var response = new ConnectResponsePacket(
+                ConnectResult.Success,
+                "Chào mừng đến với KnightOnline!");
 
-                await SendEnvelopeAsync(stream, PacketType.ConnectResponse, response);
-                break;
+            await SendEnvelopeAsync(stream, PacketType.ConnectResponse, response);
+            break;
 
-            default:
-                Console.WriteLine($"[Server] Nhận packet chưa được xử lý: {envelope.Type}");
-                break;
-        }
+        case PacketType.CreateCharacterRequest:
+            var charRequest = JsonSerializer.Deserialize<CreateCharacterRequestPacket>(envelope.Payload);
+
+            if (charRequest is null)
+            {
+                Console.WriteLine("[Server] CreateCharacterRequest payload không hợp lệ.");
+                return;
+            }
+
+            Console.WriteLine($"[Server] Yêu cầu tạo nhân vật: '{charRequest.CharacterName}'");
+
+            CreateCharacterResponsePacket charResponse;
+
+            if (string.IsNullOrWhiteSpace(charRequest.CharacterName))
+            {
+                charResponse = new CreateCharacterResponsePacket(CreateCharacterResult.NameEmpty, "Tên nhân vật không được để trống.");
+            }
+            else if (charRequest.CharacterName.Length > 20)
+            {
+                charResponse = new CreateCharacterResponsePacket(CreateCharacterResult.NameTooLong, "Tên nhân vật quá dài (tối đa 20 ký tự).");
+            }
+            else
+            {
+                charResponse = new CreateCharacterResponsePacket(CreateCharacterResult.Success, charRequest.CharacterName);
+            }
+
+            await SendEnvelopeAsync(stream, PacketType.CreateCharacterResponse, charResponse);
+            break;
+
+        default:
+            Console.WriteLine($"[Server] Nhận packet chưa được xử lý: {envelope.Type}");
+            break;
     }
+}
 
     private static async Task<PacketEnvelope?> ReadEnvelopeAsync(NetworkStream stream)
     {
@@ -120,7 +147,10 @@ public static class Program
     private static async Task SendEnvelopeAsync<T>(NetworkStream stream, PacketType type, T payload)
     {
         var payloadJson = JsonSerializer.Serialize(payload);
-        var envelope = new PacketEnvelope { Type = type, Payload = payloadJson };
+
+        // Đổi sang constructor - PacketEnvelope không còn set-able property nữa.
+        var envelope = new PacketEnvelope(type, payloadJson);
+
         var envelopeJson = JsonSerializer.Serialize(envelope);
         var envelopeBytes = Encoding.UTF8.GetBytes(envelopeJson);
 

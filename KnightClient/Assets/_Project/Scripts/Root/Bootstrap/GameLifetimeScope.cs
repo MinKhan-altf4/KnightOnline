@@ -4,6 +4,7 @@ using UnityEngine;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Network;
 using KnightOnline.Client.UI;
+using KnightOnline.Client.Gameplay.Services;
 
 namespace KnightOnline.Client.Core.Bootstrap
 {
@@ -22,6 +23,8 @@ namespace KnightOnline.Client.Core.Bootstrap
             // Đăng ký ConnectionStatusView - GameObject đã đặt sẵn trong scene,
             // VContainer tìm nó trong hierarchy và gọi [Inject] Construct() vào nó.
             builder.RegisterComponentInHierarchy<ConnectionStatusView>();
+            builder.Register<CharacterService>(Lifetime.Singleton);
+            builder.RegisterComponentInHierarchy<CharacterCreationView>();
         }
 
         protected override void Awake()
