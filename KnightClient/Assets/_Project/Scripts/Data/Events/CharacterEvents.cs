@@ -33,7 +33,7 @@ namespace KnightOnline.Client.Data.Events
         }
     }
 
-    public readonly struct CharacterSelectedEvent : IStickyGameEvent
+    public readonly struct CharacterSelectedEvent : IGameEvent
     {
         public readonly CharacterData Character;
 

@@ -10,6 +10,8 @@ namespace KnightOnline.Client.Core.Bootstrap
 {
     public class GameLifetimeScope : LifetimeScope
     {
+        [SerializeField] private CharacterFlowController.PanelRefs _panelRefs;
+
         protected override void Configure(IContainerBuilder builder)
         {
             builder.Register<IEventBus, EventBus>(Lifetime.Singleton);
@@ -19,6 +21,8 @@ namespace KnightOnline.Client.Core.Bootstrap
                 .DontDestroyOnLoad();
 
             builder.RegisterEntryPoint<GameBootstrap>();
+
+            builder.RegisterInstance(_panelRefs);
             builder.RegisterEntryPoint<CharacterFlowController>();
 
             // Đăng ký ConnectionStatusView - GameObject đã đặt sẵn trong scene,
@@ -27,6 +31,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             builder.Register<CharacterService>(Lifetime.Singleton);
             builder.Register<CharacterSelectionService>(Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<CharacterCreationView>();
+            builder.RegisterComponentInHierarchy<CharacterSelectView>();
         }
 
         protected override void Awake()

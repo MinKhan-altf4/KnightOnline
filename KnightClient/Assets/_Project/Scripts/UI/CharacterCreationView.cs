@@ -18,13 +18,14 @@ namespace KnightOnline.Client.UI
 
         [Inject]
         public void Construct(IEventBus eventBus, CharacterService characterService)
-        {
+        { 
             _eventBus = eventBus;
             _characterService = characterService;
+          
         }
 
         private void Start()
-        {
+        {   
             _subscription = _eventBus.Subscribe<CharacterCreationResultEvent>(OnCharacterCreationResult);
         }
 
