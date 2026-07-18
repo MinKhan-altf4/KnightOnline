@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KnightServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1a86ed1b4970962b9640678f0d843d7603085950")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+91e680ad839be7ebc81b05b641c626e8c83a1d88")]
 [assembly: System.Reflection.AssemblyProductAttribute("KnightServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KnightServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
