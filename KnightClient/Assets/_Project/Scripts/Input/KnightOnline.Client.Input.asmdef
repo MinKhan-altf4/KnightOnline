@@ -2,7 +2,8 @@
     "name": "KnightOnline.Client.Input",
     "rootNamespace": "KnightOnline.Client.Input",
     "references": [
-        "GUID:51a36a34d55b8154da11253627c09266"
+        "GUID:51a36a34d55b8154da11253627c09266",
+        "GUID:75469ad4d38634e559750d17036d5f7c"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
