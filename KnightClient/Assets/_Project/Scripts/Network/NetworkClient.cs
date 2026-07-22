@@ -67,7 +67,7 @@ namespace KnightOnline.Client.Network
             }
             catch (OperationCanceledException) { }
             catch (ObjectDisposedException) { }
-            catch (IOException ex) when (ct.IsCancellationRequested) { }
+            catch (IOException) when (ct.IsCancellationRequested) { } // ← fix: bỏ 'ex' không dùng
             catch (Exception ex)
             {
                 if (!ct.IsCancellationRequested) Debug.LogError($"[Network] Receive error: {ex.Message}");

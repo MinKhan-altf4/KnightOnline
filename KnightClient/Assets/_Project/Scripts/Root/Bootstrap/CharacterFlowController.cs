@@ -10,10 +10,11 @@ using VContainer.Unity;
 namespace KnightOnline.Client.Core.Bootstrap
 {
     /// <summary>
-    /// Điều phối việc hiện/ẩn panel dựa theo trạng thái luồng nhân vật.
-    /// Dùng Panel-based switching (SetActive) thay vì SceneManager.LoadScene,
-    /// vì component ở scene mới sẽ KHÔNG được VContainer inject - Configure()
-    /// chỉ quét component tồn tại tại thời điểm build container.
+    /// Điều phối luồng nhân vật trong Bootstrap:
+    /// - Hiện/ẩn panel tạo/chọn nhân vật theo trạng thái server.
+    /// - Sau khi nhân vật được chọn, lưu vào GameSession và chuyển sang
+    ///   scene InGame. Bootstrap bị unload; InGame tự quản lý dependency
+    ///   gameplay thông qua InGameLifetimeScope.
     /// </summary>
     public sealed class CharacterFlowController : IStartable, IDisposable
     {
@@ -76,6 +77,8 @@ namespace KnightOnline.Client.Core.Bootstrap
         {
             if (e.Character == null) return;
 
+            // Lưu nhân vật vào GameSession (DontDestroyOnLoad) trước khi
+            // Bootstrap bị unload, để InGameSceneRoot có thể đọc lại.
             _gameSession.SetSelectedCharacter(e.Character);
             SceneManager.LoadSceneAsync(_panels.InGameSceneName, LoadSceneMode.Single);
         }

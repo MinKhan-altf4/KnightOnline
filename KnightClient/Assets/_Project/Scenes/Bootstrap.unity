@@ -1967,7 +1967,6 @@ GameObject:
   - component: {fileID: 1792483450}
   - component: {fileID: 1792483449}
   - component: {fileID: 1792483448}
-  - component: {fileID: 1792483452}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -2093,21 +2092,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1792483452
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1792483447}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a2a4b77e68d86c459bbf69aa2e45fbb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: KnightOnline.Client.Gameplay::KnightOnline.Client.Gameplay.CameraControl.CameraFollow
-  _target: {fileID: 853880792}
-  _smoothSpeed: 5
-  _offset: {x: 0, y: 0, z: -10}
 --- !u!1 &1838056439
 GameObject:
   m_ObjectHideFlags: 0
