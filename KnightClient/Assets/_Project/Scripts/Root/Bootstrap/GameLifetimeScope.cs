@@ -5,8 +5,6 @@ using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Network;
 using KnightOnline.Client.UI;
 using KnightOnline.Client.Gameplay.Services;
-using KnightOnline.Client.Input;
-using KnightOnline.Client.Gameplay.Player;
 namespace KnightOnline.Client.Core.Bootstrap
 {
     public class GameLifetimeScope : LifetimeScope
@@ -21,6 +19,10 @@ namespace KnightOnline.Client.Core.Bootstrap
                 Lifetime.Singleton, "NetworkClient")
                 .DontDestroyOnLoad();
 
+            builder.RegisterComponentOnNewGameObject<GameSession>(
+                Lifetime.Singleton, "GameSession")
+                .DontDestroyOnLoad();
+
             builder.RegisterEntryPoint<GameBootstrap>();
 
             builder.RegisterInstance(_panelRefs);
@@ -33,8 +35,6 @@ namespace KnightOnline.Client.Core.Bootstrap
             builder.Register<CharacterSelectionService>(Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<CharacterCreationView>();
             builder.RegisterComponentInHierarchy<CharacterSelectView>();
-            builder.Register<IMovementInputProvider, KeyboardMovementInput>(Lifetime.Singleton);
-        builder.RegisterComponentInHierarchy<PlayerController>();
         }
 
         protected override void Awake()

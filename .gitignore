@@ -1,1 +1,5 @@
 *.meta
+!KnightClient/Assets/_Project/Scenes/InGame.unity.meta
+!KnightClient/Assets/_Project/Scripts/Root/Bootstrap/GameSession.cs.meta
+!KnightClient/Assets/_Project/Scripts/Root/Bootstrap/InGameSceneRoot.cs.meta
+!KnightClient/Assets/_Project/Scripts/Root/Bootstrap/InGameLifetimeScope.cs.meta

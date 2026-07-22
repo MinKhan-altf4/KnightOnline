@@ -4,6 +4,7 @@ using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Gameplay.Services;
 using KnightOnline.Client.Shared.Packets;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using VContainer.Unity;
 
 namespace KnightOnline.Client.Core.Bootstrap
@@ -21,11 +22,13 @@ namespace KnightOnline.Client.Core.Bootstrap
         {
             public GameObject CharacterCreationPanel;
             public GameObject CharacterSelectPanel;
-            public GameObject InGamePanel;
+            [Tooltip("Gameplay scene registered in Build Settings.")]
+            public string InGameSceneName = "InGame";
         }
 
         private readonly IEventBus _eventBus;
         private readonly CharacterService _characterService;
+        private readonly GameSession _gameSession;
         private readonly PanelRefs _panels;
 
         private IDisposable _connectionSubscription;
@@ -33,10 +36,12 @@ namespace KnightOnline.Client.Core.Bootstrap
         private IDisposable _creationSubscription;
         private IDisposable _selectionSubscription;
 
-        public CharacterFlowController(IEventBus eventBus, CharacterService characterService, PanelRefs panels)
+        public CharacterFlowController(IEventBus eventBus, CharacterService characterService,
+            GameSession gameSession, PanelRefs panels)
         {
             _eventBus = eventBus;
             _characterService = characterService;
+            _gameSession = gameSession;
             _panels = panels;
         }
 
@@ -69,14 +74,16 @@ namespace KnightOnline.Client.Core.Bootstrap
 
         private void OnCharacterSelected(CharacterSelectedEvent e)
         {
-            if (e.Character != null) SetActivePanel(_panels.InGamePanel);
+            if (e.Character == null) return;
+
+            _gameSession.SetSelectedCharacter(e.Character);
+            SceneManager.LoadSceneAsync(_panels.InGameSceneName, LoadSceneMode.Single);
         }
 
         private void SetActivePanel(GameObject activePanel)
         {
             SetPanel(_panels.CharacterCreationPanel, activePanel);
             SetPanel(_panels.CharacterSelectPanel, activePanel);
-            SetPanel(_panels.InGamePanel, activePanel);
         }
 
         private static void SetPanel(GameObject panel, GameObject activePanel)
