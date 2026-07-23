@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -22,9 +22,8 @@ public static class Program
 
     private static async Task HandleClientAsync(TcpClient tcpClient)
     {
-        // Intentionally per connection for this in-memory prototype.  Reconnects start with
-        // an empty roster; replace this store with account-keyed persistence when login exists.
         var characters = new Dictionary<string, CharacterSummaryPacket>(StringComparer.OrdinalIgnoreCase);
+        var nextCharacterId = 1; // Đơn giản, tăng dần theo từng kết nối - đủ cho prototype in-memory.
 
         using (tcpClient)
         using (var stream = tcpClient.GetStream())
@@ -35,7 +34,7 @@ public static class Program
                 {
                     var envelope = await ReadEnvelopeAsync(stream);
                     if (envelope == null) break;
-                    await HandlePacketAsync(stream, envelope, characters);
+                    await HandlePacketAsync(stream, envelope, characters, () => nextCharacterId++);
                 }
             }
             catch (Exception ex)
@@ -48,7 +47,8 @@ public static class Program
     private static async Task HandlePacketAsync(
         NetworkStream stream,
         PacketEnvelope envelope,
-        Dictionary<string, CharacterSummaryPacket> characters)
+        Dictionary<string, CharacterSummaryPacket> characters,
+        Func<int> generateId)
     {
         switch (envelope.Type)
         {
@@ -73,7 +73,7 @@ public static class Program
                     createResponse = new(CreateCharacterResult.NameAlreadyTaken, "That character name already exists.");
                 else
                 {
-                    characters.Add(name, new CharacterSummaryPacket(name));
+                    characters.Add(name, new CharacterSummaryPacket(name, generateId(), level: 1));
                     createResponse = new(CreateCharacterResult.Success, name);
                 }
 

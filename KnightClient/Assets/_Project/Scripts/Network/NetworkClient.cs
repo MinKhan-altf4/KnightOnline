@@ -113,38 +113,46 @@ namespace KnightOnline.Client.Network
         }
 
         private void HandlePacket(PacketEnvelope envelope)
-        {
-            switch (envelope.Type)
+{
+    switch (envelope.Type)
+    {
+        case PacketType.ConnectResponse:
+            var connect = JsonSerializer.Deserialize<ConnectResponsePacket>(envelope.Payload);
+            if (connect != null)
+                _eventBus.Publish(new ServerConnectionResultEvent(connect.Result, connect.Message));
+            break;
+
+        case PacketType.CreateCharacterResponse:
+            var create = JsonSerializer.Deserialize<CreateCharacterResponsePacket>(envelope.Payload);
+            if (create != null)
             {
-                case PacketType.ConnectResponse:
-                    var connect = JsonSerializer.Deserialize<ConnectResponsePacket>(envelope.Payload);
-                    if (connect != null)
-                        _eventBus.Publish(new ServerConnectionResultEvent(connect.Result, connect.Message));
-                    break;
-
-                case PacketType.CreateCharacterResponse:
-                    var create = JsonSerializer.Deserialize<CreateCharacterResponsePacket>(envelope.Payload);
-                    if (create != null)
-                    {
-                        var success = create.Result == CreateCharacterResult.Success;
-                        _eventBus.Publish(new CharacterCreationResultEvent(success, create.Message,
-                            success ? new CharacterData(create.Message) : null));
-                    }
-                    break;
-
-                case PacketType.ListCharactersResponse:
-                    var list = JsonSerializer.Deserialize<ListCharactersResponsePacket>(envelope.Payload);
-                    if (list != null)
-                    {
-                        var characters = new List<CharacterData>(list.Characters.Count);
-                        foreach (var entry in list.Characters)
-                            if (!string.IsNullOrWhiteSpace(entry.CharacterName))
-                                characters.Add(new CharacterData(entry.CharacterName));
-                        _eventBus.Publish(new CharacterListReceivedEvent(characters));
-                    }
-                    break;
+                var success = create.Result == CreateCharacterResult.Success;
+                _eventBus.Publish(new CharacterCreationResultEvent(success, create.Message,
+                    success ? new CharacterData(create.Message) : null));
             }
-        }
+            break;
+
+        case PacketType.ListCharactersResponse:
+            var list = JsonSerializer.Deserialize<ListCharactersResponsePacket>(envelope.Payload);
+            if (list != null)
+            {
+                var characters = new List<CharacterData>(list.Characters.Count);
+                foreach (var entry in list.Characters)
+                {
+                    if (string.IsNullOrWhiteSpace(entry.CharacterName)) continue;
+
+                    var character = new CharacterData(entry.CharacterName)
+                    {
+                        CharacterId = entry.CharacterId,
+                        Level = entry.Level
+                    };
+                    characters.Add(character);
+                }
+                _eventBus.Publish(new CharacterListReceivedEvent(characters));
+            }
+            break;
+    }
+}
 
         public void Disconnect()
         {
