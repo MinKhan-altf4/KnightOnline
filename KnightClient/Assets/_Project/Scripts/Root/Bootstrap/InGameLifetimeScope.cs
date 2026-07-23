@@ -2,27 +2,36 @@ using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Gameplay.Player;
 using KnightOnline.Client.Input;
 using KnightOnline.Client.UI;
-using UnityEngine;
+using KnightOnline.Client.Root;
 using VContainer;
 using VContainer.Unity;
 
 namespace KnightOnline.Client.Core.Bootstrap
 {
-    /// <summary>Owns dependencies used only while the gameplay scene is loaded.</summary>
     public sealed class InGameLifetimeScope : LifetimeScope
     {
+        protected override void Awake()
+        {
+            var appScope = FindAnyObjectByType<AppLifetimeScope>();
+            if (appScope != null)
+            {
+                parentReference.Object = appScope;
+            }
+
+            base.Awake();
+        }
+
         protected override void Configure(IContainerBuilder builder)
         {
-            var characterData = GameSession.Current?.SelectedCharacter
-                                ?? new CharacterData("TestCharacter");
-
-            if (GameSession.Current?.SelectedCharacter == null)
-                Debug.LogWarning("[InGameScope] No GameSession found — running in test mode with default CharacterData.");
-
-            builder.RegisterInstance(characterData);
             builder.Register<IMovementInputProvider, KeyboardMovementInput>(Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<PlayerController>();
             builder.RegisterComponentInHierarchy<InGameHUD>();
+
+            builder.Register<CharacterData>(container =>
+            {
+                var session = container.Resolve<GameSession>();
+                return session.SelectedCharacter ?? new CharacterData("TestCharacter");
+            }, Lifetime.Singleton);
         }
     }
 }

@@ -1,10 +1,9 @@
 using VContainer;
 using VContainer.Unity;
 using UnityEngine;
-using KnightOnline.Client.Core.Events;
-using KnightOnline.Client.Network;
 using KnightOnline.Client.UI;
 using KnightOnline.Client.Gameplay.Services;
+using KnightOnline.Client.Root;
 
 namespace KnightOnline.Client.Core.Bootstrap
 {
@@ -12,25 +11,26 @@ namespace KnightOnline.Client.Core.Bootstrap
     {
         [SerializeField] private CharacterFlowController.PanelRefs _panelRefs;
 
+        protected override void Awake()
+        {
+            // Tìm AppLifetimeScope đang tồn tại (DontDestroyOnLoad) và
+            // chỉ định làm Parent TRƯỚC KHI base.Awake() chạy Build().
+            var appScope = FindAnyObjectByType<AppLifetimeScope>();
+            if (appScope != null)
+            {
+                parentReference.Object = appScope;
+            }
+
+            base.Awake();
+        }
+
         protected override void Configure(IContainerBuilder builder)
         {
-            builder.Register<IEventBus, EventBus>(Lifetime.Singleton);
-
-            builder.RegisterComponentOnNewGameObject<NetworkClient>(
-                Lifetime.Singleton, "NetworkClient")
-                .DontDestroyOnLoad();
-
-            builder.RegisterComponentOnNewGameObject<GameSession>(
-                Lifetime.Singleton, "GameSession")
-                .DontDestroyOnLoad();
-
             builder.RegisterEntryPoint<GameBootstrap>();
 
             builder.RegisterInstance(_panelRefs);
             builder.RegisterEntryPoint<CharacterFlowController>();
 
-            // Đăng ký ConnectionStatusView - GameObject đã đặt sẵn trong scene,
-            // VContainer tìm nó trong hierarchy và gọi [Inject] Construct() vào nó.
             builder.RegisterComponentInHierarchy<ConnectionStatusView>();
             builder.Register<CharacterService>(Lifetime.Singleton);
             builder.Register<CharacterSelectionService>(Lifetime.Singleton);
