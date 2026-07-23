@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 5393055299179362622}
   - component: {fileID: 2058786824929919902}
   - component: {fileID: 7874796404511795013}
+  - component: {fileID: 4634258340476348976}
+  - component: {fileID: 8732455108387987307}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -82,7 +84,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: db750325989564987a34393247d883b4, type: 3}
   m_Color: {r: 1, g: 0, b: 0, a: 1}
@@ -181,3 +183,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: KnightOnline.Client.Gameplay::KnightOnline.Client.Gameplay.Player.PlayerController
   _defaultMoveSpeed: 4
+--- !u!95 &4634258340476348976
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3341308754895539733}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 00f8c659535350c4aa334b8c831a9f7f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &8732455108387987307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3341308754895539733}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 110bc32b65d725b44bc9e2adaa9a96df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: KnightOnline.Client.Gameplay::KnightOnline.Client.Gameplay.Player.PlayerAnimationController
