@@ -3,6 +3,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
+using KnightOnline.Server.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace KnightOnline.Server;
 
@@ -12,19 +14,35 @@ public static class Program
 
     public static async Task Main(string[] args)
     {
+        var configuration = DatabaseConfiguration.Build();
+        var connectionString =
+            DatabaseConfiguration.GetRequiredConnectionString(configuration);
+        var databaseOptions = new DbContextOptionsBuilder<KnightDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+
+        await using (var db = new KnightDbContext(databaseOptions))
+            await db.Database.MigrateAsync();
+
+        var characterRepository = new CharacterRepository(
+            databaseOptions,
+            DatabaseConfiguration.DevelopmentAccountKey);
+        await characterRepository.EnsureAccountExistsAsync();
+
         var listener = new TcpListener(IPAddress.Any, Port);
         listener.Start();
         Console.WriteLine($"[Server] Listening on port {Port}.");
 
         while (true)
-            _ = HandleClientAsync(await listener.AcceptTcpClientAsync());
+            _ = HandleClientAsync(
+                await listener.AcceptTcpClientAsync(),
+                characterRepository);
     }
 
-    private static async Task HandleClientAsync(TcpClient tcpClient)
+    private static async Task HandleClientAsync(
+        TcpClient tcpClient,
+        CharacterRepository characterRepository)
     {
-        var characters = new Dictionary<string, CharacterSummaryPacket>(StringComparer.OrdinalIgnoreCase);
-        var nextCharacterId = 1; // Đơn giản, tăng dần theo từng kết nối - đủ cho prototype in-memory.
-
         using (tcpClient)
         using (var stream = tcpClient.GetStream())
         {
@@ -34,7 +52,7 @@ public static class Program
                 {
                     var envelope = await ReadEnvelopeAsync(stream);
                     if (envelope == null) break;
-                    await HandlePacketAsync(stream, envelope, characters, () => nextCharacterId++);
+                    await HandlePacketAsync(stream, envelope, characterRepository);
                 }
             }
             catch (Exception ex)
@@ -47,8 +65,7 @@ public static class Program
     private static async Task HandlePacketAsync(
         NetworkStream stream,
         PacketEnvelope envelope,
-        Dictionary<string, CharacterSummaryPacket> characters,
-        Func<int> generateId)
+        CharacterRepository characterRepository)
     {
         switch (envelope.Type)
         {
@@ -69,20 +86,16 @@ public static class Program
                     createResponse = new(CreateCharacterResult.NameEmpty, "Character name cannot be empty.");
                 else if (name.Length > 20)
                     createResponse = new(CreateCharacterResult.NameTooLong, "Character name is limited to 20 characters.");
-                else if (characters.ContainsKey(name))
-                    createResponse = new(CreateCharacterResult.NameAlreadyTaken, "That character name already exists.");
                 else
-                {
-                    characters.Add(name, new CharacterSummaryPacket(name, generateId(), level: 1));
-                    createResponse = new(CreateCharacterResult.Success, name);
-                }
+                    createResponse = await characterRepository.CreateAsync(name);
 
                 await SendEnvelopeAsync(stream, PacketType.CreateCharacterResponse, createResponse);
                 break;
 
             case PacketType.ListCharactersRequest:
+                var characters = await characterRepository.ListAsync();
                 await SendEnvelopeAsync(stream, PacketType.ListCharactersResponse,
-                    new ListCharactersResponsePacket(characters.Values.ToArray()));
+                    new ListCharactersResponsePacket(characters));
                 break;
         }
     }

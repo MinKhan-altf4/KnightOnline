@@ -10,6 +10,9 @@
 - [x] Scene Loader
 - [x] VContainer Parent–Child LifetimeScope
 - [x] EventBus
+- [x] PostgreSQL/EF Core persistence foundation
+- [x] Persistent development account + character roster
+- [ ] Account authentication
 
 ## Phase 2 - Player & World
 
@@ -50,3 +53,4 @@ Play Test đầy đủ trong Unity:
 - [ ] Escape, click ngoài và nút Close đều đóng dialog và trả control
 - [ ] Destroy NPC hoặc unload scene không để Player bị khóa
 - [ ] Shop/Quest chỉ publish `NpcActionRequestedEvent`
+- [ ] Restart Server và xác nhận CharacterId/roster vẫn tồn tại

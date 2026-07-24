@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("KnightOnline.Server-Development")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("KnightServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d4a65c7b37b2e8f47984a0535dc6268d865b551a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+35a4e41cf31e53653c74329f65ee62f60125fcdd")]
 [assembly: System.Reflection.AssemblyProductAttribute("KnightServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KnightServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

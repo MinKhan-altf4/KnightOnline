@@ -37,6 +37,8 @@ Mục tiêu của dự án là xây dựng một nền tảng có khả năng m�
 - NPC click + distance validation
 - Dynamic NPC Dialog UI
 - Event-driven NPC interaction lifecycle
+- PostgreSQL persistence foundation
+- Persistent Account/Character schema
 
 ### Chưa triển khai
 
@@ -45,7 +47,6 @@ Mục tiêu của dự án là xây dựng một nền tảng có khả năng m�
 - Equipment
 - Quest
 - Monster AI
-- Database thật
 - Multiplayer Synchronization
 
 ---
@@ -146,6 +147,34 @@ Game và InGame là Child Scope.
 
 Server Authoritative.
 
+## 8.1 Persistence
+
+KnightServer sử dụng PostgreSQL qua EF Core 8 và Npgsql.
+
+```text
+Packet Handler
+ ↓
+CharacterRepository
+ ↓
+KnightDbContext (mỗi operation một instance)
+ ↓
+PostgreSQL
+```
+
+Schema đầu tiên:
+
+- `accounts`: application account identity.
+- `characters`: character thuộc account, level và tên normalized.
+- Tên nhân vật unique toàn server, không phân biệt hoa/thường.
+- `CharacterId` do PostgreSQL identity sinh và tồn tại qua restart.
+
+Trong development, mọi connection dùng account key `local-dev` vì authentication
+chưa được triển khai. Đây là seam tạm thời; repository đã scope query theo
+account để có thể thay bằng account thật sau này.
+
+Connection string được đọc từ .NET User Secrets hoặc biến môi trường
+`KNIGHTONLINE_ConnectionStrings__KnightOnline`, không lưu trong repository.
+
 ---
 
 ## 9. EventBus
@@ -219,8 +248,8 @@ HUD
 ## 11. Technical Debt
 
 - Animation mới chỉ có Idle/Walk placeholder, chưa hỗ trợ 4 hướng
-- CharacterId hiện vẫn là in-memory
-- Database
+- Chưa có authentication; mọi connection dùng `local-dev`
+- Giới hạn bốn character hiện được enforce ở application layer
 - Combat
 - Chưa có consumer cho `NpcActionRequestedEvent`
 - Chưa có automated tests cho EventBus và NPC dialog lifecycle

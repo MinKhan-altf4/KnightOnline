@@ -5,7 +5,8 @@ namespace KnightOnline.Client.Shared.Packets
         Success = 0,
         NameEmpty = 1,
         NameTooLong = 2,
-        NameAlreadyTaken = 3, // Server chưa xử lý được (chưa có database) - để dành
+        NameAlreadyTaken = 3,
+        CharacterLimitReached = 4,
     }
 
     public sealed class CreateCharacterRequestPacket
