@@ -108,3 +108,7 @@ D:\Project\KnightOnline\.tmp\KnightServer-buildcheck\KnightServer.deps.json
 D:\Project\KnightOnline\.tmp\KnightServer-buildcheck\KnightServer.runtimeconfig.json
 D:\Project\KnightOnline\.tmp\KnightServer-buildcheck\KnightServer.dll
 D:\Project\KnightOnline\.tmp\KnightServer-buildcheck\KnightServer.pdb
+D:\Project\KnightOnline\.tmp\KnightServer-refactor-check\KnightServer.deps.json
+D:\Project\KnightOnline\.tmp\KnightServer-refactor-check\KnightServer.runtimeconfig.json
+D:\Project\KnightOnline\.tmp\KnightServer-refactor-check\KnightServer.dll
+D:\Project\KnightOnline\.tmp\KnightServer-refactor-check\KnightServer.pdb

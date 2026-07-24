@@ -39,6 +39,8 @@ Mục tiêu của dự án là xây dựng một nền tảng có khả năng m�
 - Event-driven NPC interaction lifecycle
 - PostgreSQL persistence foundation
 - Persistent Account/Character schema
+- Packet dispatcher và feature handlers
+- Server-side Monster domain foundation
 
 ### Chưa triển khai
 
@@ -147,6 +149,29 @@ Game và InGame là Child Scope.
 
 Server Authoritative.
 
+### Packet handling
+
+`Program.cs` chỉ còn là composition root và TCP accept loop.
+
+```text
+TcpClient
+ ↓
+ClientConnection
+ ↓ read/write length-prefixed PacketEnvelope
+PacketDispatcher
+ ↓ lookup theo PacketType
+IPacketHandler
+ ├── ConnectPacketHandler
+ ├── CreateCharacterPacketHandler
+ └── ListCharactersPacketHandler
+```
+
+- `ClientConnection` sở hữu TCP stream, framing, serialization và send lock.
+- `PacketDispatcher` từ chối đăng ký trùng một `PacketType`.
+- Mỗi request packet có đúng một feature handler.
+- Handler gọi repository/domain service và gửi response qua connection.
+- Thêm packet mới không yêu cầu sửa networking loop hoặc `Program.cs` switch.
+
 ## 8.1 Persistence
 
 KnightServer sử dụng PostgreSQL qua EF Core 8 và Npgsql.
@@ -242,6 +267,37 @@ PlayerController
  ↓
 HUD
 ```
+
+## 10.1 Monster Domain
+
+Monster runtime state nằm trong memory phía Server, không ghi PostgreSQL theo
+từng đòn đánh.
+
+```text
+MonsterDefinition
+ ↓ immutable static configuration
+Monster
+ ↓ runtime HP / death / respawn time
+MonsterService
+ ↓ synchronized access
+MonsterSnapshot / MonsterDamageResult
+```
+
+Domain hiện hỗ trợ:
+
+- Validate definition, level, maximum HP và respawn delay.
+- Sinh runtime `MonsterId`.
+- Snapshot immutable cho networking sau này.
+- Damage được clamp theo HP còn lại.
+- Death và thời điểm respawn.
+- Respawn khi server clock đạt thời điểm chỉ định.
+- Kết quả rõ ràng cho not found, dead và invalid damage.
+
+`Training Wolf` là instance development đầu tiên. Unity yêu cầu snapshot bằng
+`ListMonstersRequest`; Server map domain snapshot sang shared DTO và trả
+`ListMonstersResponse`. Client map DTO sang `MonsterData`, sau đó publish
+`MonsterListReceivedEvent` dạng sticky. Chưa có combat handler hoặc Unity
+prefab/presentation.
 
 ---
 

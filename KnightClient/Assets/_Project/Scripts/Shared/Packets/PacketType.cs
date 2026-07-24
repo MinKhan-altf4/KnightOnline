@@ -9,5 +9,7 @@ namespace KnightOnline.Client.Shared.Packets
         CreateCharacterResponse = 4,
         ListCharactersRequest = 5,
         ListCharactersResponse = 6,
+        ListMonstersRequest = 7,
+        ListMonstersResponse = 8,
     }
 }

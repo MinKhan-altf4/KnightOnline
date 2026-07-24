@@ -54,6 +54,9 @@ namespace KnightOnline.Client.Network
         public UniTask SendListCharactersRequestAsync() =>
             SendPacketAsync(PacketType.ListCharactersRequest, new ListCharactersRequestPacket());
 
+        public UniTask SendListMonstersRequestAsync() =>
+            SendPacketAsync(PacketType.ListMonstersRequest, new ListMonstersRequestPacket());
+
         private async UniTask ReceiveLoopAsync(CancellationToken ct)
         {
             try
@@ -149,6 +152,31 @@ namespace KnightOnline.Client.Network
                     characters.Add(character);
                 }
                 _eventBus.Publish(new CharacterListReceivedEvent(characters));
+            }
+            break;
+
+        case PacketType.ListMonstersResponse:
+            var monsterList = JsonSerializer.Deserialize<ListMonstersResponsePacket>(envelope.Payload);
+            if (monsterList != null)
+            {
+                var monsters = new List<MonsterData>(monsterList.Monsters.Count);
+                foreach (var entry in monsterList.Monsters)
+                {
+                    monsters.Add(new MonsterData
+                    {
+                        MonsterId = entry.MonsterId,
+                        DefinitionId = entry.DefinitionId,
+                        MonsterName = entry.MonsterName,
+                        Level = entry.Level,
+                        CurrentHealth = entry.CurrentHealth,
+                        MaximumHealth = entry.MaximumHealth,
+                        IsAlive = entry.IsAlive,
+                        Position = new Vector2(entry.PositionX, entry.PositionY)
+                    });
+                }
+
+                _eventBus.Publish(new MonsterListReceivedEvent(monsters));
+                Debug.Log($"[Monster] Received {monsters.Count} monster snapshot(s).");
             }
             break;
     }

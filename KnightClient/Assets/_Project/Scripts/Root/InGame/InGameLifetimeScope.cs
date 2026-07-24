@@ -30,6 +30,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             builder.RegisterComponentInHierarchy<PlayerInteraction>();
             builder.RegisterComponentInHierarchy<InGameHUD>();
             builder.RegisterComponentInHierarchy<NpcDialogUI>();
+            builder.RegisterComponentInHierarchy<InGameSceneRoot>();
 
             builder.Register<CharacterData>(container =>
             {

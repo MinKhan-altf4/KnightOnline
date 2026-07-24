@@ -12,6 +12,8 @@
 - [x] EventBus
 - [x] PostgreSQL/EF Core persistence foundation
 - [x] Persistent development account + character roster
+- [x] Packet dispatcher + feature packet handlers
+- [x] Server-side Monster domain foundation
 - [ ] Account authentication
 
 ## Phase 2 - Player & World
@@ -29,6 +31,10 @@
 - [ ] Equipment
 - [ ] Item
 - [ ] Monster
+- [x] Monster runtime model: HP, death, snapshot, respawn
+- [x] Monster snapshot request/response packets
+- [x] Unity MonsterData mapping + sticky synchronization event
+- [ ] Monster Client prefab/presentation
 
 ## Phase 4 - UI & NPC
 
