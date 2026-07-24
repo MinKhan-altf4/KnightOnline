@@ -21,6 +21,7 @@ namespace KnightOnline.Client.Gameplay.Player
         private IMovementInputProvider _inputProvider;
         private CharacterData _characterData;
         private Vector2 _currentDirection;
+        private bool _movementEnabled = true;
 
         /// <summary>Ưu tiên MoveSpeed từ CharacterData; fallback về giá trị Inspector.</summary>
         private float MoveSpeed => _characterData?.MoveSpeed ?? _defaultMoveSpeed;
@@ -45,7 +46,12 @@ namespace KnightOnline.Client.Gameplay.Player
 
         private void Update()
         {
-            if (_inputProvider == null) return;
+            if (!_movementEnabled || _inputProvider == null)
+            {
+                _currentDirection = Vector2.zero;
+                return;
+            }
+
             _currentDirection = _inputProvider.GetMovementDirection();
         }
 
@@ -53,7 +59,22 @@ namespace KnightOnline.Client.Gameplay.Player
         {
             // Dynamic body: set velocity trực tiếp thay vì MovePosition.
             // Linear Drag = 10 đảm bảo player dừng ngay khi thả phím.
-            _rigidbody.linearVelocity = _currentDirection * MoveSpeed;
+            _rigidbody.linearVelocity = _movementEnabled
+                ? _currentDirection * MoveSpeed
+                : Vector2.zero;
+        }
+
+        public void SetMovementEnabled(bool enabled)
+        {
+            _movementEnabled = enabled;
+
+            if (enabled)
+                return;
+
+            _currentDirection = Vector2.zero;
+
+            if (_rigidbody != null)
+                _rigidbody.linearVelocity = Vector2.zero;
         }
     }
 }

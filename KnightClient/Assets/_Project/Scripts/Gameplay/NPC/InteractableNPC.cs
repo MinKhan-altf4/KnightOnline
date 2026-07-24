@@ -1,10 +1,9 @@
-using System; // Bắt buộc thêm dòng này để dùng Action
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace KnightOnline.Client.Gameplay.NPC
 {
-    public enum NpcActionType { Close, Shop, Quest, Talk }
+    public enum NpcActionType { Close, Shop, Quest }
 
     [System.Serializable]
     public class NpcOption
@@ -15,9 +14,6 @@ namespace KnightOnline.Client.Gameplay.NPC
 
     public class InteractableNPC : MonoBehaviour
     {
-        // 1. Tạo một sự kiện (Event) tĩnh để báo hiệu NPC bị click
-        public static event Action<InteractableNPC> OnNpcClicked;
-
         [Header("NPC Info")]
         [SerializeField] private string _npcName = "NPC Name";
         [TextArea(3, 5)] [SerializeField] private string _greetingText = "Xin chào!";
@@ -31,10 +27,21 @@ namespace KnightOnline.Client.Gameplay.NPC
         public string GreetingText => _greetingText;
         public List<NpcOption> Options => _options;
 
-        public void OnInteract()
+        public NpcInteractionRequestedEvent CreateInteractionRequest()
         {
-            // 2. Thay vì gọi thẳng UI, NPC chỉ phát tín hiệu (phát loa) ra ngoài
-            OnNpcClicked?.Invoke(this);
+            var optionSnapshot = new NpcOptionData[_options.Count];
+
+            for (int index = 0; index < _options.Count; index++)
+            {
+                NpcOption option = _options[index];
+                optionSnapshot[index] = new NpcOptionData(option.OptionText, option.Action);
+            }
+
+            return new NpcInteractionRequestedEvent(
+                this,
+                _npcName,
+                _greetingText,
+                optionSnapshot);
         }
     }
 }

@@ -2,7 +2,7 @@
 ## Architecture Documentation
 
 > Đây là bản Architecture tổng hợp được viết lại dựa trên tài liệu Architecture hiện tại,
-> DevLog (đến Day 8) và tài liệu Network/Phase 1.
+> DevLog (đến Day 11) và tài liệu Network/Phase 1.
 
 ## 1. Project Overview
 
@@ -14,7 +14,7 @@ Mục tiêu của dự án là xây dựng một nền tảng có khả năng m�
 
 ---
 
-## 2. Current Development Status (Day 8)
+## 2. Current Development Status (Day 11)
 
 ### Đã hoàn thành
 
@@ -32,6 +32,11 @@ Mục tiêu của dự án là xây dựng một nền tảng có khả năng m�
 - Collision
 - InGame HUD
 - Player Prefab
+- Player Idle/Walk Animation
+- SpawnPoint
+- NPC click + distance validation
+- Dynamic NPC Dialog UI
+- Event-driven NPC interaction lifecycle
 
 ### Chưa triển khai
 
@@ -39,7 +44,6 @@ Mục tiêu của dự án là xây dựng một nền tảng có khả năng m�
 - Inventory
 - Equipment
 - Quest
-- NPC
 - Monster AI
 - Database thật
 - Multiplayer Synchronization
@@ -150,6 +154,46 @@ Gameplay và Network không gọi trực tiếp UI.
 
 Mọi notification đi qua EventBus.
 
+### NPC Interaction Flow
+
+```text
+Mouse click
+ ↓
+PlayerInteraction
+ ↓ validate Layer + distance
+NpcInteractionRequestedEvent
+ ↓ IEventBus
+NpcDialogUI
+ ↓ render snapshot + lock Player controls
+NpcActionRequestedEvent
+ ↓
+Shop / Quest handler (chưa triển khai)
+```
+
+Quy tắc:
+
+- `InteractableNPC` chỉ sở hữu cấu hình và tạo snapshot interaction.
+- `PlayerInteraction` chịu trách nhiệm validate input/khoảng cách và publish
+  `NpcInteractionRequestedEvent`.
+- `NpcDialogUI` chỉ render và phát ý định người dùng.
+- `Close` là hành vi presentation và được xử lý ngay tại dialog.
+- Câu chào của NPC chính là nội dung hội thoại; không có action `Talk`.
+- `Shop`, `Quest` không chứa nghiệp vụ trong UI; chúng publish
+  `NpcActionRequestedEvent` để handler tương ứng xử lý.
+- Mọi NPC luôn có đúng một nút `Close`; UI tự sinh nút này nếu data NPC
+  không cấu hình.
+- Event interaction không phải sticky event.
+- Subscriber phải giữ `IDisposable` và dispose khi bị destroy.
+
+### NPC Dialog Lifecycle
+
+- Khi mở dialog: khóa movement và interaction lặp.
+- Dialog đóng bằng Close, Escape hoặc click ngoài khung.
+- Nếu NPC nguồn bị destroy, dialog tự đóng.
+- Khi UI bị disable/destroy hoặc scene unload, dialog trả lại Player controls.
+- Snapshot dữ liệu giúp UI không đọc trực tiếp danh sách mutable của NPC sau
+  thời điểm interaction.
+
 ---
 
 ## 10. Character Lifecycle
@@ -174,21 +218,22 @@ HUD
 
 ## 11. Technical Debt
 
-- Animation
-- SpawnPoint
-- CharacterId từ Server
+- Animation mới chỉ có Idle/Walk placeholder, chưa hỗ trợ 4 hướng
+- CharacterId hiện vẫn là in-memory
 - Database
 - Combat
+- Chưa có consumer cho `NpcActionRequestedEvent`
+- Chưa có automated tests cho EventBus và NPC dialog lifecycle
 
 ---
 
 ## 12. Roadmap
 
-1. Animation
-2. Spawn System
+1. Play Test và ổn định NPC interaction vertical slice
+2. Camera bounds
 3. Monster
 4. Combat
-5. Inventory
+5. Inventory/Shop
 6. Database
 7. Multiplayer
 
@@ -210,7 +255,7 @@ HUD
 
 Tài liệu này được tổng hợp từ:
 - Architecture.md
-- DevLog Day 1–Day 8
+- DevLog Day 1–Day 11
 - Network Architecture
 - Phase 1 Foundation
 

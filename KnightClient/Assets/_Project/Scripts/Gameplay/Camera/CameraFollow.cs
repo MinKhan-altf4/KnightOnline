@@ -6,7 +6,8 @@ namespace KnightOnline.Client.Gameplay.CameraControl
     {
         [Header("Follow Settings")]
         [SerializeField] private Transform _target;
-        [SerializeField] private float _smoothSpeed = 5f;
+        [Min(0.01f)]
+        [SerializeField] private float _smoothTime = 0.18f;
         [SerializeField] private Vector3 _offset = new Vector3(0f, 0f, -10f);
 
         [Header("Map Boundaries")]
@@ -15,6 +16,8 @@ namespace KnightOnline.Client.Gameplay.CameraControl
         [SerializeField] private Vector2 _maxBounds; 
 
         private Camera _cam;
+        private Vector3 _followVelocity;
+        private bool _snapOnNextUpdate = true;
 
         private void Start()
         {
@@ -23,29 +26,82 @@ namespace KnightOnline.Client.Gameplay.CameraControl
             {
                 _cam = Camera.main;
             }
+
         }
 
         private void LateUpdate()
         {
             if (_target == null) return;
 
-            // 1. Tính toán vị trí mục tiêu mong muốn theo Player
-            Vector3 desiredPosition = _target.position + _offset;
+            Vector3 desiredPosition = GetDesiredPosition();
 
-            // 2. Ép biên (Clamp) trực tiếp trên mục tiêu trước khi Lerp
-            if (_useBounds && _cam != null && _cam.orthographic)
+            // LateUpdate đầu tiên chạy sau Start của PlayerController, nên vị trí
+            // spawn đã được áp dụng và camera không trượt từ vị trí scene cũ.
+            if (_snapOnNextUpdate)
             {
-                float halfHeight = _cam.orthographicSize;
-                float halfWidth = halfHeight * _cam.aspect;
-
-                float clampedX = Mathf.Clamp(desiredPosition.x, _minBounds.x + halfWidth, _maxBounds.x - halfWidth);
-                float clampedY = Mathf.Clamp(desiredPosition.y, _minBounds.y + halfHeight, _maxBounds.y - halfHeight);
-                
-                desiredPosition = new Vector3(clampedX, clampedY, desiredPosition.z);
+                transform.position = desiredPosition;
+                _followVelocity = Vector3.zero;
+                _snapOnNextUpdate = false;
+                return;
             }
 
-            // 3. Trượt mượt mà đến vị trí đã được giới hạn biên an toàn
-            transform.position = Vector3.Lerp(transform.position, desiredPosition, _smoothSpeed * Time.deltaTime);
+            transform.position = Vector3.SmoothDamp(
+                transform.position,
+                desiredPosition,
+                ref _followVelocity,
+                _smoothTime,
+                Mathf.Infinity,
+                Time.deltaTime);
+        }
+
+        private Vector3 GetDesiredPosition()
+        {
+            Vector3 desiredPosition = _target.position + _offset;
+
+            if (!_useBounds || _cam == null || !_cam.orthographic)
+                return desiredPosition;
+
+            float halfHeight = _cam.orthographicSize;
+            float halfWidth = halfHeight * _cam.aspect;
+
+            desiredPosition.x = ClampAxisOrCenter(
+                desiredPosition.x,
+                _minBounds.x,
+                _maxBounds.x,
+                halfWidth);
+
+            desiredPosition.y = ClampAxisOrCenter(
+                desiredPosition.y,
+                _minBounds.y,
+                _maxBounds.y,
+                halfHeight);
+
+            return desiredPosition;
+        }
+
+        private static float ClampAxisOrCenter(
+            float targetPosition,
+            float minimumBound,
+            float maximumBound,
+            float cameraHalfSize)
+        {
+            float minimumCameraPosition = minimumBound + cameraHalfSize;
+            float maximumCameraPosition = maximumBound - cameraHalfSize;
+
+            // Viewport lớn hơn map: giữ camera giữa map thay vì Clamp với
+            // min > max, vốn tạo ra vị trí sai hoặc rung ở biên.
+            if (minimumCameraPosition > maximumCameraPosition)
+                return (minimumBound + maximumBound) * 0.5f;
+
+            return Mathf.Clamp(
+                targetPosition,
+                minimumCameraPosition,
+                maximumCameraPosition);
+        }
+
+        private void OnValidate()
+        {
+            _smoothTime = Mathf.Max(0.01f, _smoothTime);
         }
     }
 }

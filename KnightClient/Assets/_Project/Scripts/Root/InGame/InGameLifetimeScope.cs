@@ -27,7 +27,9 @@ namespace KnightOnline.Client.Core.Bootstrap
         {
             builder.Register<IMovementInputProvider, KeyboardMovementInput>(Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<PlayerController>();
+            builder.RegisterComponentInHierarchy<PlayerInteraction>();
             builder.RegisterComponentInHierarchy<InGameHUD>();
+            builder.RegisterComponentInHierarchy<NpcDialogUI>();
 
             builder.Register<CharacterData>(container =>
             {

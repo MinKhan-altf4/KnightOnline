@@ -1,6 +1,8 @@
+using KnightOnline.Client.Core.Events;
 using UnityEngine;
-using UnityEngine.InputSystem; // Chuẩn New Input System
+using UnityEngine.InputSystem;
 using KnightOnline.Client.Gameplay.NPC;
+using VContainer;
 
 namespace KnightOnline.Client.Gameplay.Player
 {
@@ -11,7 +13,16 @@ namespace KnightOnline.Client.Gameplay.Player
     public class PlayerInteraction : MonoBehaviour
     {
         [SerializeField] private LayerMask _npcLayer; 
+
         private Camera _mainCam;
+        private IEventBus _eventBus;
+        private bool _interactionEnabled = true;
+
+        [Inject]
+        public void Construct(IEventBus eventBus)
+        {
+            _eventBus = eventBus;
+        }
 
         private void Start()
         {
@@ -20,6 +31,9 @@ namespace KnightOnline.Client.Gameplay.Player
 
         private void Update()
         {
+            if (!_interactionEnabled)
+                return;
+
             // Kiểm tra thiết bị chuột
             if (Mouse.current == null) return;
 
@@ -49,7 +63,7 @@ namespace KnightOnline.Client.Gameplay.Player
 
                     if (distance <= npc.InteractionRange)
                     {
-                        npc.OnInteract();
+                        _eventBus.Publish(npc.CreateInteractionRequest());
                     }
                     else
                     {
@@ -57,6 +71,11 @@ namespace KnightOnline.Client.Gameplay.Player
                     }
                 }
             }
+        }
+
+        public void SetInteractionEnabled(bool enabled)
+        {
+            _interactionEnabled = enabled;
         }
 
         private string _npcNameFormatted(InteractableNPC npc) => npc != null ? npc.NpcName : "NPC";
