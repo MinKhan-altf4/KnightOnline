@@ -14,7 +14,8 @@ namespace KnightOnline.Client.Core.Bootstrap
                 return;
             }
 
-            Debug.Log($"[InGame] Loading gameplay for {character.CharacterName}.");
+            // Đã sửa dòng này để verify dữ liệu từ Server gửi về:
+            Debug.Log($"[InGame] Loading gameplay for {character.CharacterName} | ID: {character.CharacterId} | Level: {character.Level}");
         }
     }
 }
