@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Gameplay.Targeting;
+using KnightOnline.Client.Network;
 using UnityEngine;
 using VContainer;
 
@@ -30,15 +32,28 @@ namespace KnightOnline.Client.Gameplay.Monster
         private readonly Dictionary<int, MonsterView> _views = new();
         private readonly Dictionary<int, MonsterView> _prefabs = new();
         private IDisposable _subscription;
+        private IDisposable _healthSubscription;
+        private IDisposable _diedSubscription;
+        private IDisposable _respawnedSubscription;
+        private IDisposable _attackResultSubscription;
         private IEventBus _eventBus;
         private TargetSelectionService _targetSelection;
+        private NetworkClient _networkClient;
 
         [Inject]
-        public void Construct(IEventBus eventBus, TargetSelectionService targetSelection)
+        public void Construct(
+            IEventBus eventBus,
+            TargetSelectionService targetSelection,
+            NetworkClient networkClient)
         {
             _eventBus = eventBus;
             _targetSelection = targetSelection;
+            _networkClient = networkClient;
             _subscription = eventBus.Subscribe<MonsterListReceivedEvent>(OnMonsterListReceived);
+            _healthSubscription = eventBus.Subscribe<MonsterHealthChangedEvent>(OnHealthChanged);
+            _diedSubscription = eventBus.Subscribe<MonsterDiedEvent>(OnMonsterDied);
+            _respawnedSubscription = eventBus.Subscribe<MonsterRespawnedEvent>(OnMonsterRespawned);
+            _attackResultSubscription = eventBus.Subscribe<AttackResultEvent>(OnAttackResult);
         }
 
         private void Awake()
@@ -115,7 +130,49 @@ namespace KnightOnline.Client.Gameplay.Monster
 
             _targetSelection.Select(view);
             _eventBus.Publish(new MonsterSelectedEvent(view.Data));
+            _networkClient.SendAttackMonsterRequestAsync(view.MonsterId).Forget();
             Debug.Log($"[Monster] Selected {view.Data.MonsterName} (ID: {view.MonsterId}).");
+        }
+
+        private void OnHealthChanged(MonsterHealthChangedEvent gameEvent)
+        {
+            if (!_views.TryGetValue(gameEvent.MonsterId, out var view) ||
+                view == null ||
+                view.Data == null)
+                return;
+
+            view.Data.CurrentHealth = gameEvent.CurrentHealth;
+            view.Data.MaximumHealth = gameEvent.MaximumHealth;
+            view.Data.IsAlive = gameEvent.CurrentHealth > 0;
+            view.Render(view.Data);
+        }
+
+        private void OnMonsterDied(MonsterDiedEvent gameEvent)
+        {
+            Remove(gameEvent.MonsterId);
+        }
+
+        private void OnMonsterRespawned(MonsterRespawnedEvent gameEvent)
+        {
+            if (gameEvent.Monster != null && gameEvent.Monster.IsAlive)
+                Upsert(gameEvent.Monster);
+        }
+
+        private static void OnAttackResult(AttackResultEvent gameEvent)
+        {
+            if (gameEvent.Status == AttackOutcome.Success)
+            {
+                Debug.Log(
+                    $"[Combat] Hit monster {gameEvent.MonsterId} " +
+                    $"for {gameEvent.AppliedDamage} damage.");
+                return;
+            }
+
+            Debug.Log(
+                $"[Combat] Attack rejected: {gameEvent.Status}" +
+                (gameEvent.CooldownRemainingMilliseconds > 0
+                    ? $" ({gameEvent.CooldownRemainingMilliseconds} ms remaining)."
+                    : "."));
         }
 
         private void Remove(int monsterId)
@@ -131,6 +188,10 @@ namespace KnightOnline.Client.Gameplay.Monster
         private void OnDestroy()
         {
             _subscription?.Dispose();
+            _healthSubscription?.Dispose();
+            _diedSubscription?.Dispose();
+            _respawnedSubscription?.Dispose();
+            _attackResultSubscription?.Dispose();
             _subscription = null;
 
             foreach (var view in _views.Values)

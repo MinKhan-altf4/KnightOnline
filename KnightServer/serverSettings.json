@@ -1,0 +1,40 @@
+{
+  "network": {
+    "port": 7777,
+    "maximumPacketBytes": 1048576
+  },
+  "characters": {
+    "developmentAccountKey": "local-dev",
+    "maximumPerAccount": 4,
+    "initialLevel": 1,
+    "initialMaximumHealth": 100,
+    "moveSpeed": 4.0,
+    "spawnPositionX": 0.0,
+    "spawnPositionY": 0.0
+  },
+  "combat": {
+    "baseAttackDamage": 10,
+    "attackRange": 2.0,
+    "attackCooldownMilliseconds": 750
+  },
+  "world": {
+    "tickMilliseconds": 250,
+    "maximumMovementDeltaMilliseconds": 250
+  },
+  "monsterDefinitions": [
+    {
+      "definitionId": 1,
+      "name": "Training Wolf",
+      "level": 1,
+      "maximumHealth": 50,
+      "respawnSeconds": 10
+    }
+  ],
+  "monsterSpawns": [
+    {
+      "definitionId": 1,
+      "positionX": 2.0,
+      "positionY": 2.0
+    }
+  ]
+}

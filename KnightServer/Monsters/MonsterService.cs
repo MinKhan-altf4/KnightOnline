@@ -31,6 +31,16 @@ public sealed class MonsterService
         }
     }
 
+    public MonsterSnapshot? GetSnapshot(int monsterId)
+    {
+        lock (_syncRoot)
+        {
+            return _monsters.TryGetValue(monsterId, out Monster? monster)
+                ? monster.CreateSnapshot()
+                : null;
+        }
+    }
+
     public MonsterDamageResult ApplyDamage(
         int monsterId,
         int damage,

@@ -42,4 +42,14 @@ namespace KnightOnline.Client.Data.Events
             Character = character;
         }
     }
+
+    public readonly struct CharacterSelectionFailedEvent : IGameEvent
+    {
+        public readonly string Message;
+
+        public CharacterSelectionFailedEvent(string message)
+        {
+            Message = message;
+        }
+    }
 }

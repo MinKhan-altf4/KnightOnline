@@ -22,5 +22,13 @@ namespace KnightOnline.Client.Data.Events
     // ("vừa mất kết nối"), không nên phát lại mãi cho subscriber tới sau.
     public readonly struct ServerDisconnectedEvent : IGameEvent
     {
+        public readonly string Message;
+        public readonly bool IsForced;
+
+        public ServerDisconnectedEvent(string message = null, bool isForced = false)
+        {
+            Message = message;
+            IsForced = isForced;
+        }
     }
 }

@@ -8,4 +8,5 @@
 **/bin/
 **/obj/
 .tmp/
+Builds/
 KnightServer/server*.log

@@ -36,6 +36,7 @@ namespace KnightOnline.Client.Core.Bootstrap
         private IDisposable _listSubscription;
         private IDisposable _creationSubscription;
         private IDisposable _selectionSubscription;
+        private IDisposable _selectionFailedSubscription;
 
         public CharacterFlowController(IEventBus eventBus, CharacterService characterService,
             GameSession gameSession, PanelRefs panels)
@@ -52,6 +53,9 @@ namespace KnightOnline.Client.Core.Bootstrap
             _listSubscription = _eventBus.Subscribe<CharacterListReceivedEvent>(OnCharacterListReceived);
             _creationSubscription = _eventBus.Subscribe<CharacterCreationResultEvent>(OnCharacterCreationResult);
             _selectionSubscription = _eventBus.Subscribe<CharacterSelectedEvent>(OnCharacterSelected);
+            _selectionFailedSubscription =
+                _eventBus.Subscribe<CharacterSelectionFailedEvent>(
+                    e => Debug.LogError($"[Character] Selection failed: {e.Message}"));
 
             SetActivePanel(null); // Ẩn hết ban đầu, chờ kết quả kết nối
         }
@@ -100,6 +104,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             _listSubscription?.Dispose();
             _creationSubscription?.Dispose();
             _selectionSubscription?.Dispose();
+            _selectionFailedSubscription?.Dispose();
         }
     }
 }

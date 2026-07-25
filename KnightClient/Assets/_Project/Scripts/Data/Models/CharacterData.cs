@@ -15,19 +15,28 @@ namespace KnightOnline.Client.Data.Models
         public string CharacterName { get; set; }
 
         // --- Stats ---
-        public int Level { get; set; } = 1;
-        public int MaxHp { get; set; } = 100;
-        public int CurrentHp { get; set; } = 100;
+        public int Level { get; set; }
+        public int MaxHp { get; set; }
+        public int CurrentHp { get; set; }
         /// <summary>Tốc độ di chuyển (units/second). Default 4f.</summary>
-        public float MoveSpeed { get; set; } = 4f;
+        public float MoveSpeed { get; set; }
 
         // --- World ---
         /// <summary>Vị trí spawn. Default Vector2.zero đến khi DB cung cấp.</summary>
         public Vector2 SpawnPosition { get; set; } = Vector2.zero;
 
-        public CharacterData(string characterName)
+        public CharacterData(
+            string characterName,
+            int level,
+            int maximumHealth,
+            int currentHealth,
+            float moveSpeed)
         {
             CharacterName = characterName;
+            Level = level;
+            MaxHp = maximumHealth;
+            CurrentHp = currentHealth;
+            MoveSpeed = moveSpeed;
         }
     }
 }

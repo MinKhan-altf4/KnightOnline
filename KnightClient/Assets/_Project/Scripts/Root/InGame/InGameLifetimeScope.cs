@@ -41,16 +41,21 @@ namespace KnightOnline.Client.Core.Bootstrap
             builder.Register<CharacterData>(container =>
             {
                 var session = container.Resolve<GameSession>();
-                var characterData = session.SelectedCharacter ?? new CharacterData("TestCharacter");
+                var settings = container.Resolve<ClientGameplaySettings>();
+                var characterData = session.SelectedCharacter ?? new CharacterData(
+                    "TestCharacter",
+                    settings.InitialLevel,
+                    settings.InitialMaximumHealth,
+                    settings.InitialMaximumHealth,
+                    settings.DefaultMoveSpeed);
 
-                // Ghi đè SpawnPosition từ marker trong map, nếu tìm thấy.
-                // Không throw nếu thiếu SpawnPoint - fallback về Vector2.zero
-                // (giá trị mặc định sẵn có của CharacterData), tránh crash
-                // khi test 1 scene InGame chưa kịp đặt SpawnPoint.
-                var spawnPoint = FindAnyObjectByType<SpawnPoint>();
-                if (spawnPoint != null)
+                // Chỉ scene test trực tiếp mới dùng marker local. Character đã được
+                // server chọn luôn giữ spawn position authoritative từ response.
+                if (session.SelectedCharacter == null)
                 {
-                    characterData.SpawnPosition = spawnPoint.transform.position;
+                    var spawnPoint = FindAnyObjectByType<SpawnPoint>();
+                    if (spawnPoint != null)
+                        characterData.SpawnPosition = spawnPoint.transform.position;
                 }
 
                 return characterData;

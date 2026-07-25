@@ -11,5 +11,14 @@ namespace KnightOnline.Client.Shared.Packets
         ListCharactersResponse = 6,
         ListMonstersRequest = 7,
         ListMonstersResponse = 8,
+        AttackMonsterRequest = 9,
+        MonsterHealthChanged = 10,
+        MonsterDied = 11,
+        MonsterRespawned = 12,
+        SelectCharacterRequest = 13,
+        SelectCharacterResponse = 14,
+        PlayerMoveInput = 15,
+        AttackResult = 16,
+        ForcedDisconnect = 17,
     }
 }

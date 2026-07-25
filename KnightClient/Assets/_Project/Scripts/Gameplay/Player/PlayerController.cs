@@ -1,5 +1,7 @@
+using Cysharp.Threading.Tasks;
 using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Input;
+using KnightOnline.Client.Network;
 using UnityEngine;
 using VContainer;
 
@@ -16,21 +18,30 @@ namespace KnightOnline.Client.Gameplay.Player
     {
         /// <summary>Fallback khi chạy thẳng scene InGame không qua Bootstrap.</summary>
         [SerializeField] private float _defaultMoveSpeed = 4f;
+        [SerializeField, Min(0.02f)] private float _movementSyncInterval = 0.1f;
 
         private Rigidbody2D _rigidbody;
         private IMovementInputProvider _inputProvider;
         private CharacterData _characterData;
         private Vector2 _currentDirection;
         private bool _movementEnabled = true;
+        private NetworkClient _networkClient;
+        private Vector2 _lastSentDirection;
+        private bool _hasSentMovement;
+        private float _nextMovementSyncTime;
 
         /// <summary>Ưu tiên MoveSpeed từ CharacterData; fallback về giá trị Inspector.</summary>
         private float MoveSpeed => _characterData?.MoveSpeed ?? _defaultMoveSpeed;
 
         [Inject]
-        public void Construct(IMovementInputProvider inputProvider, CharacterData characterData)
+        public void Construct(
+            IMovementInputProvider inputProvider,
+            CharacterData characterData,
+            NetworkClient networkClient)
         {
             _inputProvider = inputProvider;
             _characterData = characterData;
+            _networkClient = networkClient;
         }
 
         private void Awake()
@@ -53,6 +64,23 @@ namespace KnightOnline.Client.Gameplay.Player
             }
 
             _currentDirection = _inputProvider.GetMovementDirection();
+            SyncMovementInput();
+        }
+
+        private void SyncMovementInput()
+        {
+            if (_networkClient == null)
+                return;
+
+            bool changed = !_hasSentMovement ||
+                (_currentDirection - _lastSentDirection).sqrMagnitude > 0.0001f;
+            if (!changed && Time.unscaledTime < _nextMovementSyncTime)
+                return;
+
+            _lastSentDirection = _currentDirection;
+            _hasSentMovement = true;
+            _nextMovementSyncTime = Time.unscaledTime + _movementSyncInterval;
+            _networkClient.SendPlayerMoveInputAsync(_currentDirection).Forget();
         }
 
         private void FixedUpdate()
@@ -75,6 +103,8 @@ namespace KnightOnline.Client.Gameplay.Player
 
             if (_rigidbody != null)
                 _rigidbody.linearVelocity = Vector2.zero;
+
+            SyncMovementInput();
         }
     }
 }

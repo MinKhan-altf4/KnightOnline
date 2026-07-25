@@ -14,6 +14,7 @@ namespace KnightOnline.Client.UI
         private IEventBus _eventBus;
         private System.IDisposable _connectionSubscription;
         private System.IDisposable _disconnectionSubscription;
+        private bool _forcedDisconnectReceived;
 
         [Inject]
         public void Construct(IEventBus eventBus)
@@ -51,7 +52,15 @@ namespace KnightOnline.Client.UI
 
         private void OnDisconnected(ServerDisconnectedEvent e)
         {
-            SetStatus("Mất kết nối với Server.");
+            if (e.IsForced)
+            {
+                _forcedDisconnectReceived = true;
+                SetStatus($"Mất kết nối: {e.Message}");
+                return;
+            }
+
+            if (!_forcedDisconnectReceived)
+                SetStatus("Mất kết nối với Server.");
         }
 
         private void SetStatus(string message)

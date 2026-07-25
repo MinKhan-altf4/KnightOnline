@@ -8,26 +8,42 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
-using KnightOnline.Client.Data.Models;
+using KnightOnline.Client.Network.Handlers;
 using KnightOnline.Client.Shared.Packets;
-using UnityEngine;
 using VContainer;
+using UnityEngine;
 
 namespace KnightOnline.Client.Network
 {
     public class NetworkClient : MonoBehaviour
     {
-        private const string ServerIp = "127.0.0.1";
-        private const int Port = 7777;
-
         private TcpClient _tcpClient;
         private NetworkStream _stream;
         private CancellationTokenSource _cts;
         private bool _isDisconnecting;
+        private readonly SemaphoreSlim _sendLock = new(1, 1);
         private IEventBus _eventBus;
+        private NetworkSettings _settings;
+        private IReadOnlyDictionary<PacketType, IClientPacketHandler> _packetHandlers;
 
         [Inject]
-        public void Construct(IEventBus eventBus) => _eventBus = eventBus;
+        public void Construct(
+            IEventBus eventBus,
+            NetworkSettings settings,
+            IEnumerable<IClientPacketHandler> packetHandlers)
+        {
+            _eventBus = eventBus;
+            _settings = settings;
+            var handlers = new Dictionary<PacketType, IClientPacketHandler>();
+            foreach (IClientPacketHandler handler in packetHandlers)
+            {
+                if (!handlers.TryAdd(handler.PacketType, handler))
+                    throw new InvalidOperationException(
+                        $"Duplicate client packet handler: {handler.PacketType}.");
+            }
+
+            _packetHandlers = handlers;
+        }
 
         public async UniTask ConnectAsync()
         {
@@ -36,7 +52,7 @@ namespace KnightOnline.Client.Network
                 _isDisconnecting = false;
                 _tcpClient = new TcpClient();
                 _cts = new CancellationTokenSource();
-                await _tcpClient.ConnectAsync(ServerIp, Port);
+                await _tcpClient.ConnectAsync(_settings.Host, _settings.Port);
                 _stream = _tcpClient.GetStream();
                 _ = ReceiveLoopAsync(_cts.Token);
                 await SendPacketAsync(PacketType.ConnectRequest, new ConnectRequestPacket("1.0.0"));
@@ -56,6 +72,21 @@ namespace KnightOnline.Client.Network
 
         public UniTask SendListMonstersRequestAsync() =>
             SendPacketAsync(PacketType.ListMonstersRequest, new ListMonstersRequestPacket());
+
+        public UniTask SendAttackMonsterRequestAsync(int monsterId) =>
+            SendPacketAsync(
+                PacketType.AttackMonsterRequest,
+                new AttackMonsterRequestPacket(monsterId));
+
+        public UniTask SendSelectCharacterRequestAsync(int characterId) =>
+            SendPacketAsync(
+                PacketType.SelectCharacterRequest,
+                new SelectCharacterRequestPacket(characterId));
+
+        public UniTask SendPlayerMoveInputAsync(Vector2 direction) =>
+            SendPacketAsync(
+                PacketType.PlayerMoveInput,
+                new PlayerMoveInputPacket(direction.x, direction.y));
 
         private async UniTask ReceiveLoopAsync(CancellationToken ct)
         {
@@ -86,7 +117,8 @@ namespace KnightOnline.Client.Network
             var lengthBuffer = new byte[4];
             if (await ReadExactlyAsync(lengthBuffer, ct) == false) return null;
             var length = BitConverter.ToInt32(lengthBuffer, 0);
-            if (length <= 0 || length > 1024 * 1024) throw new InvalidDataException("Invalid packet length.");
+            if (length <= 0 || length > _settings.MaximumPacketBytes)
+                throw new InvalidDataException($"Invalid packet length: {length}.");
 
             var payloadBuffer = new byte[length];
             if (await ReadExactlyAsync(payloadBuffer, ct) == false) return null;
@@ -111,76 +143,28 @@ namespace KnightOnline.Client.Network
             var payloadJson = JsonSerializer.Serialize(payload);
             var envelopeJson = JsonSerializer.Serialize(new PacketEnvelope(type, payloadJson));
             var bytes = Encoding.UTF8.GetBytes(envelopeJson);
-            await _stream.WriteAsync(BitConverter.GetBytes(bytes.Length), 0, 4);
-            await _stream.WriteAsync(bytes, 0, bytes.Length);
+            await _sendLock.WaitAsync();
+            try
+            {
+                await _stream.WriteAsync(BitConverter.GetBytes(bytes.Length), 0, 4);
+                await _stream.WriteAsync(bytes, 0, bytes.Length);
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
 
         private void HandlePacket(PacketEnvelope envelope)
-{
-    switch (envelope.Type)
-    {
-        case PacketType.ConnectResponse:
-            var connect = JsonSerializer.Deserialize<ConnectResponsePacket>(envelope.Payload);
-            if (connect != null)
-                _eventBus.Publish(new ServerConnectionResultEvent(connect.Result, connect.Message));
-            break;
-
-        case PacketType.CreateCharacterResponse:
-            var create = JsonSerializer.Deserialize<CreateCharacterResponsePacket>(envelope.Payload);
-            if (create != null)
+        {
+            if (_packetHandlers.TryGetValue(envelope.Type, out var handler))
             {
-                var success = create.Result == CreateCharacterResult.Success;
-                _eventBus.Publish(new CharacterCreationResultEvent(success, create.Message,
-                    success ? new CharacterData(create.Message) : null));
+                handler.Handle(envelope.Payload);
+                return;
             }
-            break;
 
-        case PacketType.ListCharactersResponse:
-            var list = JsonSerializer.Deserialize<ListCharactersResponsePacket>(envelope.Payload);
-            if (list != null)
-            {
-                var characters = new List<CharacterData>(list.Characters.Count);
-                foreach (var entry in list.Characters)
-                {
-                    if (string.IsNullOrWhiteSpace(entry.CharacterName)) continue;
-
-                    var character = new CharacterData(entry.CharacterName)
-                    {
-                        CharacterId = entry.CharacterId,
-                        Level = entry.Level
-                    };
-                    characters.Add(character);
-                }
-                _eventBus.Publish(new CharacterListReceivedEvent(characters));
-            }
-            break;
-
-        case PacketType.ListMonstersResponse:
-            var monsterList = JsonSerializer.Deserialize<ListMonstersResponsePacket>(envelope.Payload);
-            if (monsterList != null)
-            {
-                var monsters = new List<MonsterData>(monsterList.Monsters.Count);
-                foreach (var entry in monsterList.Monsters)
-                {
-                    monsters.Add(new MonsterData
-                    {
-                        MonsterId = entry.MonsterId,
-                        DefinitionId = entry.DefinitionId,
-                        MonsterName = entry.MonsterName,
-                        Level = entry.Level,
-                        CurrentHealth = entry.CurrentHealth,
-                        MaximumHealth = entry.MaximumHealth,
-                        IsAlive = entry.IsAlive,
-                        Position = new Vector2(entry.PositionX, entry.PositionY)
-                    });
-                }
-
-                _eventBus.Publish(new MonsterListReceivedEvent(monsters));
-                Debug.Log($"[Monster] Received {monsters.Count} monster snapshot(s).");
-            }
-            break;
-    }
-}
+            Debug.LogWarning($"[Network] No client handler for packet {envelope.Type}.");
+        }
 
         public void Disconnect()
         {

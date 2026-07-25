@@ -13,11 +13,6 @@ namespace KnightOnline.Client.UI
 {
     public class NpcDialogUI : MonoBehaviour
     {
-        private const float ButtonWidth = 160f;
-        private const float ButtonHeight = 30f;
-        private const float HorizontalSpacing = 10f;
-        private const float VerticalSpacing = 6f;
-
         [Header("UI References")]
         [SerializeField] private GameObject _dialogPanel;
         [SerializeField] private TextMeshProUGUI _npcNameText;
@@ -26,6 +21,14 @@ namespace KnightOnline.Client.UI
 
         [Header("Prefabs")]
         [SerializeField] private GameObject _optionButtonPrefab;
+
+        [Header("Layout")]
+        [SerializeField, Min(1f)] private float _buttonWidth = 160f;
+        [SerializeField, Min(1f)] private float _buttonHeight = 30f;
+        [SerializeField, Min(0f)] private float _horizontalSpacing = 10f;
+        [SerializeField, Min(0f)] private float _verticalSpacing = 6f;
+        [SerializeField, Min(1)] private int _optionsPerRow = 2;
+        [SerializeField] private string _defaultCloseLabel = "Đóng";
 
         private IEventBus _eventBus;
         private PlayerController _playerController;
@@ -149,12 +152,12 @@ namespace KnightOnline.Client.UI
                 }
             }
 
-            CreateOptionRows(regularOptions, 2);
+            CreateOptionRows(regularOptions, _optionsPerRow);
 
             // Mọi NPC luôn có đúng một nút Đóng ở hàng cuối. Nếu Inspector
             // không cấu hình Close, UI tự tạo để NPC chỉ-có-câu-chào vẫn dùng được.
             NpcOptionData closeOption = configuredCloseOption ??
-                new NpcOptionData("Đóng", NpcActionType.Close);
+                new NpcOptionData(_defaultCloseLabel, NpcActionType.Close);
             RectTransform closeRow = CreateRow();
             CreateOptionButton(closeOption, closeRow);
 
@@ -166,7 +169,7 @@ namespace KnightOnline.Client.UI
             if (_buttonContainer.TryGetComponent(out VerticalLayoutGroup layout))
             {
                 layout.padding = new RectOffset(0, 0, 0, 0);
-                layout.spacing = VerticalSpacing;
+                layout.spacing = _verticalSpacing;
                 layout.childAlignment = TextAnchor.MiddleCenter;
                 layout.childControlWidth = false;
                 layout.childControlHeight = false;
@@ -198,10 +201,10 @@ namespace KnightOnline.Client.UI
 
             RectTransform row = rowObject.GetComponent<RectTransform>();
             row.SetParent(_buttonContainer, false);
-            row.sizeDelta = new Vector2(_buttonContainer.rect.width, ButtonHeight);
+            row.sizeDelta = new Vector2(_buttonContainer.rect.width, _buttonHeight);
 
             HorizontalLayoutGroup layout = rowObject.GetComponent<HorizontalLayoutGroup>();
-            layout.spacing = HorizontalSpacing;
+            layout.spacing = _horizontalSpacing;
             layout.childAlignment = TextAnchor.MiddleCenter;
             layout.childControlWidth = false;
             layout.childControlHeight = false;
@@ -215,7 +218,7 @@ namespace KnightOnline.Client.UI
         {
             GameObject buttonObject = Instantiate(_optionButtonPrefab, row);
             RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
-            buttonRect.sizeDelta = new Vector2(ButtonWidth, ButtonHeight);
+            buttonRect.sizeDelta = new Vector2(_buttonWidth, _buttonHeight);
 
             buttonObject.GetComponentInChildren<TextMeshProUGUI>().text = option.Text;
 

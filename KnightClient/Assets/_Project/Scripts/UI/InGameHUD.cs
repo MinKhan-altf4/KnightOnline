@@ -1,3 +1,6 @@
+using System;
+using KnightOnline.Client.Core.Events;
+using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Gameplay.Player;
 using TMPro;
@@ -20,12 +23,18 @@ namespace KnightOnline.Client.UI
 
         private CharacterData _characterData;
         private Transform _playerTransform;
+        private IDisposable _disconnectionSubscription;
 
         [Inject]
-        public void Construct(CharacterData characterData, PlayerController playerController)
+        public void Construct(
+            CharacterData characterData,
+            PlayerController playerController,
+            IEventBus eventBus)
         {
             _characterData = characterData;
             _playerTransform = playerController.transform;
+            _disconnectionSubscription =
+                eventBus.Subscribe<ServerDisconnectedEvent>(OnDisconnected);
         }
 
         private void Start()
@@ -45,6 +54,18 @@ namespace KnightOnline.Client.UI
         {
             _connectionStatusText.text = connected ? "● Connected" : "● Disconnected";
             _connectionStatusText.color = connected ? Color.green : Color.red;
+        }
+
+        private void OnDisconnected(ServerDisconnectedEvent gameEvent)
+        {
+            SetConnectionStatus(false);
+            if (gameEvent.IsForced && !string.IsNullOrWhiteSpace(gameEvent.Message))
+                Debug.LogError($"[Network] {gameEvent.Message}");
+        }
+
+        private void OnDestroy()
+        {
+            _disconnectionSubscription?.Dispose();
         }
     }
 }

@@ -7,10 +7,10 @@ namespace KnightOnline.Server.Persistence;
 
 public sealed class CharacterRepository(
     DbContextOptions<KnightDbContext> options,
-    string accountKey)
+    string accountKey,
+    int maximumCharactersPerAccount,
+    int initialLevel)
 {
-    private const int MaximumCharactersPerAccount = 4;
-
     public async Task EnsureAccountExistsAsync()
     {
         await using var db = new KnightDbContext(options);
@@ -49,6 +49,22 @@ public sealed class CharacterRepository(
             .ToArrayAsync();
     }
 
+    public async Task<CharacterSummaryPacket?> FindOwnedAsync(int characterId)
+    {
+        await using var db = new KnightDbContext(options);
+
+        return await db.Characters
+            .AsNoTracking()
+            .Where(character =>
+                character.Id == characterId &&
+                character.Account.AccountKey == accountKey)
+            .Select(character => new CharacterSummaryPacket(
+                character.Name,
+                character.Id,
+                character.Level))
+            .SingleOrDefaultAsync();
+    }
+
     public async Task<CreateCharacterResponsePacket> CreateAsync(string name)
     {
         string normalizedName = name.ToUpperInvariant();
@@ -60,11 +76,11 @@ public sealed class CharacterRepository(
         int characterCount = await db.Characters
             .CountAsync(character => character.AccountId == account.Id);
 
-        if (characterCount >= MaximumCharactersPerAccount)
+        if (characterCount >= maximumCharactersPerAccount)
         {
             return new CreateCharacterResponsePacket(
                 CreateCharacterResult.CharacterLimitReached,
-                $"An account can have at most {MaximumCharactersPerAccount} characters.");
+                $"An account can have at most {maximumCharactersPerAccount} characters.");
         }
 
         db.Characters.Add(new CharacterEntity
@@ -72,7 +88,7 @@ public sealed class CharacterRepository(
             AccountId = account.Id,
             Name = name,
             NormalizedName = normalizedName,
-            Level = 1,
+            Level = initialLevel,
             CreatedAtUtc = DateTime.UtcNow,
         });
 

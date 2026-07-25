@@ -4,8 +4,6 @@ namespace KnightOnline.Server.Persistence;
 
 public static class DatabaseConfiguration
 {
-    public const string DevelopmentAccountKey = "local-dev";
-
     public static IConfiguration Build()
     {
         return new ConfigurationBuilder()
