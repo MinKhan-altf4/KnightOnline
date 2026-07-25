@@ -4,6 +4,7 @@ using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
+using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
@@ -12,7 +13,8 @@ public sealed class SelectCharacterPacketHandler(
     ActivePlayerRegistry activePlayers,
     CharacterOptions characterOptions,
     CombatOptions combatOptions,
-    WorldOptions worldOptions) : IPacketHandler
+    WorldOptions worldOptions,
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.SelectCharacterRequest;
 
@@ -72,7 +74,7 @@ public sealed class SelectCharacterPacketHandler(
             return;
         }
 
-        DateTime utcNow = DateTime.UtcNow;
+        DateTime utcNow = clock.UtcNow;
         var spawnPosition = new Vector2(
             characterOptions.SpawnPositionX,
             characterOptions.SpawnPositionY);

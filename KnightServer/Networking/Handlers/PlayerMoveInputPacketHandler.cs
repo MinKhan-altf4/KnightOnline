@@ -1,12 +1,16 @@
 using System.Numerics;
 using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
+using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
-public sealed class PlayerMoveInputPacketHandler : IPacketHandler
+public sealed class PlayerMoveInputPacketHandler(
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.PlayerMoveInput;
+    public PacketAccessLevel RequiredAccess =>
+        PacketAccessLevel.CharacterSelected;
 
     public Task HandleAsync(
         ClientConnection connection,
@@ -23,7 +27,7 @@ public sealed class PlayerMoveInputPacketHandler : IPacketHandler
 
         connection.PlayerSession.SetMovement(
             new Vector2(packet.DirectionX, packet.DirectionY),
-            DateTime.UtcNow);
+            clock.UtcNow);
 
         return Task.CompletedTask;
     }

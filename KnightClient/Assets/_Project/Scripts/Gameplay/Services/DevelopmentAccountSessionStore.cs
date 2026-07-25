@@ -16,6 +16,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public StoredAccountSession Load()
         {
+            EnsureDevelopmentBuild();
             string json = PlayerPrefs.GetString(SessionKey, string.Empty);
             if (string.IsNullOrWhiteSpace(json))
                 return null;
@@ -24,8 +25,11 @@ namespace KnightOnline.Client.Gameplay.Services
             {
                 return JsonUtility.FromJson<StoredAccountSession>(json);
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                Debug.LogWarning(
+                    $"[Authentication] Invalid development session data was cleared: " +
+                    $"{exception.GetType().Name}.");
                 Clear();
                 return null;
             }
@@ -33,6 +37,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public string GetOrCreateDeviceId()
         {
+            EnsureDevelopmentBuild();
             string id = PlayerPrefs.GetString(DeviceKey, string.Empty);
             if (!string.IsNullOrWhiteSpace(id))
                 return id;
@@ -45,6 +50,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public void Save(StoredAccountSession session)
         {
+            EnsureDevelopmentBuild();
             // Save replaces the previous account. No earlier account token is
             // retained on this device.
             PlayerPrefs.SetString(SessionKey, JsonUtility.ToJson(session));
@@ -53,8 +59,18 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public void Clear()
         {
+            EnsureDevelopmentBuild();
             PlayerPrefs.DeleteKey(SessionKey);
             PlayerPrefs.Save();
+        }
+
+        private static void EnsureDevelopmentBuild()
+        {
+#if !UNITY_EDITOR && !DEVELOPMENT_BUILD
+            throw new InvalidOperationException(
+                "Insecure PlayerPrefs credential storage is disabled in " +
+                "release builds. Register a platform secure store.");
+#endif
         }
     }
 }

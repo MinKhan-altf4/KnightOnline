@@ -39,13 +39,17 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public void Start()
         {
-            _session = _store.Load();
             _connectionSubscription =
                 _events.Subscribe<ServerConnectionResultEvent>(
                     OnConnectionResult);
             _authenticationSubscription =
                 _events.Subscribe<AuthenticationResultEvent>(
                     OnAuthenticationResult);
+
+            if (_settings.DevelopmentBypassEnabled)
+                return;
+
+            _session = _store.Load();
         }
 
         public void PlayNew()
@@ -53,8 +57,9 @@ namespace KnightOnline.Client.Gameplay.Services
             CancelFlow();
             _isCreatingGuest = true;
             _isManualLogin = false;
-            _ = _network.SendCreateGuestRequestAsync(
-                _store.GetOrCreateDeviceId());
+            _network.SendCreateGuestRequestAsync(
+                    _store.GetOrCreateDeviceId())
+                .Forget();
         }
 
         public void Login(string username, string password)
@@ -66,11 +71,12 @@ namespace KnightOnline.Client.Gameplay.Services
                 _session != null && _session.IsGuest
                     ? _session.RefreshToken
                     : null;
-            _ = _network.SendLoginRequestAsync(
-                username,
-                password,
-                _store.GetOrCreateDeviceId(),
-                guestToken);
+            _network.SendLoginRequestAsync(
+                    username,
+                    password,
+                    _store.GetOrCreateDeviceId(),
+                    guestToken)
+                .Forget();
         }
 
         private void OnConnectionResult(ServerConnectionResultEvent result)
@@ -105,9 +111,10 @@ namespace KnightOnline.Client.Gameplay.Services
                 minimumSeconds,
                 message,
                 _flowCancellation.Token);
-            _ = _network.SendResumeAccountRequestAsync(
-                _session.RefreshToken,
-                _session.DeviceId);
+            _network.SendResumeAccountRequestAsync(
+                    _session.RefreshToken,
+                    _session.DeviceId)
+                .Forget();
         }
 
         private async UniTaskVoid CompleteMinimumCheckDelayAsync(

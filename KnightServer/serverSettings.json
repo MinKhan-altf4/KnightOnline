@@ -1,11 +1,14 @@
 {
+  "environment": "Development",
   "network": {
     "port": 7777,
     "maximumPacketBytes": 1048576
   },
   "authentication": {
     "developmentBypassEnabled": true,
-    "refreshTokenLifetimeDays": 30
+    "refreshTokenLifetimeDays": 30,
+    "maximumAttemptsPerWindow": 10,
+    "attemptWindowSeconds": 60
   },
   "guest": {
     "maximumLevel": 10,

@@ -2,13 +2,15 @@ using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Persistence;
 
 public sealed class CharacterRepository(
     DbContextOptions<KnightDbContext> options,
     int maximumCharactersPerAccount,
-    int initialLevel)
+    int initialLevel,
+    IServerClock clock)
 {
     public async Task EnsureAccountExistsAsync(string accountKey)
     {
@@ -29,7 +31,7 @@ public sealed class CharacterRepository(
         {
             AccountKey = accountKey,
             Kind = AccountKind.Development,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = clock.UtcNow,
         });
 
         try
@@ -103,7 +105,7 @@ public sealed class CharacterRepository(
             Name = name,
             NormalizedName = normalizedName,
             Level = initialLevel,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = clock.UtcNow,
         });
 
         try

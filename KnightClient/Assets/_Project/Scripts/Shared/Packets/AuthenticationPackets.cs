@@ -14,6 +14,7 @@ namespace KnightOnline.Client.Shared.Packets
         AlreadyAuthenticated = 5,
         InvalidRequest = 6,
         SessionConflict = 7,
+        RateLimited = 8,
     }
 
     public sealed class CreateGuestRequestPacket

@@ -146,6 +146,14 @@ namespace KnightOnline.Server.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at_utc");
 
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<Guid?>("ReplacedBySessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaced_by_session_id");
+
                     b.Property<DateTime?>("RevokedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("revoked_at_utc");
@@ -157,6 +165,8 @@ namespace KnightOnline.Server.Migrations
                         .HasColumnName("token_hash");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FamilyId");
 
                     b.HasIndex("TokenHash")
                         .IsUnique();

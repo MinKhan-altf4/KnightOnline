@@ -34,9 +34,32 @@ public sealed class PacketDispatcher
             return;
         }
 
+        if (!HasRequiredAccess(connection, handler.RequiredAccess))
+        {
+            Console.WriteLine(
+                $"[Security][Warning] Rejected packet {envelope.Type} from " +
+                $"{connection.RemoteAddress}: required access is " +
+                $"{handler.RequiredAccess}.");
+            return;
+        }
+
         await handler.HandleAsync(
             connection,
             envelope.Payload,
             cancellationToken);
     }
+
+    private static bool HasRequiredAccess(
+        ClientConnection connection,
+        PacketAccessLevel requiredAccess) =>
+        requiredAccess switch
+        {
+            PacketAccessLevel.Anonymous => true,
+            PacketAccessLevel.Authenticated =>
+                connection.AccountKey != null,
+            PacketAccessLevel.CharacterSelected =>
+                connection.AccountKey != null &&
+                connection.PlayerSession != null,
+            _ => false,
+        };
 }

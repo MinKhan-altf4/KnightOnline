@@ -2,15 +2,19 @@ using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Combat;
 using KnightOnline.Server.Monsters;
+using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
 public sealed class AttackMonsterPacketHandler(
     MonsterCombatService combatService,
     MonsterService monsterService,
-    ConnectionRegistry connections) : IPacketHandler
+    ConnectionRegistry connections,
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.AttackMonsterRequest;
+    public PacketAccessLevel RequiredAccess =>
+        PacketAccessLevel.CharacterSelected;
 
     public async Task HandleAsync(
         ClientConnection connection,
@@ -26,7 +30,7 @@ public sealed class AttackMonsterPacketHandler(
         MonsterAttackResolution resolution = combatService.Attack(
             connection,
             request.MonsterId,
-            DateTime.UtcNow);
+            clock.UtcNow);
 
         MonsterDamageResult? result = resolution.DamageResult;
         await connection.SendAsync(

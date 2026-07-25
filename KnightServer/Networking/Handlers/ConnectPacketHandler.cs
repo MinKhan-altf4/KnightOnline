@@ -10,6 +10,7 @@ public sealed class ConnectPacketHandler(
     bool developmentBypassEnabled) : IPacketHandler
 {
     public PacketType PacketType => PacketType.ConnectRequest;
+    public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
 
     public async Task HandleAsync(
         ClientConnection connection,

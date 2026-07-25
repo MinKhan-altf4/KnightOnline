@@ -1,0 +1,704 @@
+fileFormatVersion: 2
+guid: a45fe2e25edb49846a765c914951c458
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3855236454324777022
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_0
+  - first:
+      213: -298286506898803774
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_1
+  - first:
+      213: -8777154317041536325
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_2
+  - first:
+      213: -7153167493827786964
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_3
+  - first:
+      213: -3452281543743149669
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_4
+  - first:
+      213: -7020860706371479313
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_5
+  - first:
+      213: 1804053197877930320
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_6
+  - first:
+      213: -5489566712114981693
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_7
+  - first:
+      213: -1996773148877897564
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_8
+  - first:
+      213: -4717862507833406199
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_9
+  - first:
+      213: 1014884808997732141
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_10
+  - first:
+      213: -7614143003333008419
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_11
+  - first:
+      213: -3164670464465393086
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_12
+  - first:
+      213: 6667328931723146677
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_13
+  - first:
+      213: 3331019192303889263
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_14
+  - first:
+      213: -7692082208479578489
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_15
+  - first:
+      213: 7490911463251557726
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_16
+  - first:
+      213: -2409376211661002853
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_17
+  - first:
+      213: 5904956432425279152
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_18
+  - first:
+      213: 2733109226649835512
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_19
+  - first:
+      213: -4260059246549408688
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_20
+  - first:
+      213: -3423136231478086062
+    second: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_21
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_0
+      rect:
+        serializedVersion: 2
+        x: 235
+        y: 844
+        width: 147
+        height: 279
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2cfc5d6eed27f7ac0800000000000000
+      internalID: -3855236454324777022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_1
+      rect:
+        serializedVersion: 2
+        x: 459
+        y: 844
+        width: 141
+        height: 288
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c3310b90064cdbf0800000000000000
+      internalID: -298286506898803774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_2
+      rect:
+        serializedVersion: 2
+        x: 705
+        y: 844
+        width: 141
+        height: 288
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb2f3f9e6a8413680800000000000000
+      internalID: -8777154317041536325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_3
+      rect:
+        serializedVersion: 2
+        x: 930
+        y: 844
+        width: 144
+        height: 280
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c27068f3018dabc90800000000000000
+      internalID: -7153167493827786964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_4
+      rect:
+        serializedVersion: 2
+        x: 114
+        y: 572
+        width: 116
+        height: 219
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b996d881a380710d0800000000000000
+      internalID: -3452281543743149669
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_5
+      rect:
+        serializedVersion: 2
+        x: 310
+        y: 572
+        width: 114
+        height: 219
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe8da3bb264e09e90800000000000000
+      internalID: -7020860706371479313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_6
+      rect:
+        serializedVersion: 2
+        x: 503
+        y: 572
+        width: 115
+        height: 219
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 059eb6f33d8490910800000000000000
+      internalID: 1804053197877930320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_7
+      rect:
+        serializedVersion: 2
+        x: 698
+        y: 572
+        width: 118
+        height: 219
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c4d399092421d3b0800000000000000
+      internalID: -5489566712114981693
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_8
+      rect:
+        serializedVersion: 2
+        x: 896
+        y: 572
+        width: 116
+        height: 219
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a0481486690a44e0800000000000000
+      internalID: -1996773148877897564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_9
+      rect:
+        serializedVersion: 2
+        x: 1094
+        y: 575
+        width: 115
+        height: 216
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90dc471ab09c68eb0800000000000000
+      internalID: -4717862507833406199
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_10
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 321
+        width: 118
+        height: 214
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2fff305b58951e00800000000000000
+      internalID: 1014884808997732141
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_11
+      rect:
+        serializedVersion: 2
+        x: 310
+        y: 321
+        width: 116
+        height: 215
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd36f49a741255690800000000000000
+      internalID: -7614143003333008419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_12
+      rect:
+        serializedVersion: 2
+        x: 497
+        y: 319
+        width: 115
+        height: 216
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 24aae5ecaf4d414d0800000000000000
+      internalID: -3164670464465393086
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_13
+      rect:
+        serializedVersion: 2
+        x: 695
+        y: 319
+        width: 115
+        height: 216
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b5fa00a65c178c50800000000000000
+      internalID: 6667328931723146677
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_14
+      rect:
+        serializedVersion: 2
+        x: 896
+        y: 321
+        width: 116
+        height: 214
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6b28419e482a3e20800000000000000
+      internalID: 3331019192303889263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_15
+      rect:
+        serializedVersion: 2
+        x: 1096
+        y: 320
+        width: 116
+        height: 215
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 786f87c5cfb304590800000000000000
+      internalID: -7692082208479578489
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_16
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 65
+        width: 116
+        height: 224
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5db20b894015f760800000000000000
+      internalID: 7490911463251557726
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_17
+      rect:
+        serializedVersion: 2
+        x: 312
+        y: 65
+        width: 114
+        height: 224
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b976ba5d91d209ed0800000000000000
+      internalID: -2409376211661002853
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_18
+      rect:
+        serializedVersion: 2
+        x: 503
+        y: 67
+        width: 115
+        height: 222
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0beddd8e69e92f150800000000000000
+      internalID: 5904956432425279152
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_19
+      rect:
+        serializedVersion: 2
+        x: 696
+        y: 65
+        width: 116
+        height: 224
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f75eca6c54fde520800000000000000
+      internalID: 2733109226649835512
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_20
+      rect:
+        serializedVersion: 2
+        x: 888
+        y: 65
+        width: 116
+        height: 224
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 054ed4f9faa31e4c0800000000000000
+      internalID: -4260059246549408688
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_21
+      rect:
+        serializedVersion: 2
+        x: 1086
+        y: 65
+        width: 114
+        height: 224
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 256baf8ebb39e70d0800000000000000
+      internalID: -3423136231478086062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: f178b03279c3f3345ac75fef98fdb1aa
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
+    nameFileIdTable:
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_0: -3855236454324777022
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_1: -298286506898803774
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_10: 1014884808997732141
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_11: -7614143003333008419
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_12: -3164670464465393086
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_13: 6667328931723146677
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_14: 3331019192303889263
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_15: -7692082208479578489
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_16: 7490911463251557726
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_17: -2409376211661002853
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_18: 5904956432425279152
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_19: 2733109226649835512
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_2: -8777154317041536325
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_20: -4260059246549408688
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_21: -3423136231478086062
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_3: -7153167493827786964
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_4: -3452281543743149669
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_5: -7020860706371479313
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_6: 1804053197877930320
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_7: -5489566712114981693
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_8: -1996773148877897564
+      79aa7bdf-5204-4bbe-a605-481cdc2fd485-Picsart-BackgroundRemover_9: -4717862507833406199
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -9,6 +9,7 @@ using KnightOnline.Server.Networking;
 using KnightOnline.Server.Networking.Handlers;
 using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
+using KnightOnline.Server.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace KnightOnline.Server;
@@ -24,11 +25,13 @@ public static class Program
 
         DbContextOptions<KnightDbContext> databaseOptions =
             await ConfigureDatabaseAsync();
+        IServerClock clock = new SystemServerClock();
 
         var characterRepository = new CharacterRepository(
             databaseOptions,
             options.Characters.MaximumPerAccount,
-            options.Characters.InitialLevel);
+            options.Characters.InitialLevel,
+            clock);
         await characterRepository.EnsureAccountExistsAsync(
             options.Characters.DevelopmentAccountKey);
 
@@ -43,7 +46,12 @@ public static class Program
             new AuthTokenProtector(),
             new PasswordHasher(),
             TimeSpan.FromDays(
-                options.Authentication.RefreshTokenLifetimeDays));
+                options.Authentication.RefreshTokenLifetimeDays),
+            clock);
+        var authenticationRateLimiter = new AuthenticationRateLimiter(
+            options.Authentication.MaximumAttemptsPerWindow,
+            TimeSpan.FromSeconds(
+                options.Authentication.AttemptWindowSeconds));
         IAccountIdentityProvider accountIdentities =
             new DevelopmentAccountIdentityProvider(
                 options.Characters.DevelopmentAccountKey);
@@ -64,13 +72,19 @@ public static class Program
                 options.Authentication.DevelopmentBypassEnabled),
             new CreateGuestPacketHandler(
                 authentication,
-                accountSessions),
+                accountSessions,
+                authenticationRateLimiter,
+                clock),
             new ResumeAccountPacketHandler(
                 authentication,
-                accountSessions),
+                accountSessions,
+                authenticationRateLimiter,
+                clock),
             new LoginPacketHandler(
                 authentication,
-                accountSessions),
+                accountSessions,
+                authenticationRateLimiter,
+                clock),
             new CreateCharacterPacketHandler(characterRepository),
             new ListCharactersPacketHandler(characterRepository),
             new ListMonstersPacketHandler(monsterService),
@@ -79,18 +93,24 @@ public static class Program
                 activePlayers,
                 options.Characters,
                 options.Combat,
-                options.World),
-            new PlayerMoveInputPacketHandler(),
+                options.World,
+                clock),
+            new PlayerMoveInputPacketHandler(clock),
             new AttackMonsterPacketHandler(
                 combatService,
                 monsterService,
-                connections),
+                connections,
+                clock),
         ]);
 
-        _ = RunMonsterRespawnLoopAsync(
-            monsterService,
-            connections,
-            TimeSpan.FromMilliseconds(options.World.TickMilliseconds));
+        ObserveBackgroundTask(
+            RunMonsterRespawnLoopAsync(
+                monsterService,
+                connections,
+                clock,
+                TimeSpan.FromMilliseconds(
+                    options.World.TickMilliseconds)),
+            "monster-respawn-loop");
 
         var listener = new TcpListener(IPAddress.Any, options.Network.Port);
         listener.Start();
@@ -106,11 +126,13 @@ public static class Program
                 packetDispatcher,
                 options.Network.MaximumPacketBytes);
             connections.Add(connection);
-            _ = RunConnectionAsync(
-                connection,
-                connections,
-                activePlayers,
-                accountSessions);
+            ObserveBackgroundTask(
+                RunConnectionAsync(
+                    connection,
+                    connections,
+                    activePlayers,
+                    accountSessions),
+                "client-connection");
         }
     }
 
@@ -135,6 +157,7 @@ public static class Program
     private static async Task RunMonsterRespawnLoopAsync(
         MonsterService monsterService,
         ConnectionRegistry connections,
+        IServerClock clock,
         TimeSpan tickInterval)
     {
         using var timer = new PeriodicTimer(tickInterval);
@@ -142,7 +165,7 @@ public static class Program
         while (await timer.WaitForNextTickAsync())
         {
             IReadOnlyList<int> respawnedIds =
-                monsterService.RespawnReadyMonsters(DateTime.UtcNow);
+                monsterService.RespawnReadyMonsters(clock.UtcNow);
 
             foreach (int monsterId in respawnedIds)
             {
@@ -170,6 +193,24 @@ public static class Program
             snapshot.IsAlive,
             snapshot.SpawnPosition.X,
             snapshot.SpawnPosition.Y);
+
+    private static void ObserveBackgroundTask(Task task, string operation)
+    {
+        _ = task.ContinueWith(
+            completed =>
+            {
+                Exception exception =
+                    completed.Exception?.GetBaseException()
+                    ?? new InvalidOperationException(
+                        "Background task failed without an exception.");
+                Console.WriteLine(
+                    $"[Server][Error] Background operation '{operation}' " +
+                    $"failed: {exception}");
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
+    }
 
     private static async Task<DbContextOptions<KnightDbContext>>
         ConfigureDatabaseAsync()

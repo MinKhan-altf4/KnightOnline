@@ -21,9 +21,12 @@ public sealed class ConnectionRegistry
             {
                 await connection.SendAsync(packetType, payload);
             }
-            catch (Exception)
+            catch (Exception exception)
             {
                 // The connection's receive loop owns disposal/removal.
+                Console.WriteLine(
+                    $"[Network][Warning] Broadcast delivery failed: " +
+                    $"{exception.GetType().Name}: {exception.Message}");
             }
         }
     }

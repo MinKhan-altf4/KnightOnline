@@ -1,12 +1,10 @@
-*.meta
-!KnightClient/Assets/_Project/Scenes/InGame.unity.meta
-!KnightClient/Assets/_Project/Scripts/Root/Bootstrap/GameSession.cs.meta
-!KnightClient/Assets/_Project/Scripts/Root/Bootstrap/InGameSceneRoot.cs.meta
-!KnightClient/Assets/_Project/Scripts/Root/Bootstrap/InGameLifetimeScope.cs.meta
-
 # .NET build outputs
 **/bin/
 **/obj/
 .tmp/
 Builds/
 KnightServer/server*.log
+
+# Documentation is outside the Unity project. Meta files generated here are
+# accidental and do not carry Unity asset GUIDs.
+Documentation/**/*.meta

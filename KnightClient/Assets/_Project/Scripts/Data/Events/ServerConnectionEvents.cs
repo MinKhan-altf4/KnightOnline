@@ -21,6 +21,7 @@ namespace KnightOnline.Client.Data.Events
         AlreadyAuthenticated = 5,
         InvalidRequest = 6,
         SessionConflict = 7,
+        RateLimited = 8,
     }
 
     // Đổi từ IGameEvent thành IStickyGameEvent - đây là event đại diện

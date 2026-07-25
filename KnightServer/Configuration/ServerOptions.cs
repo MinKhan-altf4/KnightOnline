@@ -4,6 +4,7 @@ namespace KnightOnline.Server.Configuration;
 
 public sealed class ServerOptions
 {
+    public string Environment { get; set; } = "Development";
     public NetworkOptions Network { get; set; } = new();
     public AuthenticationOptions Authentication { get; set; } = new();
     public GuestOptions Guest { get; set; } = new();
@@ -33,6 +34,18 @@ public sealed class ServerOptions
 
     private void Validate()
     {
+        bool isDevelopment = string.Equals(
+            Environment,
+            "Development",
+            StringComparison.OrdinalIgnoreCase);
+        if (!isDevelopment)
+        {
+            throw new InvalidDataException(
+                "Only the Development environment is currently allowed. " +
+                "TLS transport and production secure storage must be " +
+                "implemented before Staging or Production can start.");
+        }
+
         if (Network.Port is <= 0 or > 65535)
             throw new InvalidDataException("Network.Port must be between 1 and 65535.");
         if (Network.MaximumPacketBytes <= 0)
@@ -40,6 +53,10 @@ public sealed class ServerOptions
         if (Authentication.RefreshTokenLifetimeDays <= 0)
             throw new InvalidDataException(
                 "Authentication.RefreshTokenLifetimeDays must be positive.");
+        if (Authentication.MaximumAttemptsPerWindow <= 0 ||
+            Authentication.AttemptWindowSeconds <= 0)
+            throw new InvalidDataException(
+                "Authentication rate-limit values must be positive.");
         if (Guest.MaximumLevel <= 0)
             throw new InvalidDataException(
                 "Guest.MaximumLevel must be positive.");
@@ -92,6 +109,8 @@ public sealed class AuthenticationOptions
 {
     public bool DevelopmentBypassEnabled { get; set; }
     public int RefreshTokenLifetimeDays { get; set; } = 30;
+    public int MaximumAttemptsPerWindow { get; set; } = 10;
+    public int AttemptWindowSeconds { get; set; } = 60;
 }
 
 public sealed class GuestOptions

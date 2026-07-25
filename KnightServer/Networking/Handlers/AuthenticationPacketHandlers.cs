@@ -1,20 +1,35 @@
 using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Accounts;
+using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
 public sealed class CreateGuestPacketHandler(
     AccountAuthenticationService authentication,
-    AccountSessionRegistry accountSessions) : IPacketHandler
+    AccountSessionRegistry accountSessions,
+    AuthenticationRateLimiter rateLimiter,
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.CreateGuestRequest;
+    public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
 
     public async Task HandleAsync(
         ClientConnection connection,
         string payload,
         CancellationToken cancellationToken)
     {
+        if (!rateLimiter.TryAcquire(
+                $"{connection.RemoteAddress}|create-guest",
+                clock.UtcNow))
+        {
+            await AuthenticationPacketHandlerSupport.SendRateLimitedAsync(
+                connection,
+                PacketType.CreateGuestResponse,
+                cancellationToken);
+            return;
+        }
+
         CreateGuestRequestPacket? request =
             JsonSerializer.Deserialize<CreateGuestRequestPacket>(payload);
         if (request == null || string.IsNullOrWhiteSpace(request.DeviceId))
@@ -40,15 +55,29 @@ public sealed class CreateGuestPacketHandler(
 
 public sealed class ResumeAccountPacketHandler(
     AccountAuthenticationService authentication,
-    AccountSessionRegistry accountSessions) : IPacketHandler
+    AccountSessionRegistry accountSessions,
+    AuthenticationRateLimiter rateLimiter,
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.ResumeAccountRequest;
+    public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
 
     public async Task HandleAsync(
         ClientConnection connection,
         string payload,
         CancellationToken cancellationToken)
     {
+        if (!rateLimiter.TryAcquire(
+                $"{connection.RemoteAddress}|resume",
+                clock.UtcNow))
+        {
+            await AuthenticationPacketHandlerSupport.SendRateLimitedAsync(
+                connection,
+                PacketType.ResumeAccountResponse,
+                cancellationToken);
+            return;
+        }
+
         ResumeAccountRequestPacket? request =
             JsonSerializer.Deserialize<ResumeAccountRequestPacket>(payload);
         if (request == null ||
@@ -77,15 +106,29 @@ public sealed class ResumeAccountPacketHandler(
 
 public sealed class LoginPacketHandler(
     AccountAuthenticationService authentication,
-    AccountSessionRegistry accountSessions) : IPacketHandler
+    AccountSessionRegistry accountSessions,
+    AuthenticationRateLimiter rateLimiter,
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.LoginRequest;
+    public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
 
     public async Task HandleAsync(
         ClientConnection connection,
         string payload,
         CancellationToken cancellationToken)
     {
+        if (!rateLimiter.TryAcquire(
+                $"{connection.RemoteAddress}|login",
+                clock.UtcNow))
+        {
+            await AuthenticationPacketHandlerSupport.SendRateLimitedAsync(
+                connection,
+                PacketType.LoginResponse,
+                cancellationToken);
+            return;
+        }
+
         LoginRequestPacket? request =
             JsonSerializer.Deserialize<LoginRequestPacket>(payload);
         if (request == null ||
@@ -188,6 +231,17 @@ internal static class AuthenticationPacketHandlerSupport
                 "The authentication request is invalid."),
             cancellationToken);
 
+    public static Task SendRateLimitedAsync(
+        ClientConnection connection,
+        PacketType responseType,
+        CancellationToken cancellationToken) =>
+        connection.SendAsync(
+            responseType,
+            new AuthenticationResponsePacket(
+                AuthenticationResultCode.RateLimited,
+                "Too many authentication attempts. Try again later."),
+            cancellationToken);
+
     private static AuthenticationResponsePacket ToSuccessResponse(
         AuthenticatedAccount account) =>
         new(
@@ -224,6 +278,9 @@ internal static class AuthenticationPacketHandlerSupport
             AuthenticationFailure.GuestNotFound => new(
                 AuthenticationResultCode.GuestNotFound,
                 "The guest session was not found."),
+            AuthenticationFailure.InvalidRequest => new(
+                AuthenticationResultCode.InvalidRequest,
+                "The authentication request is invalid."),
             _ => new(
                 AuthenticationResultCode.InvalidRequest,
                 "Authentication failed."),

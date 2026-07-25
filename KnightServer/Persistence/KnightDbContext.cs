@@ -85,6 +85,10 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
             entity.HasKey(session => session.Id);
             entity.Property(session => session.Id)
                 .HasColumnName("id");
+            entity.Property(session => session.FamilyId)
+                .HasColumnName("family_id");
+            entity.Property(session => session.ReplacedBySessionId)
+                .HasColumnName("replaced_by_session_id");
             entity.Property(session => session.AccountId)
                 .HasColumnName("account_id");
             entity.Property(session => session.TokenHash)
@@ -106,6 +110,7 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
 
             entity.HasIndex(session => session.TokenHash)
                 .IsUnique();
+            entity.HasIndex(session => session.FamilyId);
             entity.HasIndex(session => new
                 {
                     session.AccountId,

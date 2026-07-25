@@ -13,6 +13,7 @@ public enum AuthenticationFailure
     InvalidOrExpiredToken = 2,
     UsernameUnavailable = 3,
     GuestNotFound = 4,
+    InvalidRequest = 5,
 }
 
 public sealed record AuthenticationResult(

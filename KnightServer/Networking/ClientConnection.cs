@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +19,9 @@ public sealed class ClientConnection(
     public PlayerSession? PlayerSession { get; private set; }
     public string? AccountKey { get; private set; }
     public bool IsGuest { get; private set; }
+    public string RemoteAddress { get; } =
+        (tcpClient.Client.RemoteEndPoint as IPEndPoint)?
+            .Address.ToString() ?? "unknown";
 
     public bool TryAttachAccount(string accountKey, bool isGuest = false)
     {
@@ -89,9 +93,12 @@ public sealed class ClientConnection(
                 PacketType.ForcedDisconnect,
                 new ForcedDisconnectPacket(reason, message));
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             // Closing the transport is still required if delivery fails.
+            Console.WriteLine(
+                $"[Network][Warning] Forced-disconnect packet delivery failed: " +
+                $"{exception.GetType().Name}: {exception.Message}");
         }
         finally
         {

@@ -320,6 +320,8 @@ namespace KnightOnline.Client.Network.Handlers
                     AuthenticationOutcome.AlreadyAuthenticated,
                 AuthenticationResultCode.SessionConflict =>
                     AuthenticationOutcome.SessionConflict,
+                AuthenticationResultCode.RateLimited =>
+                    AuthenticationOutcome.RateLimited,
                 _ => AuthenticationOutcome.InvalidRequest,
             };
     }
