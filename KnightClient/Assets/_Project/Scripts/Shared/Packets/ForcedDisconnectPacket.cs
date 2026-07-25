@@ -5,6 +5,7 @@ namespace KnightOnline.Client.Shared.Packets
         DuplicateAccountSession = 1,
         AccountTemporarilyLocked = 2,
         ServerShutdown = 3,
+        CharacterSelectionTimeout = 4,
     }
 
     public sealed class ForcedDisconnectPacket

@@ -26,5 +26,11 @@ namespace KnightOnline.Client.Shared.Packets
         ResumeAccountResponse = 21,
         LoginRequest = 22,
         LoginResponse = 23,
+        LeaveAccountSessionRequest = 24,
+        LeaveAccountSessionResponse = 25,
+        BeginRegistrationRequest = 26,
+        BeginRegistrationResponse = 27,
+        CompleteDevelopmentRegistrationRequest = 28,
+        CompleteDevelopmentRegistrationResponse = 29,
     }
 }

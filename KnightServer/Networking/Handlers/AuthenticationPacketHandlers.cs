@@ -7,9 +7,10 @@ namespace KnightOnline.Server.Networking.Handlers;
 
 public sealed class CreateGuestPacketHandler(
     AccountAuthenticationService authentication,
-    AccountSessionRegistry accountSessions,
+    IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    CharacterSelectionLeaseService selectionLeases) : IPacketHandler
 {
     public PacketType PacketType => PacketType.CreateGuestRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -49,15 +50,17 @@ public sealed class CreateGuestPacketHandler(
             result,
             PacketType.CreateGuestResponse,
             accountSessions,
+            selectionLeases,
             cancellationToken);
     }
 }
 
 public sealed class ResumeAccountPacketHandler(
     AccountAuthenticationService authentication,
-    AccountSessionRegistry accountSessions,
+    IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    CharacterSelectionLeaseService selectionLeases) : IPacketHandler
 {
     public PacketType PacketType => PacketType.ResumeAccountRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -100,15 +103,17 @@ public sealed class ResumeAccountPacketHandler(
             result,
             PacketType.ResumeAccountResponse,
             accountSessions,
+            selectionLeases,
             cancellationToken);
     }
 }
 
 public sealed class LoginPacketHandler(
     AccountAuthenticationService authentication,
-    AccountSessionRegistry accountSessions,
+    IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    CharacterSelectionLeaseService selectionLeases) : IPacketHandler
 {
     public PacketType PacketType => PacketType.LoginRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -154,8 +159,64 @@ public sealed class LoginPacketHandler(
             result,
             PacketType.LoginResponse,
             accountSessions,
+            selectionLeases,
             cancellationToken);
     }
+}
+
+public sealed class LeaveAccountSessionPacketHandler(
+    IActiveAccountLeaseStore accountSessions) : IPacketHandler
+{
+    public PacketType PacketType =>
+        PacketType.LeaveAccountSessionRequest;
+    public PacketAccessLevel RequiredAccess =>
+        PacketAccessLevel.Authenticated;
+
+    public async Task HandleAsync(
+        ClientConnection connection,
+        string payload,
+        CancellationToken cancellationToken)
+    {
+        if (connection.PlayerSession != null)
+        {
+            await SendResponseAsync(
+                connection,
+                false,
+                "Cannot leave the account after selecting a character.",
+                cancellationToken);
+            return;
+        }
+
+        await accountSessions.ReleaseAsync(
+            connection.AccountKey!,
+            connection.ConnectionId,
+            cancellationToken);
+        if (!connection.TryDetachAccount())
+        {
+            await SendResponseAsync(
+                connection,
+                false,
+                "The account session could not be released.",
+                cancellationToken);
+            return;
+        }
+
+        await SendResponseAsync(
+            connection,
+            true,
+            "Choose Play New or sign in.",
+            cancellationToken);
+    }
+
+    private static Task SendResponseAsync(
+        ClientConnection connection,
+        bool success,
+        string message,
+        CancellationToken cancellationToken) =>
+        connection.SendAsync(
+            PacketType.LeaveAccountSessionResponse,
+            new LeaveAccountSessionResponsePacket(success, message),
+            cancellationToken);
 }
 
 internal static class AuthenticationPacketHandlerSupport
@@ -164,7 +225,8 @@ internal static class AuthenticationPacketHandlerSupport
         ClientConnection connection,
         AuthenticationResult result,
         PacketType responseType,
-        AccountSessionRegistry accountSessions,
+        IActiveAccountLeaseStore accountSessions,
+        CharacterSelectionLeaseService selectionLeases,
         CancellationToken cancellationToken)
     {
         if (!result.IsSuccess || result.Account == null)
@@ -176,10 +238,7 @@ internal static class AuthenticationPacketHandlerSupport
             return;
         }
 
-        if (connection.AccountKey != null ||
-            !connection.TryAttachAccount(
-                result.Account.AccountKey,
-                result.Account.IsGuest))
+        if (connection.AccountKey != null)
         {
             await connection.SendAsync(
                 responseType,
@@ -190,34 +249,44 @@ internal static class AuthenticationPacketHandlerSupport
             return;
         }
 
-        ClientConnection? conflict = accountSessions.Register(
-            result.Account.AccountKey,
-            connection);
-        if (conflict == null)
+        ActiveAccountLeaseClaimResult claim =
+            await accountSessions.TryClaimAsync(
+                result.Account.AccountKey,
+                connection.ConnectionId,
+                cancellationToken);
+        if (claim == ActiveAccountLeaseClaimResult.ActiveElsewhere)
         {
             await connection.SendAsync(
                 responseType,
-                ToSuccessResponse(result.Account),
+                ToAccountActiveResponse(result.Account),
                 cancellationToken);
             return;
         }
 
-        // Deliver the rotated token without marking the session ready. The
-        // client stores it and retries after the forced-disconnect backoff.
+        if (!connection.TryAttachAccount(
+                result.Account.AccountKey,
+                result.Account.IsGuest))
+        {
+            await accountSessions.ReleaseAsync(
+                result.Account.AccountKey,
+                connection.ConnectionId,
+                cancellationToken);
+            await connection.SendAsync(
+                responseType,
+                new AuthenticationResponsePacket(
+                    AuthenticationResultCode.AlreadyAuthenticated,
+                    "This connection is already authenticated."),
+                cancellationToken);
+            return;
+        }
+
         await connection.SendAsync(
             responseType,
-            ToSessionConflictResponse(result.Account),
+            ToSuccessResponse(result.Account),
             cancellationToken);
-
-        const string message =
-            "Duplicate account session detected. Both connections were closed.";
-        await Task.WhenAll(
-            conflict.ForceDisconnectAsync(
-                ForcedDisconnectReason.DuplicateAccountSession,
-                message),
-            connection.ForceDisconnectAsync(
-                ForcedDisconnectReason.DuplicateAccountSession,
-                message));
+        selectionLeases.Start(
+            connection,
+            result.Account.AccountKey);
     }
 
     public static Task SendInvalidRequestAsync(
@@ -242,7 +311,7 @@ internal static class AuthenticationPacketHandlerSupport
                 "Too many authentication attempts. Try again later."),
             cancellationToken);
 
-    private static AuthenticationResponsePacket ToSuccessResponse(
+    internal static AuthenticationResponsePacket ToSuccessResponse(
         AuthenticatedAccount account) =>
         new(
             AuthenticationResultCode.Success,
@@ -262,7 +331,17 @@ internal static class AuthenticationPacketHandlerSupport
             account.RefreshToken,
             account.RefreshTokenExpiresAtUtc);
 
-    private static AuthenticationResponsePacket ToFailureResponse(
+    private static AuthenticationResponsePacket ToAccountActiveResponse(
+        AuthenticatedAccount account) =>
+        new(
+            AuthenticationResultCode.AccountActive,
+            "Tài khoản đang được đăng nhập ở nơi khác.",
+            account.AccountKey,
+            account.IsGuest,
+            account.RefreshToken,
+            account.RefreshTokenExpiresAtUtc);
+
+    internal static AuthenticationResponsePacket ToFailureResponse(
         AuthenticationFailure failure) =>
         failure switch
         {

@@ -25,10 +25,8 @@ namespace KnightOnline.Client.UI
             _events = events;
         }
 
-        private void Awake()
-        {
+        private void Awake() =>
             _view = GetComponent<AuthenticationEntryPanel>();
-        }
 
         private void Start()
         {
@@ -41,48 +39,43 @@ namespace KnightOnline.Client.UI
                 return;
             }
 
-            _view.PlayNewRequested += OnPlayNewRequested;
-            _view.LoginRequested += OnLoginRequested;
+            _view.PlayNewRequested += _authentication.PlayNew;
+            _view.ContinueRequested += _authentication.Continue;
+            _view.LoginRequested += _authentication.StageLogin;
             _view.ServerSelectionRequested += OnServerSelectionRequested;
             _entrySubscription =
                 _events.Subscribe<AuthenticationEntryRequiredEvent>(
                     OnEntryRequired);
             _readySubscription =
-                _events.Subscribe<AccountReadyEvent>(OnAccountReady);
-        }
-
-        private void OnPlayNewRequested()
-        {
-            _authentication.PlayNew();
-        }
-
-        private void OnLoginRequested(string username, string password)
-        {
-            _authentication.Login(username, password);
+                _events.Subscribe<AccountReadyEvent>(_ => _view.Hide());
         }
 
         private static void OnServerSelectionRequested()
         {
-            // Server selection is intentionally presentation-only until
-            // a versioned server-list contract is available.
+            // Waiting for a versioned server-list contract.
         }
 
-        private void OnEntryRequired(AuthenticationEntryRequiredEvent result)
+        private void OnEntryRequired(AuthenticationEntryRequiredEvent state)
         {
-            _view.ShowEntry(result.Message);
-        }
+            if (!state.IsVisible)
+            {
+                _view.Hide();
+                return;
+            }
 
-        private void OnAccountReady(AccountReadyEvent _)
-        {
-            _view.Hide();
+            _view.ShowEntry(
+                state.Message,
+                state.CanContinue,
+                state.AccountDisplayHint);
         }
 
         private void OnDestroy()
         {
-            if (_view != null)
+            if (_view != null && _authentication != null)
             {
-                _view.PlayNewRequested -= OnPlayNewRequested;
-                _view.LoginRequested -= OnLoginRequested;
+                _view.PlayNewRequested -= _authentication.PlayNew;
+                _view.ContinueRequested -= _authentication.Continue;
+                _view.LoginRequested -= _authentication.StageLogin;
                 _view.ServerSelectionRequested -=
                     OnServerSelectionRequested;
             }

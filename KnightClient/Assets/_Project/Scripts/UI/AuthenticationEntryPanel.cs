@@ -26,37 +26,65 @@ namespace KnightOnline.Client.UI
         [SerializeField] private TMP_Text _messageText;
 
         public event Action PlayNewRequested;
+        public event Action ContinueRequested;
         public event Action<string, string> LoginRequested;
         public event Action ServerSelectionRequested;
 
+        private bool _primaryActionContinues;
+        private string _accountDisplayHint = string.Empty;
+
         private void Awake()
         {
-            ConfigureInputs();
-            ShowEntry(string.Empty);
+            if (_passwordInput != null)
+                _passwordInput.contentType =
+                    TMP_InputField.ContentType.Password;
+            ShowEntry(string.Empty, false, string.Empty);
         }
 
         private void OnEnable()
         {
-            AddListeners();
+            _playNewButton?.onClick.AddListener(OnPrimaryClicked);
+            _showLoginButton?.onClick.AddListener(OnShowLoginClicked);
+            _serverButton?.onClick.AddListener(OnServerClicked);
+            _loginButton?.onClick.AddListener(OnLoginConfirmed);
+            _backButton?.onClick.AddListener(OnBackClicked);
         }
 
         private void OnDisable()
         {
-            RemoveListeners();
+            _playNewButton?.onClick.RemoveListener(OnPrimaryClicked);
+            _showLoginButton?.onClick.RemoveListener(OnShowLoginClicked);
+            _serverButton?.onClick.RemoveListener(OnServerClicked);
+            _loginButton?.onClick.RemoveListener(OnLoginConfirmed);
+            _backButton?.onClick.RemoveListener(OnBackClicked);
         }
 
-        public void ShowEntry(string message)
+        public void ShowEntry(
+            string message,
+            bool canContinue,
+            string accountDisplayHint)
         {
-            SetVisible(true);
+            if (!gameObject.activeSelf)
+                gameObject.SetActive(true);
+
+            _primaryActionContinues = canContinue;
+            _accountDisplayHint = accountDisplayHint ?? string.Empty;
             SetContent(_entryContent, true);
             SetContent(_loginContent, false);
+            SetButtonLabel(
+                _playNewButton,
+                canContinue
+                    ? $"Chơi tiếp: {_accountDisplayHint}"
+                    : "Chơi mới");
+            SetButtonLabel(
+                _showLoginButton,
+                canContinue ? "Đổi tài khoản" : "Có tài khoản");
             SetMessage(message);
             SetInteractable(true);
         }
 
         public void ShowLogin(string message = "")
         {
-            SetVisible(true);
             SetContent(_entryContent, false);
             SetContent(_loginContent, true);
             SetMessage(message);
@@ -67,26 +95,29 @@ namespace KnightOnline.Client.UI
         public void Hide()
         {
             ClearPassword();
-            SetVisible(false);
+            gameObject.SetActive(false);
         }
 
-        public void SetBusy(bool isBusy)
+        private void OnPrimaryClicked()
         {
-            SetInteractable(!isBusy);
-        }
+            SetInteractable(false);
+            if (_primaryActionContinues)
+            {
+                SetMessage("Đang kiểm tra tài khoản...");
+                ContinueRequested?.Invoke();
+                return;
+            }
 
-        private void OnPlayNewClicked()
-        {
-            SetBusy(true);
             SetMessage("Đang tạo phiên chơi mới...");
             PlayNewRequested?.Invoke();
         }
 
-        private void OnLoginClicked()
+        private void OnShowLoginClicked() => ShowLogin();
+
+        private void OnLoginConfirmed()
         {
             string username = _usernameInput?.text?.Trim() ?? string.Empty;
             string password = _passwordInput?.text ?? string.Empty;
-
             if (string.IsNullOrWhiteSpace(username) ||
                 string.IsNullOrEmpty(password))
             {
@@ -94,44 +125,25 @@ namespace KnightOnline.Client.UI
                 return;
             }
 
-            SetBusy(true);
-            SetMessage("Đang đăng nhập...");
             LoginRequested?.Invoke(username, password);
+            ClearPassword();
+        }
+
+        private void OnBackClicked()
+        {
+            ClearPassword();
+            ShowEntry(
+                string.Empty,
+                _primaryActionContinues,
+                _accountDisplayHint);
         }
 
         private void OnServerClicked()
         {
             ServerSelectionRequested?.Invoke();
-            SetMessage("Chọn server sẽ được mở ở giai đoạn tiếp theo.");
+            SetMessage(
+                "Chọn server sẽ được mở ở giai đoạn tiếp theo.");
         }
-
-        private void ConfigureInputs()
-        {
-            if (_passwordInput != null)
-                _passwordInput.contentType =
-                    TMP_InputField.ContentType.Password;
-        }
-
-        private void AddListeners()
-        {
-            _playNewButton?.onClick.AddListener(OnPlayNewClicked);
-            _showLoginButton?.onClick.AddListener(ShowLoginFromButton);
-            _serverButton?.onClick.AddListener(OnServerClicked);
-            _loginButton?.onClick.AddListener(OnLoginClicked);
-            _backButton?.onClick.AddListener(ShowEntryFromButton);
-        }
-
-        private void RemoveListeners()
-        {
-            _playNewButton?.onClick.RemoveListener(OnPlayNewClicked);
-            _showLoginButton?.onClick.RemoveListener(ShowLoginFromButton);
-            _serverButton?.onClick.RemoveListener(OnServerClicked);
-            _loginButton?.onClick.RemoveListener(OnLoginClicked);
-            _backButton?.onClick.RemoveListener(ShowEntryFromButton);
-        }
-
-        private void ShowLoginFromButton() => ShowLogin();
-        private void ShowEntryFromButton() => ShowEntry(string.Empty);
 
         private void SetInteractable(bool interactable)
         {
@@ -159,16 +171,17 @@ namespace KnightOnline.Client.UI
                 _passwordInput.text = string.Empty;
         }
 
-        private void SetVisible(bool visible)
-        {
-            if (gameObject.activeSelf != visible)
-                gameObject.SetActive(visible);
-        }
-
         private static void SetContent(GameObject content, bool visible)
         {
             if (content != null)
                 content.SetActive(visible);
+        }
+
+        private static void SetButtonLabel(Button button, string label)
+        {
+            TMP_Text text = button?.GetComponentInChildren<TMP_Text>(true);
+            if (text != null)
+                text.text = label;
         }
 
 #if UNITY_EDITOR

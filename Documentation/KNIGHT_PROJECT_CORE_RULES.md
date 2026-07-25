@@ -406,15 +406,25 @@ Test phải tương xứng với phân loại thay đổi:
 Không chỉ kiểm tra happy path. Nếu test tự động chưa khả thi, DevLog phải ghi
 manual test, rủi ro còn lại và task bổ sung có owner.
 
-## CORE-25 — DevLog bắt buộc
+## CORE-25 — DevLog tổng kết theo phiên làm việc
 
-Mỗi task/checkpoint hoàn thành phải có DevLog nằm cùng commit:
+Không tạo DevLog cho từng thao tác, task nhỏ hoặc checkpoint riêng lẻ.
+
+Trong suốt phiên làm việc, phải giữ lại đầy đủ thông tin quan trọng để tổng kết.
+Chỉ tạo hoặc cập nhật DevLog khi:
+
+- người dùng yêu cầu rõ ràng, ví dụ: `viết log cho tôi`;
+- người dùng xác nhận kết thúc phiên làm việc;
+- chuẩn bị bàn giao/PR mà người dùng đã yêu cầu có DevLog.
+
+Một phiên làm việc có thể bao gồm nhiều task liên quan và được tổng kết trong một
+DevLog:
 
 ```text
 Documentation/DevLogs/YYYY-MM-DD-task-name.md
 ```
 
-DevLog tối thiểu:
+DevLog tổng kết tối thiểu:
 
 - mục tiêu và phạm vi;
 - công việc hoàn thành;
@@ -428,6 +438,11 @@ DevLog tối thiểu:
 - commit/PR liên quan khi có.
 
 DevLog không chứa secret, token hoặc dữ liệu nhạy cảm.
+
+Không được dùng quy tắc theo phiên để làm mất dấu quyết định Critical, migration,
+security change, test result, rủi ro hoặc technical debt. Các thông tin này phải
+được giữ trong ngữ cảnh làm việc và đưa vào DevLog khi người dùng yêu cầu chốt
+phiên.
 
 ## CORE-26 — Tài liệu và khả năng bàn giao
 
@@ -464,7 +479,7 @@ Task chỉ hoàn thành khi:
 - error handling và observability phù hợp mức rủi ro;
 - test/build hoặc manual checklist đã chạy;
 - migration/config/compatibility đã được xử lý;
-- DevLog đã cập nhật;
+- DevLog đã cập nhật nếu người dùng yêu cầu chốt phiên/bàn giao;
 - không có TODO nghiêm trọng không được ghi nhận;
 - có bước tiếp theo và rủi ro còn lại rõ ràng.
 

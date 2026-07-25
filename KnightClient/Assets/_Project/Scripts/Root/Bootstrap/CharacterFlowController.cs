@@ -32,6 +32,7 @@ namespace KnightOnline.Client.Core.Bootstrap
         private readonly GameSession _gameSession;
         private readonly PanelRefs _panels;
         private readonly ClientAuthenticationSettings _authenticationSettings;
+        private readonly AuthenticationFlowService _authenticationFlow;
 
         private IDisposable _connectionSubscription;
         private IDisposable _listSubscription;
@@ -39,16 +40,20 @@ namespace KnightOnline.Client.Core.Bootstrap
         private IDisposable _selectionSubscription;
         private IDisposable _selectionFailedSubscription;
         private IDisposable _accountReadySubscription;
+        private IDisposable _backSubscription;
+        private IDisposable _entryRequiredSubscription;
 
         public CharacterFlowController(IEventBus eventBus, CharacterService characterService,
             GameSession gameSession, PanelRefs panels,
-            ClientAuthenticationSettings authenticationSettings)
+            ClientAuthenticationSettings authenticationSettings,
+            AuthenticationFlowService authenticationFlow)
         {
             _eventBus = eventBus;
             _characterService = characterService;
             _gameSession = gameSession;
             _panels = panels;
             _authenticationSettings = authenticationSettings;
+            _authenticationFlow = authenticationFlow;
         }
 
         public void Start()
@@ -57,6 +62,16 @@ namespace KnightOnline.Client.Core.Bootstrap
             _accountReadySubscription =
                 _eventBus.Subscribe<AccountReadyEvent>(
                     OnAccountReady);
+            _backSubscription =
+                _eventBus.Subscribe<CharacterSelectionBackRequestedEvent>(
+                    _ => _authenticationFlow.ReturnToAuthenticationEntry());
+            _entryRequiredSubscription =
+                _eventBus.Subscribe<AuthenticationEntryRequiredEvent>(
+                    state =>
+                    {
+                        if (state.IsVisible)
+                            SetActivePanel(null);
+                    });
             _listSubscription = _eventBus.Subscribe<CharacterListReceivedEvent>(OnCharacterListReceived);
             _creationSubscription = _eventBus.Subscribe<CharacterCreationResultEvent>(OnCharacterCreationResult);
             _selectionSubscription = _eventBus.Subscribe<CharacterSelectedEvent>(OnCharacterSelected);
@@ -120,6 +135,8 @@ namespace KnightOnline.Client.Core.Bootstrap
             _selectionSubscription?.Dispose();
             _selectionFailedSubscription?.Dispose();
             _accountReadySubscription?.Dispose();
+            _backSubscription?.Dispose();
+            _entryRequiredSubscription?.Dispose();
         }
     }
 }

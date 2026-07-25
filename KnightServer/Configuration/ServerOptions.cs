@@ -7,6 +7,7 @@ public sealed class ServerOptions
     public string Environment { get; set; } = "Development";
     public NetworkOptions Network { get; set; } = new();
     public AuthenticationOptions Authentication { get; set; } = new();
+    public RegistrationOptions Registration { get; set; } = new();
     public GuestOptions Guest { get; set; } = new();
     public CharacterOptions Characters { get; set; } = new();
     public CombatOptions Combat { get; set; } = new();
@@ -57,6 +58,17 @@ public sealed class ServerOptions
             Authentication.AttemptWindowSeconds <= 0)
             throw new InvalidDataException(
                 "Authentication rate-limit values must be positive.");
+        if (Registration.TransactionLifetimeMinutes <= 0)
+            throw new InvalidDataException(
+                "Registration.TransactionLifetimeMinutes must be positive.");
+        if (string.IsNullOrWhiteSpace(Registration.PortalBaseUrl))
+            throw new InvalidDataException(
+                "Registration.PortalBaseUrl is required.");
+        if (!isDevelopment &&
+            Registration.DevelopmentCompletionEnabled)
+            throw new InvalidDataException(
+                "Development registration completion must be disabled " +
+                "outside Development.");
         if (Guest.MaximumLevel <= 0)
             throw new InvalidDataException(
                 "Guest.MaximumLevel must be positive.");
@@ -67,6 +79,9 @@ public sealed class ServerOptions
         if (Characters.InitialMaximumHealth <= 0 || Characters.MoveSpeed <= 0)
             throw new InvalidDataException(
                 "Character health and move speed must be positive.");
+        if (Characters.SelectionTimeoutSeconds <= 0)
+            throw new InvalidDataException(
+                "Characters.SelectionTimeoutSeconds must be positive.");
         if (string.IsNullOrWhiteSpace(Characters.DevelopmentAccountKey))
             throw new InvalidDataException("Characters.DevelopmentAccountKey is required.");
         if (Combat.BaseAttackDamage <= 0)
@@ -119,6 +134,14 @@ public sealed class GuestOptions
     public List<string> DisabledFeatures { get; set; } = [];
 }
 
+public sealed class RegistrationOptions
+{
+    public string PortalBaseUrl { get; set; } =
+        "https://account.example.com/register";
+    public int TransactionLifetimeMinutes { get; set; } = 15;
+    public bool DevelopmentCompletionEnabled { get; set; } = true;
+}
+
 public sealed class CharacterOptions
 {
     public string DevelopmentAccountKey { get; set; } = string.Empty;
@@ -128,6 +151,7 @@ public sealed class CharacterOptions
     public float MoveSpeed { get; set; }
     public float SpawnPositionX { get; set; }
     public float SpawnPositionY { get; set; }
+    public int SelectionTimeoutSeconds { get; set; } = 15;
 }
 
 public sealed class CombatOptions

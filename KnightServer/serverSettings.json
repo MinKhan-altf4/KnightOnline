@@ -5,10 +5,15 @@
     "maximumPacketBytes": 1048576
   },
   "authentication": {
-    "developmentBypassEnabled": true,
+    "developmentBypassEnabled": false,
     "refreshTokenLifetimeDays": 30,
     "maximumAttemptsPerWindow": 10,
     "attemptWindowSeconds": 60
+  },
+  "registration": {
+    "portalBaseUrl": "http://127.0.0.1:8080/register",
+    "transactionLifetimeMinutes": 15,
+    "developmentCompletionEnabled": true
   },
   "guest": {
     "maximumLevel": 10,
@@ -21,7 +26,8 @@
     "initialMaximumHealth": 100,
     "moveSpeed": 4.0,
     "spawnPositionX": 0.0,
-    "spawnPositionY": 0.0
+    "spawnPositionY": 0.0,
+    "selectionTimeoutSeconds": 15
   },
   "combat": {
     "baseAttackDamage": 10,

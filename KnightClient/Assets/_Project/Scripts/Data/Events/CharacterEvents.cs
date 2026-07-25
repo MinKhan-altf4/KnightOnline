@@ -4,6 +4,10 @@ using System.Collections.Generic;
 
 namespace KnightOnline.Client.Data.Events
 {
+    public readonly struct CharacterSelectionBackRequestedEvent : IGameEvent
+    {
+    }
+
     /// <summary>
     /// Kết quả 1 lần thao tác tạo nhân vật - hành động tức thời do UI
     /// chủ động kích hoạt (bấm nút), UI luôn đã subscribe trước khi thao tác

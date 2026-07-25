@@ -152,6 +152,17 @@ MonoBehaviour:
     TypeName: 
   autoRun: 1
   autoInjectGameObjects: []
+  _serverHost: 127.0.0.1
+  _serverPort: 7777
+  _maximumPacketBytes: 1048576
+  _bootstrapSceneName: Bootstrap
+  _developmentAuthenticationBypass: 0
+  _initialSessionCheckSeconds: 5
+  _sessionConflictRetrySeconds: 10
+  _registrationUrl: https://account.example.com/register
+  _initialLevel: 1
+  _initialMaximumHealth: 100
+  _defaultMoveSpeed: 4
 --- !u!4 &650344015
 Transform:
   m_ObjectHideFlags: 0

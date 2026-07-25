@@ -17,6 +17,7 @@ public sealed class ClientConnection(
     private int _disposeState;
 
     public PlayerSession? PlayerSession { get; private set; }
+    public Guid ConnectionId { get; } = Guid.NewGuid();
     public string? AccountKey { get; private set; }
     public bool IsGuest { get; private set; }
     public string RemoteAddress { get; } =
@@ -31,6 +32,25 @@ public sealed class ClientConnection(
         AccountKey = accountKey;
         IsGuest = isGuest;
         return true;
+    }
+
+    public bool TryDetachAccount()
+    {
+        if (AccountKey == null || PlayerSession != null)
+            return false;
+
+        AccountKey = null;
+        IsGuest = false;
+        return true;
+    }
+
+    public void MarkAccountRegistered()
+    {
+        if (AccountKey == null)
+            throw new InvalidOperationException(
+                "Cannot register an anonymous connection.");
+
+        IsGuest = false;
     }
 
     public bool TryAttachPlayerSession(PlayerSession session)

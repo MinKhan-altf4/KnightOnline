@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
+using KnightOnline.Server.Accounts;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
@@ -11,6 +12,7 @@ namespace KnightOnline.Server.Networking.Handlers;
 public sealed class SelectCharacterPacketHandler(
     CharacterRepository characters,
     ActivePlayerRegistry activePlayers,
+    IActiveAccountLeaseStore accountSessions,
     CharacterOptions characterOptions,
     CombatOptions combatOptions,
     WorldOptions worldOptions,
@@ -60,6 +62,19 @@ public sealed class SelectCharacterPacketHandler(
                 connection,
                 SelectCharacterResult.CharacterNotFound,
                 "Character was not found for this account.",
+                cancellationToken);
+            return;
+        }
+
+        if (!await accountSessions.IsOwnerAsync(
+                connection.AccountKey,
+                connection.ConnectionId,
+                cancellationToken))
+        {
+            await SendFailure(
+                connection,
+                SelectCharacterResult.Unauthorized,
+                "The active account lease is not owned by this connection.",
                 cancellationToken);
             return;
         }

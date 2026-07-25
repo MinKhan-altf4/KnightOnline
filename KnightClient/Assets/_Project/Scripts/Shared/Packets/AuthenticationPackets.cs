@@ -15,6 +15,7 @@ namespace KnightOnline.Client.Shared.Packets
         InvalidRequest = 6,
         SessionConflict = 7,
         RateLimited = 8,
+        AccountActive = 9,
     }
 
     public sealed class CreateGuestRequestPacket
@@ -80,6 +81,94 @@ namespace KnightOnline.Client.Shared.Packets
             IsGuest = isGuest;
             RefreshToken = refreshToken;
             RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc;
+        }
+    }
+
+    public sealed class LeaveAccountSessionRequestPacket
+    {
+    }
+
+    public sealed class LeaveAccountSessionResponsePacket
+    {
+        public bool Success { get; }
+        public string Message { get; }
+
+        public LeaveAccountSessionResponsePacket(
+            bool success,
+            string message)
+        {
+            Success = success;
+            Message = message;
+        }
+    }
+
+    public sealed class BeginRegistrationRequestPacket
+    {
+        public Guid RequestId { get; }
+        public string GuestRefreshToken { get; }
+        public string DeviceId { get; }
+        public string PkceChallenge { get; }
+
+        public BeginRegistrationRequestPacket(
+            Guid requestId,
+            string guestRefreshToken,
+            string deviceId,
+            string pkceChallenge)
+        {
+            RequestId = requestId;
+            GuestRefreshToken = guestRefreshToken;
+            DeviceId = deviceId;
+            PkceChallenge = pkceChallenge;
+        }
+    }
+
+    public sealed class BeginRegistrationResponsePacket
+    {
+        public bool Success { get; }
+        public string Message { get; }
+        public Guid TransactionId { get; }
+        public string? RegistrationUrl { get; }
+        public string? DevelopmentAuthorizationCode { get; }
+        public DateTime ExpiresAtUtc { get; }
+
+        public BeginRegistrationResponsePacket(
+            bool success,
+            string message,
+            Guid transactionId = default,
+            string? registrationUrl = null,
+            string? developmentAuthorizationCode = null,
+            DateTime expiresAtUtc = default)
+        {
+            Success = success;
+            Message = message;
+            TransactionId = transactionId;
+            RegistrationUrl = registrationUrl;
+            DevelopmentAuthorizationCode =
+                developmentAuthorizationCode;
+            ExpiresAtUtc = expiresAtUtc;
+        }
+    }
+
+    public sealed class CompleteDevelopmentRegistrationRequestPacket
+    {
+        public Guid TransactionId { get; }
+        public string AuthorizationCode { get; }
+        public string PkceVerifier { get; }
+        public string Username { get; }
+        public string Password { get; }
+
+        public CompleteDevelopmentRegistrationRequestPacket(
+            Guid transactionId,
+            string authorizationCode,
+            string pkceVerifier,
+            string username,
+            string password)
+        {
+            TransactionId = transactionId;
+            AuthorizationCode = authorizationCode;
+            PkceVerifier = pkceVerifier;
+            Username = username;
+            Password = password;
         }
     }
 }

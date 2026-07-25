@@ -17,11 +17,15 @@ namespace KnightOnline.Client.UI
         [SerializeField] private Transform _characterListRoot;
         [SerializeField] private Button _characterButtonTemplate;
         [SerializeField] private TextMeshProUGUI _emptyStateText;
+        [SerializeField] private Button _backButton;
+        [SerializeField] private Button _registerGuestButton;
+        [SerializeField] private GuestRegistrationPanel _registrationPanel;
 
         private readonly List<Button> _createdButtons = new();
         private IEventBus _eventBus;
         private CharacterSelectionService _selectionService;
         private IDisposable _listSubscription;
+        private IDisposable _accountSubscription;
 
         [Inject]
         public void Construct(IEventBus eventBus, CharacterSelectionService selectionService)
@@ -35,6 +39,23 @@ namespace KnightOnline.Client.UI
             if (_characterButtonTemplate != null)
                 _characterButtonTemplate.gameObject.SetActive(false);
             _listSubscription = _eventBus.Subscribe<CharacterListReceivedEvent>(RenderCharacters);
+            _accountSubscription = _eventBus.Subscribe<AccountReadyEvent>(
+                account =>
+                {
+                    if (_registerGuestButton != null)
+                        _registerGuestButton.gameObject.SetActive(
+                            account.IsGuest);
+                });
+            _backButton?.onClick.AddListener(OnBackClicked);
+            _registerGuestButton?.onClick.AddListener(OnRegisterGuestClicked);
+            _registrationPanel?.Hide();
+        }
+
+        private void OnRegisterGuestClicked() => _registrationPanel?.Show();
+
+        private void OnBackClicked()
+        {
+            _eventBus.Publish(new CharacterSelectionBackRequestedEvent());
         }
 
         private void RenderCharacters(CharacterListReceivedEvent e)
@@ -65,7 +86,25 @@ namespace KnightOnline.Client.UI
 
         private void OnDestroy()
         {
+            _backButton?.onClick.RemoveListener(OnBackClicked);
+            _registerGuestButton?.onClick.RemoveListener(OnRegisterGuestClicked);
             _listSubscription?.Dispose();
+            _accountSubscription?.Dispose();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (_characterListRoot == null ||
+                _characterButtonTemplate == null ||
+                _emptyStateText == null ||
+                _backButton == null)
+            {
+                Debug.LogWarning(
+                    "[CharacterSelectView] Thiếu serialized reference.",
+                    this);
+            }
+        }
+#endif
     }
 }

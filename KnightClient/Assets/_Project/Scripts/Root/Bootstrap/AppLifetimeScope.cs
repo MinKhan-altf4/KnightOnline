@@ -63,6 +63,13 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler, CreateGuestResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ResumeAccountResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, LoginResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                LeaveAccountSessionResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                BeginRegistrationResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                CompleteDevelopmentRegistrationResponseHandler>(
+                    Lifetime.Singleton);
 
             builder.RegisterComponentOnNewGameObject<NetworkClient>(
                 Lifetime.Singleton, "NetworkClient")

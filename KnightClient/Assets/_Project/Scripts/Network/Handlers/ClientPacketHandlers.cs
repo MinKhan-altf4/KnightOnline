@@ -284,6 +284,76 @@ namespace KnightOnline.Client.Network.Handlers
             AuthenticationPacketMapper.Publish(payload, _events);
     }
 
+    public sealed class LeaveAccountSessionResponseHandler :
+        IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public LeaveAccountSessionResponseHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType =>
+            PacketType.LeaveAccountSessionResponse;
+
+        public void Handle(string payload)
+        {
+            var packet =
+                JsonSerializer.Deserialize<LeaveAccountSessionResponsePacket>(
+                    payload);
+            if (packet == null)
+                return;
+
+            _events.Publish(new AccountSessionLeaveResultEvent(
+                packet.Success,
+                packet.Message));
+        }
+    }
+
+    public sealed class BeginRegistrationResponseHandler :
+        IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public BeginRegistrationResponseHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType =>
+            PacketType.BeginRegistrationResponse;
+
+        public void Handle(string payload)
+        {
+            var packet =
+                JsonSerializer.Deserialize<BeginRegistrationResponsePacket>(
+                    payload);
+            if (packet == null)
+                return;
+
+            _events.Publish(new RegistrationStartedEvent(
+                packet.Success,
+                packet.Message,
+                packet.TransactionId,
+                packet.RegistrationUrl ?? string.Empty,
+                packet.DevelopmentAuthorizationCode ?? string.Empty,
+                packet.ExpiresAtUtc));
+        }
+    }
+
+    public sealed class CompleteDevelopmentRegistrationResponseHandler :
+        IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public CompleteDevelopmentRegistrationResponseHandler(
+            IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType =>
+            PacketType.CompleteDevelopmentRegistrationResponse;
+
+        public void Handle(string payload) =>
+            AuthenticationPacketMapper.Publish(payload, _events);
+    }
+
     internal static class AuthenticationPacketMapper
     {
         public static void Publish(string payload, IEventBus events)
@@ -322,6 +392,8 @@ namespace KnightOnline.Client.Network.Handlers
                     AuthenticationOutcome.SessionConflict,
                 AuthenticationResultCode.RateLimited =>
                     AuthenticationOutcome.RateLimited,
+                AuthenticationResultCode.AccountActive =>
+                    AuthenticationOutcome.AccountActive,
                 _ => AuthenticationOutcome.InvalidRequest,
             };
     }

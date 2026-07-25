@@ -30,6 +30,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             builder.RegisterEntryPoint<AuthenticationFlowService>().AsSelf();
             builder.RegisterComponentInHierarchy<AuthenticationEntryPresenter>();
             builder.RegisterComponentInHierarchy<AuthenticationLoadingPanel>();
+            builder.RegisterComponentInHierarchy<AuthenticationPopupPanel>();
 
             builder.RegisterInstance(_panelRefs);
             builder.RegisterEntryPoint<CharacterFlowController>();

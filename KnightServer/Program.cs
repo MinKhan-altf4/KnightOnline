@@ -40,13 +40,29 @@ public static class Program
             options.MonsterSpawns);
         var connections = new ConnectionRegistry();
         var activePlayers = new ActivePlayerRegistry();
-        var accountSessions = new AccountSessionRegistry();
+        IActiveAccountLeaseStore accountSessions =
+            new InMemoryActiveAccountLeaseStore();
+        var selectionLeases = new CharacterSelectionLeaseService(
+            accountSessions,
+            TimeSpan.FromSeconds(
+                options.Characters.SelectionTimeoutSeconds));
         var authentication = new AccountAuthenticationService(
             databaseOptions,
             new AuthTokenProtector(),
             new PasswordHasher(),
             TimeSpan.FromDays(
                 options.Authentication.RefreshTokenLifetimeDays),
+            clock);
+        IRegistrationTransactionStore registrationTransactions =
+            new InMemoryRegistrationTransactionStore();
+        var registration = new RegistrationFlowService(
+            registrationTransactions,
+            new DevelopmentRegistrationPortal(
+                options.Registration.PortalBaseUrl),
+            new ExistingGuestRegistrationConverter(authentication),
+            new AuthTokenProtector(),
+            TimeSpan.FromMinutes(
+                options.Registration.TransactionLifetimeMinutes),
             clock);
         var authenticationRateLimiter = new AuthenticationRateLimiter(
             options.Authentication.MaximumAttemptsPerWindow,
@@ -68,29 +84,37 @@ public static class Program
         [
             new ConnectPacketHandler(
                 accountIdentities,
-                accountSessions,
                 options.Authentication.DevelopmentBypassEnabled),
             new CreateGuestPacketHandler(
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock),
+                clock,
+                selectionLeases),
             new ResumeAccountPacketHandler(
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock),
+                clock,
+                selectionLeases),
             new LoginPacketHandler(
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock),
+                clock,
+                selectionLeases),
+            new LeaveAccountSessionPacketHandler(accountSessions),
+            new BeginRegistrationPacketHandler(registration),
+            new CompleteDevelopmentRegistrationPacketHandler(
+                registration,
+                options.Registration.DevelopmentCompletionEnabled),
             new CreateCharacterPacketHandler(characterRepository),
             new ListCharactersPacketHandler(characterRepository),
             new ListMonstersPacketHandler(monsterService),
             new SelectCharacterPacketHandler(
                 characterRepository,
                 activePlayers,
+                accountSessions,
                 options.Characters,
                 options.Combat,
                 options.World,
@@ -140,7 +164,7 @@ public static class Program
         ClientConnection connection,
         ConnectionRegistry connections,
         ActivePlayerRegistry activePlayers,
-        AccountSessionRegistry accountSessions)
+        IActiveAccountLeaseStore accountSessions)
     {
         try
         {
@@ -148,7 +172,12 @@ public static class Program
         }
         finally
         {
-            accountSessions.Release(connection);
+            if (connection.AccountKey is { } accountKey)
+            {
+                await accountSessions.ReleaseAsync(
+                    accountKey,
+                    connection.ConnectionId);
+            }
             activePlayers.Release(connection);
             connections.Remove(connection);
         }

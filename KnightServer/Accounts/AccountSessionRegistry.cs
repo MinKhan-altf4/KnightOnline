@@ -1,48 +1,93 @@
-using KnightOnline.Server.Networking;
-
 namespace KnightOnline.Server.Accounts;
 
-public sealed class AccountSessionRegistry
+public enum ActiveAccountLeaseClaimResult : byte
+{
+    Acquired = 0,
+    AlreadyOwned = 1,
+    ActiveElsewhere = 2,
+}
+
+public interface IActiveAccountLeaseStore
+{
+    ValueTask<ActiveAccountLeaseClaimResult> TryClaimAsync(
+        string accountKey,
+        Guid connectionId,
+        CancellationToken cancellationToken = default);
+
+    ValueTask<bool> IsOwnerAsync(
+        string accountKey,
+        Guid connectionId,
+        CancellationToken cancellationToken = default);
+
+    ValueTask ReleaseAsync(
+        string accountKey,
+        Guid connectionId,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Single-process adapter used for local development and alpha testing.
+/// Production can replace it with a Redis/distributed lease implementation
+/// without changing authentication or gameplay handlers.
+/// </summary>
+public sealed class InMemoryActiveAccountLeaseStore :
+    IActiveAccountLeaseStore
 {
     private readonly object _syncRoot = new();
-    private readonly Dictionary<string, ClientConnection> _sessions =
+    private readonly Dictionary<string, Guid> _owners =
         new(StringComparer.Ordinal);
 
-    public ClientConnection? Register(
+    public ValueTask<ActiveAccountLeaseClaimResult> TryClaimAsync(
         string accountKey,
-        ClientConnection connection)
+        Guid connectionId,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_syncRoot)
         {
-            if (!_sessions.TryGetValue(accountKey, out var existing))
+            if (!_owners.TryGetValue(accountKey, out Guid current))
             {
-                _sessions.Add(accountKey, connection);
-                return null;
+                _owners.Add(accountKey, connectionId);
+                return ValueTask.FromResult(
+                    ActiveAccountLeaseClaimResult.Acquired);
             }
 
-            if (ReferenceEquals(existing, connection))
-                return null;
-
-            // A collision invalidates the account session entirely. Neither
-            // connection wins; a later clean login may establish a new session.
-            _sessions.Remove(accountKey);
-            return existing;
+            return ValueTask.FromResult(
+                current == connectionId
+                    ? ActiveAccountLeaseClaimResult.AlreadyOwned
+                    : ActiveAccountLeaseClaimResult.ActiveElsewhere);
         }
     }
 
-    public void Release(ClientConnection connection)
+    public ValueTask<bool> IsOwnerAsync(
+        string accountKey,
+        Guid connectionId,
+        CancellationToken cancellationToken = default)
     {
-        string? accountKey = connection.AccountKey;
-        if (accountKey == null)
-            return;
-
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_syncRoot)
         {
-            if (_sessions.TryGetValue(accountKey, out var current) &&
-                ReferenceEquals(current, connection))
+            return ValueTask.FromResult(
+                _owners.TryGetValue(accountKey, out Guid current) &&
+                current == connectionId);
+        }
+    }
+
+    public ValueTask ReleaseAsync(
+        string accountKey,
+        Guid connectionId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_syncRoot)
+        {
+            if (_owners.TryGetValue(accountKey, out Guid current) &&
+                current == connectionId)
             {
-                _sessions.Remove(accountKey);
+                _owners.Remove(accountKey);
             }
         }
+
+        return ValueTask.CompletedTask;
     }
 }

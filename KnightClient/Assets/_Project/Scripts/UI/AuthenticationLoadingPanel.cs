@@ -60,8 +60,15 @@ namespace KnightOnline.Client.UI
             if (_messageText != null)
                 _messageText.text = state.Message ?? string.Empty;
             if (_countdownText != null)
-                _countdownText.text =
-                    $"{Mathf.CeilToInt(state.RemainingSeconds)}s";
+            {
+                bool hasCountdown = state.RemainingSeconds > 0f;
+                _countdownText.gameObject.SetActive(hasCountdown);
+                if (hasCountdown)
+                {
+                    _countdownText.text =
+                        $"{Mathf.CeilToInt(state.RemainingSeconds)}s";
+                }
+            }
         }
 
         private void SetVisible(bool visible)

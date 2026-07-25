@@ -115,6 +115,39 @@ namespace KnightOnline.Client.Network
                     deviceId,
                     guestRefreshToken));
 
+        public UniTask SendLeaveAccountSessionRequestAsync() =>
+            SendPacketAsync(
+                PacketType.LeaveAccountSessionRequest,
+                new LeaveAccountSessionRequestPacket());
+
+        public UniTask SendBeginRegistrationRequestAsync(
+            Guid requestId,
+            string guestRefreshToken,
+            string deviceId,
+            string pkceChallenge) =>
+            SendPacketAsync(
+                PacketType.BeginRegistrationRequest,
+                new BeginRegistrationRequestPacket(
+                    requestId,
+                    guestRefreshToken,
+                    deviceId,
+                    pkceChallenge));
+
+        public UniTask SendCompleteDevelopmentRegistrationRequestAsync(
+            Guid transactionId,
+            string authorizationCode,
+            string pkceVerifier,
+            string username,
+            string password) =>
+            SendPacketAsync(
+                PacketType.CompleteDevelopmentRegistrationRequest,
+                new CompleteDevelopmentRegistrationRequestPacket(
+                    transactionId,
+                    authorizationCode,
+                    pkceVerifier,
+                    username,
+                    password));
+
         private async UniTask ReceiveLoopAsync(CancellationToken ct)
         {
             try
