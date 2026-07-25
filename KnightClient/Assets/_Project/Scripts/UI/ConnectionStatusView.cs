@@ -3,7 +3,6 @@ using TMPro;
 using VContainer;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
-using KnightOnline.Client.Shared.Packets;
 
 namespace KnightOnline.Client.UI
 {
@@ -41,7 +40,7 @@ namespace KnightOnline.Client.UI
 
         private void OnConnectionResult(ServerConnectionResultEvent e)
         {
-            if (e.Result == ConnectResult.Success)
+            if (e.Result == ConnectionOutcome.Success)
             {
                 SetStatus("[Success] Chào mừng đến với KnightOnline!");
                 return;

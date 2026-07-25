@@ -27,10 +27,10 @@ public static class Program
 
         var characterRepository = new CharacterRepository(
             databaseOptions,
-            options.Characters.DevelopmentAccountKey,
             options.Characters.MaximumPerAccount,
             options.Characters.InitialLevel);
-        await characterRepository.EnsureAccountExistsAsync();
+        await characterRepository.EnsureAccountExistsAsync(
+            options.Characters.DevelopmentAccountKey);
 
         MonsterService monsterService = CreateMonsterWorld(
             options.MonsterDefinitions,
@@ -38,6 +38,12 @@ public static class Program
         var connections = new ConnectionRegistry();
         var activePlayers = new ActivePlayerRegistry();
         var accountSessions = new AccountSessionRegistry();
+        var authentication = new AccountAuthenticationService(
+            databaseOptions,
+            new AuthTokenProtector(),
+            new PasswordHasher(),
+            TimeSpan.FromDays(
+                options.Authentication.RefreshTokenLifetimeDays));
         IAccountIdentityProvider accountIdentities =
             new DevelopmentAccountIdentityProvider(
                 options.Characters.DevelopmentAccountKey);
@@ -52,7 +58,19 @@ public static class Program
 
         var packetDispatcher = new PacketDispatcher(
         [
-            new ConnectPacketHandler(accountIdentities, accountSessions),
+            new ConnectPacketHandler(
+                accountIdentities,
+                accountSessions,
+                options.Authentication.DevelopmentBypassEnabled),
+            new CreateGuestPacketHandler(
+                authentication,
+                accountSessions),
+            new ResumeAccountPacketHandler(
+                authentication,
+                accountSessions),
+            new LoginPacketHandler(
+                authentication,
+                accountSessions),
             new CreateCharacterPacketHandler(characterRepository),
             new ListCharactersPacketHandler(characterRepository),
             new ListMonstersPacketHandler(monsterService),

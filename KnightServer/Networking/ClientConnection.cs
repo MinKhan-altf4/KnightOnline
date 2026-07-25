@@ -17,13 +17,15 @@ public sealed class ClientConnection(
 
     public PlayerSession? PlayerSession { get; private set; }
     public string? AccountKey { get; private set; }
+    public bool IsGuest { get; private set; }
 
-    public bool TryAttachAccount(string accountKey)
+    public bool TryAttachAccount(string accountKey, bool isGuest = false)
     {
         if (AccountKey != null || string.IsNullOrWhiteSpace(accountKey))
             return false;
 
         AccountKey = accountKey;
+        IsGuest = isGuest;
         return true;
     }
 

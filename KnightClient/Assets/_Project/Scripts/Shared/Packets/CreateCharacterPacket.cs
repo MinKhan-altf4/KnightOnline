@@ -7,6 +7,7 @@ namespace KnightOnline.Client.Shared.Packets
         NameTooLong = 2,
         NameAlreadyTaken = 3,
         CharacterLimitReached = 4,
+        Unauthorized = 5,
     }
 
     public sealed class CreateCharacterRequestPacket

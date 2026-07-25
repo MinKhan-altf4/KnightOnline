@@ -20,5 +20,11 @@ namespace KnightOnline.Client.Shared.Packets
         PlayerMoveInput = 15,
         AttackResult = 16,
         ForcedDisconnect = 17,
+        CreateGuestRequest = 18,
+        CreateGuestResponse = 19,
+        ResumeAccountRequest = 20,
+        ResumeAccountResponse = 21,
+        LoginRequest = 22,
+        LoginResponse = 23,
     }
 }

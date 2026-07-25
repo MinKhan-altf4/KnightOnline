@@ -3,9 +3,17 @@
     "port": 7777,
     "maximumPacketBytes": 1048576
   },
+  "authentication": {
+    "developmentBypassEnabled": true,
+    "refreshTokenLifetimeDays": 30
+  },
+  "guest": {
+    "maximumLevel": 10,
+    "disabledFeatures": []
+  },
   "characters": {
     "developmentAccountKey": "local-dev",
-    "maximumPerAccount": 4,
+    "maximumPerAccount": 3,
     "initialLevel": 1,
     "initialMaximumHealth": 100,
     "moveSpeed": 4.0,

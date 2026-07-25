@@ -7,6 +7,7 @@ using KnightOnline.Client.Network;
 using KnightOnline.Client.Network.Handlers;
 using KnightOnline.Client.Core.Bootstrap;
 using KnightOnline.Client.Data.Models;
+using KnightOnline.Client.Gameplay.Services;
 
 namespace KnightOnline.Client.Root
 {
@@ -18,6 +19,13 @@ namespace KnightOnline.Client.Root
         [SerializeField] private int _maximumPacketBytes = 1024 * 1024;
         [Header("Scenes")]
         [SerializeField] private string _bootstrapSceneName = "Bootstrap";
+
+        [Header("Authentication")]
+        [SerializeField] private bool _developmentAuthenticationBypass = true;
+        [SerializeField] private float _initialSessionCheckSeconds = 5f;
+        [SerializeField] private float _sessionConflictRetrySeconds = 10f;
+        [SerializeField] private string _registrationUrl =
+            "https://account.example.com/register";
 
         [Header("Client Gameplay Fallbacks")]
         [SerializeField] private int _initialLevel = 1;
@@ -35,6 +43,13 @@ namespace KnightOnline.Client.Root
                 _initialLevel,
                 _initialMaximumHealth,
                 _defaultMoveSpeed));
+            builder.RegisterInstance(new ClientAuthenticationSettings(
+                _developmentAuthenticationBypass,
+                _initialSessionCheckSeconds,
+                _sessionConflictRetrySeconds,
+                _registrationUrl));
+            builder.Register<ILocalAccountSessionStore,
+                DevelopmentAccountSessionStore>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ConnectResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, CreateCharacterResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ListCharactersResponseHandler>(Lifetime.Singleton);
@@ -45,6 +60,9 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler, SelectCharacterResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, AttackResultHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ForcedDisconnectHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, CreateGuestResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, ResumeAccountResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, LoginResponseHandler>(Lifetime.Singleton);
 
             builder.RegisterComponentOnNewGameObject<NetworkClient>(
                 Lifetime.Singleton, "NetworkClient")

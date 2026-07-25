@@ -5,6 +5,8 @@ namespace KnightOnline.Server.Configuration;
 public sealed class ServerOptions
 {
     public NetworkOptions Network { get; set; } = new();
+    public AuthenticationOptions Authentication { get; set; } = new();
+    public GuestOptions Guest { get; set; } = new();
     public CharacterOptions Characters { get; set; } = new();
     public CombatOptions Combat { get; set; } = new();
     public WorldOptions World { get; set; } = new();
@@ -35,6 +37,12 @@ public sealed class ServerOptions
             throw new InvalidDataException("Network.Port must be between 1 and 65535.");
         if (Network.MaximumPacketBytes <= 0)
             throw new InvalidDataException("Network.MaximumPacketBytes must be positive.");
+        if (Authentication.RefreshTokenLifetimeDays <= 0)
+            throw new InvalidDataException(
+                "Authentication.RefreshTokenLifetimeDays must be positive.");
+        if (Guest.MaximumLevel <= 0)
+            throw new InvalidDataException(
+                "Guest.MaximumLevel must be positive.");
         if (Characters.MaximumPerAccount <= 0)
             throw new InvalidDataException("Characters.MaximumPerAccount must be positive.");
         if (Characters.InitialLevel <= 0)
@@ -78,6 +86,18 @@ public sealed class NetworkOptions
 {
     public int Port { get; set; }
     public int MaximumPacketBytes { get; set; }
+}
+
+public sealed class AuthenticationOptions
+{
+    public bool DevelopmentBypassEnabled { get; set; }
+    public int RefreshTokenLifetimeDays { get; set; } = 30;
+}
+
+public sealed class GuestOptions
+{
+    public int MaximumLevel { get; set; } = 10;
+    public List<string> DisabledFeatures { get; set; } = [];
 }
 
 public sealed class CharacterOptions

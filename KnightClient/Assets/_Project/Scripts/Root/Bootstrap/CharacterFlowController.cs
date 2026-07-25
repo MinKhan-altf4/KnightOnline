@@ -1,8 +1,8 @@
 using System;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
+using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Gameplay.Services;
-using KnightOnline.Client.Shared.Packets;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VContainer.Unity;
@@ -31,25 +31,32 @@ namespace KnightOnline.Client.Core.Bootstrap
         private readonly CharacterService _characterService;
         private readonly GameSession _gameSession;
         private readonly PanelRefs _panels;
+        private readonly ClientAuthenticationSettings _authenticationSettings;
 
         private IDisposable _connectionSubscription;
         private IDisposable _listSubscription;
         private IDisposable _creationSubscription;
         private IDisposable _selectionSubscription;
         private IDisposable _selectionFailedSubscription;
+        private IDisposable _accountReadySubscription;
 
         public CharacterFlowController(IEventBus eventBus, CharacterService characterService,
-            GameSession gameSession, PanelRefs panels)
+            GameSession gameSession, PanelRefs panels,
+            ClientAuthenticationSettings authenticationSettings)
         {
             _eventBus = eventBus;
             _characterService = characterService;
             _gameSession = gameSession;
             _panels = panels;
+            _authenticationSettings = authenticationSettings;
         }
 
         public void Start()
         {
             _connectionSubscription = _eventBus.Subscribe<ServerConnectionResultEvent>(OnConnectionResult);
+            _accountReadySubscription =
+                _eventBus.Subscribe<AccountReadyEvent>(
+                    OnAccountReady);
             _listSubscription = _eventBus.Subscribe<CharacterListReceivedEvent>(OnCharacterListReceived);
             _creationSubscription = _eventBus.Subscribe<CharacterCreationResultEvent>(OnCharacterCreationResult);
             _selectionSubscription = _eventBus.Subscribe<CharacterSelectedEvent>(OnCharacterSelected);
@@ -62,7 +69,14 @@ namespace KnightOnline.Client.Core.Bootstrap
 
         private void OnConnectionResult(ServerConnectionResultEvent e)
         {
-            if (e.Result == ConnectResult.Success) _ = _characterService.RequestListCharacters();
+            if (e.Result == ConnectionOutcome.Success &&
+                _authenticationSettings.DevelopmentBypassEnabled)
+                _ = _characterService.RequestListCharacters();
+        }
+
+        private void OnAccountReady(AccountReadyEvent e)
+        {
+            _ = _characterService.RequestListCharacters();
         }
 
         private void OnCharacterListReceived(CharacterListReceivedEvent e)
@@ -105,6 +119,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             _creationSubscription?.Dispose();
             _selectionSubscription?.Dispose();
             _selectionFailedSubscription?.Dispose();
+            _accountReadySubscription?.Dispose();
         }
     }
 }

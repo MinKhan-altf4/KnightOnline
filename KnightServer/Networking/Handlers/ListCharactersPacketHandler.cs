@@ -13,8 +13,17 @@ public sealed class ListCharactersPacketHandler(
         string payload,
         CancellationToken cancellationToken)
     {
+        if (connection.AccountKey == null)
+        {
+            await connection.SendAsync(
+                PacketType.ListCharactersResponse,
+                new ListCharactersResponsePacket([]),
+                cancellationToken);
+            return;
+        }
+
         IReadOnlyList<CharacterSummaryPacket> characters =
-            await characterRepository.ListAsync();
+            await characterRepository.ListAsync(connection.AccountKey);
 
         await connection.SendAsync(
             PacketType.ListCharactersResponse,

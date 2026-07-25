@@ -7,19 +7,28 @@ namespace KnightOnline.Server.Persistence;
 
 public sealed class CharacterRepository(
     DbContextOptions<KnightDbContext> options,
-    string accountKey,
     int maximumCharactersPerAccount,
     int initialLevel)
 {
-    public async Task EnsureAccountExistsAsync()
+    public async Task EnsureAccountExistsAsync(string accountKey)
     {
         await using var db = new KnightDbContext(options);
-        if (await db.Accounts.AnyAsync(account => account.AccountKey == accountKey))
+        AccountEntity? existing = await db.Accounts.SingleOrDefaultAsync(
+            account => account.AccountKey == accountKey);
+        if (existing != null)
+        {
+            if (existing.Kind != AccountKind.Development)
+            {
+                existing.Kind = AccountKind.Development;
+                await db.SaveChangesAsync();
+            }
             return;
+        }
 
         db.Accounts.Add(new AccountEntity
         {
             AccountKey = accountKey,
+            Kind = AccountKind.Development,
             CreatedAtUtc = DateTime.UtcNow,
         });
 
@@ -34,7 +43,8 @@ public sealed class CharacterRepository(
         }
     }
 
-    public async Task<IReadOnlyList<CharacterSummaryPacket>> ListAsync()
+    public async Task<IReadOnlyList<CharacterSummaryPacket>> ListAsync(
+        string accountKey)
     {
         await using var db = new KnightDbContext(options);
 
@@ -49,7 +59,9 @@ public sealed class CharacterRepository(
             .ToArrayAsync();
     }
 
-    public async Task<CharacterSummaryPacket?> FindOwnedAsync(int characterId)
+    public async Task<CharacterSummaryPacket?> FindOwnedAsync(
+        string accountKey,
+        int characterId)
     {
         await using var db = new KnightDbContext(options);
 
@@ -65,7 +77,9 @@ public sealed class CharacterRepository(
             .SingleOrDefaultAsync();
     }
 
-    public async Task<CreateCharacterResponsePacket> CreateAsync(string name)
+    public async Task<CreateCharacterResponsePacket> CreateAsync(
+        string accountKey,
+        string name)
     {
         string normalizedName = name.ToUpperInvariant();
 

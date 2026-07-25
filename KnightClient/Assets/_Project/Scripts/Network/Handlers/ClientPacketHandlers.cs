@@ -18,7 +18,16 @@ namespace KnightOnline.Client.Network.Handlers
         {
             var packet = JsonSerializer.Deserialize<ConnectResponsePacket>(payload);
             if (packet != null)
-                _events.Publish(new ServerConnectionResultEvent(packet.Result, packet.Message));
+                _events.Publish(new ServerConnectionResultEvent(
+                    packet.Result switch
+                    {
+                        ConnectResult.Success => ConnectionOutcome.Success,
+                        ConnectResult.VersionMismatch =>
+                            ConnectionOutcome.VersionMismatch,
+                        ConnectResult.ServerFull => ConnectionOutcome.ServerFull,
+                        _ => ConnectionOutcome.NetworkError,
+                    },
+                    packet.Message));
         }
     }
 
@@ -246,6 +255,73 @@ namespace KnightOnline.Client.Network.Handlers
                     packet.Message,
                     isForced: true));
         }
+    }
+
+    public sealed class CreateGuestResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public CreateGuestResponseHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.CreateGuestResponse;
+        public void Handle(string payload) =>
+            AuthenticationPacketMapper.Publish(payload, _events);
+    }
+
+    public sealed class ResumeAccountResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public ResumeAccountResponseHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.ResumeAccountResponse;
+        public void Handle(string payload) =>
+            AuthenticationPacketMapper.Publish(payload, _events);
+    }
+
+    public sealed class LoginResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public LoginResponseHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.LoginResponse;
+        public void Handle(string payload) =>
+            AuthenticationPacketMapper.Publish(payload, _events);
+    }
+
+    internal static class AuthenticationPacketMapper
+    {
+        public static void Publish(string payload, IEventBus events)
+        {
+            var packet =
+                JsonSerializer.Deserialize<AuthenticationResponsePacket>(payload);
+            if (packet == null)
+                return;
+
+            events.Publish(new AuthenticationResultEvent(
+                MapOutcome(packet.Result),
+                packet.Message,
+                packet.AccountKey,
+                packet.IsGuest,
+                packet.RefreshToken,
+                packet.RefreshTokenExpiresAtUtc));
+        }
+
+        private static AuthenticationOutcome MapOutcome(
+            AuthenticationResultCode result) =>
+            result switch
+            {
+                AuthenticationResultCode.Success =>
+                    AuthenticationOutcome.Success,
+                AuthenticationResultCode.InvalidCredentials =>
+                    AuthenticationOutcome.InvalidCredentials,
+                AuthenticationResultCode.InvalidOrExpiredToken =>
+                    AuthenticationOutcome.InvalidOrExpiredToken,
+                AuthenticationResultCode.UsernameUnavailable =>
+                    AuthenticationOutcome.UsernameUnavailable,
+                AuthenticationResultCode.GuestNotFound =>
+                    AuthenticationOutcome.GuestNotFound,
+                AuthenticationResultCode.AlreadyAuthenticated =>
+                    AuthenticationOutcome.AlreadyAuthenticated,
+                AuthenticationResultCode.SessionConflict =>
+                    AuthenticationOutcome.SessionConflict,
+                _ => AuthenticationOutcome.InvalidRequest,
+            };
     }
 
     internal static class CharacterPacketMapper

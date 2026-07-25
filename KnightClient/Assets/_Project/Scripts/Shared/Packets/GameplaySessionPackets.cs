@@ -8,6 +8,7 @@ namespace KnightOnline.Client.Shared.Packets
         CharacterNotFound = 1,
         AlreadySelected = 2,
         CharacterAlreadyOnline = 3,
+        Unauthorized = 4,
     }
 
     public sealed class SelectCharacterRequestPacket

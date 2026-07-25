@@ -27,6 +27,16 @@ public sealed class SelectCharacterPacketHandler(
         if (request == null)
             return;
 
+        if (connection.AccountKey == null)
+        {
+            await SendFailure(
+                connection,
+                SelectCharacterResult.Unauthorized,
+                "Authentication is required.",
+                cancellationToken);
+            return;
+        }
+
         if (connection.PlayerSession != null)
         {
             await SendFailure(
@@ -38,7 +48,9 @@ public sealed class SelectCharacterPacketHandler(
         }
 
         CharacterSummaryPacket? character =
-            await characters.FindOwnedAsync(request.CharacterId);
+            await characters.FindOwnedAsync(
+                connection.AccountKey,
+                request.CharacterId);
 
         if (character == null)
         {

@@ -6,7 +6,8 @@ namespace KnightOnline.Server.Networking.Handlers;
 
 public sealed class ConnectPacketHandler(
     IAccountIdentityProvider identities,
-    AccountSessionRegistry accountSessions) : IPacketHandler
+    AccountSessionRegistry accountSessions,
+    bool developmentBypassEnabled) : IPacketHandler
 {
     public PacketType PacketType => PacketType.ConnectRequest;
 
@@ -20,6 +21,17 @@ public sealed class ConnectPacketHandler(
 
         if (request == null)
             return;
+
+        if (!developmentBypassEnabled)
+        {
+            await connection.SendAsync(
+                PacketType.ConnectResponse,
+                new ConnectResponsePacket(
+                    ConnectResult.Success,
+                    "Transport connected. Authentication is required."),
+                cancellationToken);
+            return;
+        }
 
         string accountKey =
             identities.ResolveAccountKey(connection, request);

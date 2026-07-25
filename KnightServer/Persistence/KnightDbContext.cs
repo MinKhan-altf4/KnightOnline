@@ -8,6 +8,7 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
 {
     public DbSet<AccountEntity> Accounts => Set<AccountEntity>();
     public DbSet<CharacterEntity> Characters => Set<CharacterEntity>();
+    public DbSet<RefreshSessionEntity> RefreshSessions => Set<RefreshSessionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,11 +22,29 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
                 .HasColumnName("account_key")
                 .HasMaxLength(64)
                 .IsRequired();
+            entity.Property(account => account.Kind)
+                .HasColumnName("kind")
+                .HasConversion<byte>()
+                .IsRequired();
+            entity.Property(account => account.Username)
+                .HasColumnName("username")
+                .HasMaxLength(32);
+            entity.Property(account => account.NormalizedUsername)
+                .HasColumnName("normalized_username")
+                .HasMaxLength(32);
+            entity.Property(account => account.PasswordHash)
+                .HasColumnName("password_hash")
+                .HasMaxLength(512);
             entity.Property(account => account.CreatedAtUtc)
                 .HasColumnName("created_at_utc")
                 .IsRequired();
+            entity.Property(account => account.RegisteredAtUtc)
+                .HasColumnName("registered_at_utc");
             entity.HasIndex(account => account.AccountKey)
                 .IsUnique();
+            entity.HasIndex(account => account.NormalizedUsername)
+                .IsUnique()
+                .HasFilter("\"normalized_username\" IS NOT NULL");
         });
 
         modelBuilder.Entity<CharacterEntity>(entity =>
@@ -57,6 +76,45 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
             entity.HasOne(character => character.Account)
                 .WithMany(account => account.Characters)
                 .HasForeignKey(character => character.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RefreshSessionEntity>(entity =>
+        {
+            entity.ToTable("refresh_sessions");
+            entity.HasKey(session => session.Id);
+            entity.Property(session => session.Id)
+                .HasColumnName("id");
+            entity.Property(session => session.AccountId)
+                .HasColumnName("account_id");
+            entity.Property(session => session.TokenHash)
+                .HasColumnName("token_hash")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(session => session.DeviceIdHash)
+                .HasColumnName("device_id_hash")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(session => session.CreatedAtUtc)
+                .HasColumnName("created_at_utc")
+                .IsRequired();
+            entity.Property(session => session.ExpiresAtUtc)
+                .HasColumnName("expires_at_utc")
+                .IsRequired();
+            entity.Property(session => session.RevokedAtUtc)
+                .HasColumnName("revoked_at_utc");
+
+            entity.HasIndex(session => session.TokenHash)
+                .IsUnique();
+            entity.HasIndex(session => new
+                {
+                    session.AccountId,
+                    session.DeviceIdHash,
+                });
+
+            entity.HasOne(session => session.Account)
+                .WithMany(account => account.RefreshSessions)
+                .HasForeignKey(session => session.AccountId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

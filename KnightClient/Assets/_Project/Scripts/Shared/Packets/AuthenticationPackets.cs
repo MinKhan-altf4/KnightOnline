@@ -1,0 +1,84 @@
+#nullable enable
+
+using System;
+
+namespace KnightOnline.Client.Shared.Packets
+{
+    public enum AuthenticationResultCode : byte
+    {
+        Success = 0,
+        InvalidCredentials = 1,
+        InvalidOrExpiredToken = 2,
+        UsernameUnavailable = 3,
+        GuestNotFound = 4,
+        AlreadyAuthenticated = 5,
+        InvalidRequest = 6,
+        SessionConflict = 7,
+    }
+
+    public sealed class CreateGuestRequestPacket
+    {
+        public string DeviceId { get; }
+        public CreateGuestRequestPacket(string deviceId) => DeviceId = deviceId;
+    }
+
+    public sealed class ResumeAccountRequestPacket
+    {
+        public string RefreshToken { get; }
+        public string DeviceId { get; }
+
+        public ResumeAccountRequestPacket(
+            string refreshToken,
+            string deviceId)
+        {
+            RefreshToken = refreshToken;
+            DeviceId = deviceId;
+        }
+    }
+
+    public sealed class LoginRequestPacket
+    {
+        public string Username { get; }
+        public string Password { get; }
+        public string DeviceId { get; }
+        public string? GuestRefreshToken { get; }
+
+        public LoginRequestPacket(
+            string username,
+            string password,
+            string deviceId,
+            string? guestRefreshToken)
+        {
+            Username = username;
+            Password = password;
+            DeviceId = deviceId;
+            GuestRefreshToken = guestRefreshToken;
+        }
+    }
+
+    public sealed class AuthenticationResponsePacket
+    {
+        public AuthenticationResultCode Result { get; }
+        public string Message { get; }
+        public string? AccountKey { get; }
+        public bool IsGuest { get; }
+        public string? RefreshToken { get; }
+        public DateTime RefreshTokenExpiresAtUtc { get; }
+
+        public AuthenticationResponsePacket(
+            AuthenticationResultCode result,
+            string message,
+            string? accountKey = null,
+            bool isGuest = false,
+            string? refreshToken = null,
+            DateTime refreshTokenExpiresAtUtc = default)
+        {
+            Result = result;
+            Message = message;
+            AccountKey = accountKey;
+            IsGuest = isGuest;
+            RefreshToken = refreshToken;
+            RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc;
+        }
+    }
+}

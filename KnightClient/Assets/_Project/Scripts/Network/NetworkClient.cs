@@ -60,7 +60,9 @@ namespace KnightOnline.Client.Network
             catch (Exception ex)
             {
                 Debug.LogError($"[Network] Connection error: {ex.Message}");
-                _eventBus.Publish(new ServerConnectionResultEvent(ConnectResult.NetworkError, ex.Message));
+                _eventBus.Publish(new ServerConnectionResultEvent(
+                    ConnectionOutcome.NetworkError,
+                    ex.Message));
             }
         }
 
@@ -87,6 +89,31 @@ namespace KnightOnline.Client.Network
             SendPacketAsync(
                 PacketType.PlayerMoveInput,
                 new PlayerMoveInputPacket(direction.x, direction.y));
+
+        public UniTask SendCreateGuestRequestAsync(string deviceId) =>
+            SendPacketAsync(
+                PacketType.CreateGuestRequest,
+                new CreateGuestRequestPacket(deviceId));
+
+        public UniTask SendResumeAccountRequestAsync(
+            string refreshToken,
+            string deviceId) =>
+            SendPacketAsync(
+                PacketType.ResumeAccountRequest,
+                new ResumeAccountRequestPacket(refreshToken, deviceId));
+
+        public UniTask SendLoginRequestAsync(
+            string username,
+            string password,
+            string deviceId,
+            string guestRefreshToken) =>
+            SendPacketAsync(
+                PacketType.LoginRequest,
+                new LoginRequestPacket(
+                    username,
+                    password,
+                    deviceId,
+                    guestRefreshToken));
 
         private async UniTask ReceiveLoopAsync(CancellationToken ct)
         {
@@ -127,10 +154,18 @@ namespace KnightOnline.Client.Network
 
         private async UniTask<bool> ReadExactlyAsync(byte[] buffer, CancellationToken ct)
         {
+            NetworkStream stream = _stream;
+            if (stream == null)
+                return false;
+
             var totalRead = 0;
             while (totalRead < buffer.Length)
             {
-                var read = await _stream.ReadAsync(buffer, totalRead, buffer.Length - totalRead, ct);
+                var read = await stream.ReadAsync(
+                    buffer,
+                    totalRead,
+                    buffer.Length - totalRead,
+                    ct);
                 if (read == 0) return false;
                 totalRead += read;
             }
@@ -139,15 +174,43 @@ namespace KnightOnline.Client.Network
 
         private async UniTask SendPacketAsync<T>(PacketType type, T payload)
         {
-            if (_stream == null) throw new InvalidOperationException("Not connected to server.");
+            if (_stream == null)
+            {
+                if (_isDisconnecting)
+                    return;
+
+                throw new InvalidOperationException("Not connected to server.");
+            }
+
             var payloadJson = JsonSerializer.Serialize(payload);
             var envelopeJson = JsonSerializer.Serialize(new PacketEnvelope(type, payloadJson));
             var bytes = Encoding.UTF8.GetBytes(envelopeJson);
             await _sendLock.WaitAsync();
             try
             {
-                await _stream.WriteAsync(BitConverter.GetBytes(bytes.Length), 0, 4);
-                await _stream.WriteAsync(bytes, 0, bytes.Length);
+                NetworkStream stream = _stream;
+                if (stream == null)
+                {
+                    if (_isDisconnecting)
+                        return;
+
+                    throw new InvalidOperationException(
+                        "Connection closed before the packet could be sent.");
+                }
+
+                await stream.WriteAsync(
+                    BitConverter.GetBytes(bytes.Length),
+                    0,
+                    4);
+                await stream.WriteAsync(bytes, 0, bytes.Length);
+            }
+            catch (ObjectDisposedException) when (_isDisconnecting)
+            {
+                // Expected when Unity exits Play Mode during an in-flight send.
+            }
+            catch (IOException) when (_isDisconnecting)
+            {
+                // Expected when shutdown closes the socket during a write.
             }
             finally
             {

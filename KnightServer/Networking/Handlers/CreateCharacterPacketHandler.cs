@@ -20,6 +20,17 @@ public sealed class CreateCharacterPacketHandler(
         if (request == null)
             return;
 
+        if (connection.AccountKey == null)
+        {
+            await connection.SendAsync(
+                PacketType.CreateCharacterResponse,
+                new CreateCharacterResponsePacket(
+                    CreateCharacterResult.Unauthorized,
+                    "Authentication is required."),
+                cancellationToken);
+            return;
+        }
+
         string name = request.CharacterName?.Trim() ?? string.Empty;
         CreateCharacterResponsePacket response;
 
@@ -37,7 +48,9 @@ public sealed class CreateCharacterPacketHandler(
         }
         else
         {
-            response = await characterRepository.CreateAsync(name);
+            response = await characterRepository.CreateAsync(
+                connection.AccountKey,
+                name);
         }
 
         await connection.SendAsync(
