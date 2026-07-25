@@ -13,4 +13,14 @@ namespace KnightOnline.Client.Data.Events
             Monsters = monsters;
         }
     }
+
+    public readonly struct MonsterSelectedEvent : IGameEvent
+    {
+        public readonly MonsterData Monster;
+
+        public MonsterSelectedEvent(MonsterData monster)
+        {
+            Monster = monster;
+        }
+    }
 }

@@ -2,6 +2,7 @@ using KnightOnline.Client.Core.Events;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using KnightOnline.Client.Gameplay.NPC;
+using KnightOnline.Client.Gameplay.Targeting;
 using VContainer;
 
 namespace KnightOnline.Client.Gameplay.Player
@@ -17,11 +18,13 @@ namespace KnightOnline.Client.Gameplay.Player
         private Camera _mainCam;
         private IEventBus _eventBus;
         private bool _interactionEnabled = true;
+        private TargetSelectionService _targetSelection;
 
         [Inject]
-        public void Construct(IEventBus eventBus)
+        public void Construct(IEventBus eventBus, TargetSelectionService targetSelection)
         {
             _eventBus = eventBus;
+            _targetSelection = targetSelection;
         }
 
         private void Start()
@@ -59,6 +62,7 @@ namespace KnightOnline.Client.Gameplay.Player
             {
                 if (hit.collider.TryGetComponent<InteractableNPC>(out var npc))
                 {
+                    _targetSelection.Select(npc);
                     float distance = Vector2.Distance(transform.position, npc.transform.position);
 
                     if (distance <= npc.InteractionRange)

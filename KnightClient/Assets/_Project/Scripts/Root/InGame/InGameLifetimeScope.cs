@@ -1,5 +1,7 @@
 using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Gameplay.Player;
+using KnightOnline.Client.Gameplay.Monster;
+using KnightOnline.Client.Gameplay.Targeting;
 using KnightOnline.Client.Gameplay.World;
 using KnightOnline.Client.Input;
 using KnightOnline.Client.UI;
@@ -26,9 +28,13 @@ namespace KnightOnline.Client.Core.Bootstrap
         protected override void Configure(IContainerBuilder builder)
         {
             builder.Register<IMovementInputProvider, KeyboardMovementInput>(Lifetime.Singleton);
+            builder.Register<TargetSelectionService>(Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<PlayerController>();
             builder.RegisterComponentInHierarchy<PlayerInteraction>();
+            builder.RegisterComponentInHierarchy<MonsterSpawner>();
+            builder.RegisterComponentInHierarchy<SelectionMarkerView>();
             builder.RegisterComponentInHierarchy<InGameHUD>();
+            builder.RegisterComponentInHierarchy<TargetHUD>();
             builder.RegisterComponentInHierarchy<NpcDialogUI>();
             builder.RegisterComponentInHierarchy<InGameSceneRoot>();
 
