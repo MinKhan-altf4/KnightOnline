@@ -32,5 +32,9 @@ namespace KnightOnline.Client.Shared.Packets
         BeginRegistrationResponse = 27,
         CompleteDevelopmentRegistrationRequest = 28,
         CompleteDevelopmentRegistrationResponse = 29,
+        GetCharacterCreationCatalogRequest = 30,
+        GetCharacterCreationCatalogResponse = 31,
+        CheckCharacterNameRequest = 32,
+        CheckCharacterNameResponse = 33,
     }
 }

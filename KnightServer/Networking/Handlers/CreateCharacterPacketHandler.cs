@@ -31,27 +31,11 @@ public sealed class CreateCharacterPacketHandler(
             return;
         }
 
-        string name = request.CharacterName?.Trim() ?? string.Empty;
-        CreateCharacterResponsePacket response;
-
-        if (name.Length == 0)
-        {
-            response = new CreateCharacterResponsePacket(
-                CreateCharacterResult.NameEmpty,
-                "Character name cannot be empty.");
-        }
-        else if (name.Length > 20)
-        {
-            response = new CreateCharacterResponsePacket(
-                CreateCharacterResult.NameTooLong,
-                "Character name is limited to 20 characters.");
-        }
-        else
-        {
-            response = await characterRepository.CreateAsync(
+        CreateCharacterResponsePacket response =
+            await characterRepository.CreateAsync(
                 connection.AccountKey,
-                name);
-        }
+                request,
+                cancellationToken);
 
         await connection.SendAsync(
             PacketType.CreateCharacterResponse,

@@ -8,6 +8,12 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
 {
     public DbSet<AccountEntity> Accounts => Set<AccountEntity>();
     public DbSet<CharacterEntity> Characters => Set<CharacterEntity>();
+    public DbSet<CharacterAppearanceEntity> CharacterAppearances =>
+        Set<CharacterAppearanceEntity>();
+    public DbSet<CharacterTutorialProgressEntity> CharacterTutorialProgress =>
+        Set<CharacterTutorialProgressEntity>();
+    public DbSet<CharacterCreationRequestEntity> CharacterCreationRequests =>
+        Set<CharacterCreationRequestEntity>();
     public DbSet<RefreshSessionEntity> RefreshSessions => Set<RefreshSessionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -55,6 +61,13 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
                 .HasColumnName("id");
             entity.Property(character => character.AccountId)
                 .HasColumnName("account_id");
+            entity.Property(character => character.ServerId)
+                .HasColumnName("server_id")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(character => character.SlotIndex)
+                .HasColumnName("slot_index")
+                .IsRequired();
             entity.Property(character => character.Name)
                 .HasColumnName("name")
                 .HasMaxLength(20)
@@ -66,17 +79,147 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
             entity.Property(character => character.Level)
                 .HasColumnName("level")
                 .HasDefaultValue(1);
+            entity.Property(character => character.CurrentClassDefinitionId)
+                .HasColumnName("current_class_definition_id")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(character => character.BodyTypeDefinitionId)
+                .HasColumnName("body_type_definition_id")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(character => character.CurrentMapDefinitionId)
+                .HasColumnName("current_map_definition_id")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(character => character.CurrentSpawnPointId)
+                .HasColumnName("current_spawn_point_id")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(character => character.PositionX)
+                .HasColumnName("position_x");
+            entity.Property(character => character.PositionY)
+                .HasColumnName("position_y");
             entity.Property(character => character.CreatedAtUtc)
                 .HasColumnName("created_at_utc")
                 .IsRequired();
+            entity.Property(character => character.Version)
+                .HasColumnName("version")
+                .IsConcurrencyToken();
 
-            entity.HasIndex(character => character.NormalizedName)
+            entity.HasIndex(character => new
+                {
+                    character.ServerId,
+                    character.NormalizedName,
+                })
                 .IsUnique();
+            entity.HasIndex(character => new
+                {
+                    character.AccountId,
+                    character.ServerId,
+                    character.SlotIndex,
+                })
+                .IsUnique();
+            entity.ToTable(
+                table => table.HasCheckConstraint(
+                    "ck_characters_slot_index",
+                    "\"slot_index\" BETWEEN 1 AND 3"));
 
             entity.HasOne(character => character.Account)
                 .WithMany(account => account.Characters)
                 .HasForeignKey(character => character.AccountId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterAppearanceEntity>(entity =>
+        {
+            entity.ToTable("character_appearances");
+            entity.HasKey(value => new
+            {
+                value.CharacterId,
+                value.SlotDefinitionId,
+            });
+            entity.Property(value => value.CharacterId)
+                .HasColumnName("character_id");
+            entity.Property(value => value.SlotDefinitionId)
+                .HasColumnName("slot_definition_id")
+                .HasMaxLength(64);
+            entity.Property(value => value.AppearanceDefinitionId)
+                .HasColumnName("appearance_definition_id")
+                .HasMaxLength(64)
+                .IsRequired();
+            entity.Property(value => value.UpdatedAtUtc)
+                .HasColumnName("updated_at_utc");
+            entity.Property(value => value.Version)
+                .HasColumnName("version")
+                .IsConcurrencyToken();
+            entity.HasOne(value => value.Character)
+                .WithMany(character => character.Appearances)
+                .HasForeignKey(value => value.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterTutorialProgressEntity>(entity =>
+        {
+            entity.ToTable("character_tutorial_progress");
+            entity.HasKey(value => new
+            {
+                value.CharacterId,
+                value.TutorialDefinitionId,
+            });
+            entity.Property(value => value.CharacterId)
+                .HasColumnName("character_id");
+            entity.Property(value => value.TutorialDefinitionId)
+                .HasColumnName("tutorial_definition_id")
+                .HasMaxLength(64);
+            entity.Property(value => value.CurrentStepDefinitionId)
+                .HasColumnName("current_step_definition_id")
+                .HasMaxLength(64);
+            entity.Property(value => value.State)
+                .HasColumnName("state")
+                .HasConversion<byte>();
+            entity.Property(value => value.ContinueChoice)
+                .HasColumnName("continue_choice");
+            entity.Property(value => value.StartedAtUtc)
+                .HasColumnName("started_at_utc");
+            entity.Property(value => value.UpdatedAtUtc)
+                .HasColumnName("updated_at_utc");
+            entity.Property(value => value.CompletedAtUtc)
+                .HasColumnName("completed_at_utc");
+            entity.Property(value => value.Version)
+                .HasColumnName("version")
+                .IsConcurrencyToken();
+            entity.HasOne(value => value.Character)
+                .WithMany(character => character.TutorialProgress)
+                .HasForeignKey(value => value.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterCreationRequestEntity>(entity =>
+        {
+            entity.ToTable("character_creation_requests");
+            entity.HasKey(value => value.RequestId);
+            entity.Property(value => value.RequestId)
+                .HasColumnName("request_id");
+            entity.Property(value => value.AccountId)
+                .HasColumnName("account_id");
+            entity.Property(value => value.CharacterId)
+                .HasColumnName("character_id");
+            entity.Property(value => value.ResultCode)
+                .HasColumnName("result_code")
+                .HasMaxLength(64);
+            entity.Property(value => value.ResultMessage)
+                .HasColumnName("result_message")
+                .HasMaxLength(256);
+            entity.Property(value => value.CreatedAtUtc)
+                .HasColumnName("created_at_utc");
+            entity.HasOne(value => value.Account)
+                .WithMany()
+                .HasForeignKey(value => value.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(value => value.Character)
+                .WithMany()
+                .HasForeignKey(value => value.CharacterId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<RefreshSessionEntity>(entity =>

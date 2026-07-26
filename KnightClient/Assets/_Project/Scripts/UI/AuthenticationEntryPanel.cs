@@ -20,7 +20,9 @@ namespace KnightOnline.Client.UI
         [SerializeField] private TMP_InputField _usernameInput;
         [SerializeField] private TMP_InputField _passwordInput;
         [SerializeField] private Button _loginButton;
+        [SerializeField] private Button _showRegistrationButton;
         [SerializeField] private Button _backButton;
+        [SerializeField] private GuestRegistrationPanel _registrationPanel;
 
         [Header("Feedback")]
         [SerializeField] private TMP_Text _messageText;
@@ -47,6 +49,8 @@ namespace KnightOnline.Client.UI
             _showLoginButton?.onClick.AddListener(OnShowLoginClicked);
             _serverButton?.onClick.AddListener(OnServerClicked);
             _loginButton?.onClick.AddListener(OnLoginConfirmed);
+            _showRegistrationButton?.onClick.AddListener(
+                OnShowRegistrationClicked);
             _backButton?.onClick.AddListener(OnBackClicked);
         }
 
@@ -56,6 +60,8 @@ namespace KnightOnline.Client.UI
             _showLoginButton?.onClick.RemoveListener(OnShowLoginClicked);
             _serverButton?.onClick.RemoveListener(OnServerClicked);
             _loginButton?.onClick.RemoveListener(OnLoginConfirmed);
+            _showRegistrationButton?.onClick.RemoveListener(
+                OnShowRegistrationClicked);
             _backButton?.onClick.RemoveListener(OnBackClicked);
         }
 
@@ -71,6 +77,7 @@ namespace KnightOnline.Client.UI
             _accountDisplayHint = accountDisplayHint ?? string.Empty;
             SetContent(_entryContent, true);
             SetContent(_loginContent, false);
+            _registrationPanel?.Hide();
             SetButtonLabel(
                 _playNewButton,
                 canContinue
@@ -87,6 +94,7 @@ namespace KnightOnline.Client.UI
         {
             SetContent(_entryContent, false);
             SetContent(_loginContent, true);
+            _registrationPanel?.Hide();
             SetMessage(message);
             SetInteractable(true);
             _usernameInput?.ActivateInputField();
@@ -113,6 +121,9 @@ namespace KnightOnline.Client.UI
         }
 
         private void OnShowLoginClicked() => ShowLogin();
+
+        private void OnShowRegistrationClicked() =>
+            _registrationPanel?.Show();
 
         private void OnLoginConfirmed()
         {
@@ -155,6 +166,8 @@ namespace KnightOnline.Client.UI
                 _serverButton.interactable = interactable;
             if (_loginButton != null)
                 _loginButton.interactable = interactable;
+            if (_showRegistrationButton != null)
+                _showRegistrationButton.interactable = interactable;
             if (_backButton != null)
                 _backButton.interactable = interactable;
         }
@@ -191,7 +204,9 @@ namespace KnightOnline.Client.UI
                 _playNewButton == null || _showLoginButton == null ||
                 _serverButton == null || _usernameInput == null ||
                 _passwordInput == null || _loginButton == null ||
-                _backButton == null || _messageText == null)
+                _showRegistrationButton == null ||
+                _backButton == null || _registrationPanel == null ||
+                _messageText == null)
             {
                 Debug.LogWarning(
                     "[AuthenticationEntryPanel] Thiếu serialized reference.",

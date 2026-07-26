@@ -6,10 +6,62 @@ namespace KnightOnline.Client.Data.Events
 {
     public readonly struct CharacterCreationRequestedEvent : IGameEvent
     {
+        public readonly CharacterCreationDraftData Draft;
+
+        public CharacterCreationRequestedEvent(
+            CharacterCreationDraftData draft) =>
+            Draft = draft;
+    }
+
+    public readonly struct CharacterCreationSlotRequestedEvent :
+        IStickyGameEvent
+    {
+        public readonly int SlotIndex;
+
+        public CharacterCreationSlotRequestedEvent(int slotIndex) =>
+            SlotIndex = slotIndex;
+    }
+
+    public readonly struct CharacterCreationCancelledEvent : IGameEvent
+    {
+    }
+
+    public readonly struct CharacterCreationCatalogReceivedEvent :
+        IStickyGameEvent
+    {
+        public readonly CharacterCreationCatalogData Catalog;
+
+        public CharacterCreationCatalogReceivedEvent(
+            CharacterCreationCatalogData catalog) =>
+            Catalog = catalog;
+    }
+
+    public readonly struct CharacterNameAvailabilityReceivedEvent : IGameEvent
+    {
+        public readonly bool IsAvailable;
+        public readonly string Message;
+
+        public CharacterNameAvailabilityReceivedEvent(
+            bool isAvailable,
+            string message)
+        {
+            IsAvailable = isAvailable;
+            Message = message;
+        }
+    }
+
+    public readonly struct CharacterNameCheckRequestedEvent : IGameEvent
+    {
+        public readonly string ServerId;
         public readonly string CharacterName;
 
-        public CharacterCreationRequestedEvent(string characterName) =>
+        public CharacterNameCheckRequestedEvent(
+            string serverId,
+            string characterName)
+        {
+            ServerId = serverId;
             CharacterName = characterName;
+        }
     }
 
     public readonly struct CharacterSelectionBackRequestedEvent : IGameEvent

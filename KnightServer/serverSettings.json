@@ -20,6 +20,7 @@
     "disabledFeatures": []
   },
   "characters": {
+    "serverId": "server-1",
     "developmentAccountKey": "local-dev",
     "maximumPerAccount": 3,
     "initialLevel": 1,
@@ -27,7 +28,90 @@
     "moveSpeed": 4.0,
     "spawnPositionX": 0.0,
     "spawnPositionY": 0.0,
-    "selectionTimeoutSeconds": 15
+    "catalogVersion": 1,
+    "startingMapDefinitionId": "tutorial_map_01",
+    "startingSpawnPointId": "tutorial_spawn_default",
+    "classes": [
+      {
+        "definitionId": "warrior",
+        "displayName": "Chiến binh",
+        "description": "Cận chiến bền bỉ, công thủ cân bằng.",
+        "allowedBodyTypeIds": ["male", "female"],
+        "previewAssetAddress": "class/warrior/preview"
+      },
+      {
+        "definitionId": "assassin",
+        "displayName": "Sát thủ",
+        "description": "Nhanh nhẹn, áp sát và gây sát thương chớp nhoáng.",
+        "allowedBodyTypeIds": ["male", "female"],
+        "previewAssetAddress": "class/assassin/preview"
+      },
+      {
+        "definitionId": "mage",
+        "displayName": "Pháp sư",
+        "description": "Sử dụng phép thuật và kiểm soát chiến trường.",
+        "allowedBodyTypeIds": ["male", "female"],
+        "previewAssetAddress": "class/mage/preview"
+      },
+      {
+        "definitionId": "archer",
+        "displayName": "Xạ thủ",
+        "description": "Tấn công tầm xa và giữ khoảng cách.",
+        "allowedBodyTypeIds": ["male", "female"],
+        "previewAssetAddress": "class/archer/preview"
+      }
+    ],
+    "bodyTypes": [
+      { "definitionId": "male", "displayName": "Nam" },
+      { "definitionId": "female", "displayName": "Nữ" }
+    ],
+    "appearanceOptions": [
+      {
+        "definitionId": "body_male_001",
+        "slotDefinitionId": "base_body",
+        "displayName": "Cơ thể nam mặc định",
+        "allowedBodyTypeIds": ["male"],
+        "allowedClassDefinitionIds": [],
+        "assetAddress": "appearance/body/male_001",
+        "isStarterOption": true
+      },
+      {
+        "definitionId": "body_female_001",
+        "slotDefinitionId": "base_body",
+        "displayName": "Cơ thể nữ mặc định",
+        "allowedBodyTypeIds": ["female"],
+        "allowedClassDefinitionIds": [],
+        "assetAddress": "appearance/body/female_001",
+        "isStarterOption": true
+      },
+      {
+        "definitionId": "hair_001",
+        "slotDefinitionId": "hair",
+        "displayName": "Tóc khởi đầu 1",
+        "allowedBodyTypeIds": ["male", "female"],
+        "allowedClassDefinitionIds": [],
+        "assetAddress": "appearance/hair/hair_001",
+        "isStarterOption": true
+      },
+      {
+        "definitionId": "bottom_001",
+        "slotDefinitionId": "bottom",
+        "displayName": "Quần khởi đầu",
+        "allowedBodyTypeIds": ["male", "female"],
+        "allowedClassDefinitionIds": [],
+        "assetAddress": "appearance/bottom/bottom_001",
+        "isStarterOption": true
+      },
+      {
+        "definitionId": "expression_001",
+        "slotDefinitionId": "expression",
+        "displayName": "Biểu cảm mặc định",
+        "allowedBodyTypeIds": ["male", "female"],
+        "allowedClassDefinitionIds": [],
+        "assetAddress": "appearance/expression/expression_001",
+        "isStarterOption": true
+      }
+    ]
   },
   "combat": {
     "baseAttackDamage": 10,

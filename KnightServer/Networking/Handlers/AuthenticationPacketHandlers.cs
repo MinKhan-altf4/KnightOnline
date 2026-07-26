@@ -9,8 +9,7 @@ public sealed class CreateGuestPacketHandler(
     AccountAuthenticationService authentication,
     IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock,
-    CharacterSelectionLeaseService selectionLeases) : IPacketHandler
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.CreateGuestRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -50,7 +49,6 @@ public sealed class CreateGuestPacketHandler(
             result,
             PacketType.CreateGuestResponse,
             accountSessions,
-            selectionLeases,
             cancellationToken);
     }
 }
@@ -59,8 +57,7 @@ public sealed class ResumeAccountPacketHandler(
     AccountAuthenticationService authentication,
     IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock,
-    CharacterSelectionLeaseService selectionLeases) : IPacketHandler
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.ResumeAccountRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -103,7 +100,6 @@ public sealed class ResumeAccountPacketHandler(
             result,
             PacketType.ResumeAccountResponse,
             accountSessions,
-            selectionLeases,
             cancellationToken);
     }
 }
@@ -112,8 +108,7 @@ public sealed class LoginPacketHandler(
     AccountAuthenticationService authentication,
     IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock,
-    CharacterSelectionLeaseService selectionLeases) : IPacketHandler
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.LoginRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -159,7 +154,6 @@ public sealed class LoginPacketHandler(
             result,
             PacketType.LoginResponse,
             accountSessions,
-            selectionLeases,
             cancellationToken);
     }
 }
@@ -226,7 +220,6 @@ internal static class AuthenticationPacketHandlerSupport
         AuthenticationResult result,
         PacketType responseType,
         IActiveAccountLeaseStore accountSessions,
-        CharacterSelectionLeaseService selectionLeases,
         CancellationToken cancellationToken)
     {
         if (!result.IsSuccess || result.Account == null)
@@ -284,9 +277,6 @@ internal static class AuthenticationPacketHandlerSupport
             responseType,
             ToSuccessResponse(result.Account),
             cancellationToken);
-        selectionLeases.Start(
-            connection,
-            result.Account.AccountKey);
     }
 
     public static Task SendInvalidRequestAsync(

@@ -10,6 +10,7 @@ using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Network.Handlers;
 using KnightOnline.Client.Shared.Packets;
+using KnightOnline.Client.Data.Models;
 using VContainer;
 using UnityEngine;
 
@@ -71,11 +72,34 @@ namespace KnightOnline.Client.Network
             }
         }
 
-        public UniTask SendCreateCharacterRequestAsync(string characterName) =>
-            SendPacketAsync(PacketType.CreateCharacterRequest, new CreateCharacterRequestPacket(characterName));
+        public UniTask SendCreateCharacterRequestAsync(
+            CharacterCreationDraftData draft) =>
+            SendPacketAsync(
+                PacketType.CreateCharacterRequest,
+                new CreateCharacterRequestPacket(
+                    draft.RequestId,
+                    draft.ServerId,
+                    draft.SlotIndex,
+                    draft.CharacterName,
+                    draft.ClassDefinitionId,
+                    draft.BodyTypeDefinitionId,
+                    ToAppearancePackets(draft.AppearanceSelections),
+                    draft.CatalogVersion));
 
         public UniTask SendListCharactersRequestAsync() =>
             SendPacketAsync(PacketType.ListCharactersRequest, new ListCharactersRequestPacket());
+
+        public UniTask SendCharacterCreationCatalogRequestAsync(string serverId) =>
+            SendPacketAsync(
+                PacketType.GetCharacterCreationCatalogRequest,
+                new GetCharacterCreationCatalogRequestPacket(serverId));
+
+        public UniTask SendCheckCharacterNameRequestAsync(
+            string serverId,
+            string characterName) =>
+            SendPacketAsync(
+                PacketType.CheckCharacterNameRequest,
+                new CheckCharacterNameRequestPacket(serverId, characterName));
 
         public UniTask SendListMonstersRequestAsync() =>
             SendPacketAsync(PacketType.ListMonstersRequest, new ListMonstersRequestPacket());
@@ -282,5 +306,23 @@ namespace KnightOnline.Client.Network
         }
 
         private void OnDestroy() => Disconnect();
+
+        private static IReadOnlyList<AppearanceSelectionPacket>
+            ToAppearancePackets(
+                IReadOnlyList<AppearanceSelectionData> selections)
+        {
+            if (selections == null)
+                return Array.Empty<AppearanceSelectionPacket>();
+
+            var packets = new AppearanceSelectionPacket[selections.Count];
+            for (var index = 0; index < selections.Count; index++)
+            {
+                AppearanceSelectionData selection = selections[index];
+                packets[index] = new AppearanceSelectionPacket(
+                    selection.SlotDefinitionId,
+                    selection.OptionDefinitionId);
+            }
+            return packets;
+        }
     }
 }

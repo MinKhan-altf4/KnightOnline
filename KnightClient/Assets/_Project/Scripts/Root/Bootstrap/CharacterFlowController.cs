@@ -33,6 +33,8 @@ namespace KnightOnline.Client.Core.Bootstrap
         private readonly PanelRefs _panels;
         private readonly ClientAuthenticationSettings _authenticationSettings;
         private readonly AuthenticationFlowService _authenticationFlow;
+        private readonly ClientGameplaySettings _gameplaySettings;
+        private readonly CharacterSelectionService _characterSelection;
 
         private IDisposable _connectionSubscription;
         private IDisposable _listSubscription;
@@ -43,11 +45,16 @@ namespace KnightOnline.Client.Core.Bootstrap
         private IDisposable _accountReadySubscription;
         private IDisposable _backSubscription;
         private IDisposable _entryRequiredSubscription;
+        private IDisposable _creationSlotSubscription;
+        private IDisposable _creationCancelledSubscription;
+        private IDisposable _nameCheckSubscription;
 
         public CharacterFlowController(IEventBus eventBus, CharacterService characterService,
             GameSession gameSession, PanelRefs panels,
             ClientAuthenticationSettings authenticationSettings,
-            AuthenticationFlowService authenticationFlow)
+            AuthenticationFlowService authenticationFlow,
+            ClientGameplaySettings gameplaySettings,
+            CharacterSelectionService characterSelection)
         {
             _eventBus = eventBus;
             _characterService = characterService;
@@ -55,6 +62,8 @@ namespace KnightOnline.Client.Core.Bootstrap
             _panels = panels;
             _authenticationSettings = authenticationSettings;
             _authenticationFlow = authenticationFlow;
+            _gameplaySettings = gameplaySettings;
+            _characterSelection = characterSelection;
         }
 
         public void Start()
@@ -80,6 +89,29 @@ namespace KnightOnline.Client.Core.Bootstrap
                     request =>
                     {
                         _ = _characterService.RequestCreateCharacter(
+                            request.Draft);
+                    });
+            _creationSlotSubscription =
+                _eventBus.Subscribe<CharacterCreationSlotRequestedEvent>(
+                    requestedSlot =>
+                    {
+                        SetActivePanel(_panels.CharacterCreationPanel);
+                        _ = _characterService.RequestCreationCatalog(
+                            _gameplaySettings.ServerId);
+                    });
+            _creationCancelledSubscription =
+                _eventBus.Subscribe<CharacterCreationCancelledEvent>(
+                    cancelled =>
+                    {
+                        SetActivePanel(_panels.CharacterSelectPanel);
+                        _ = _characterService.RequestListCharacters();
+                    });
+            _nameCheckSubscription =
+                _eventBus.Subscribe<CharacterNameCheckRequestedEvent>(
+                    request =>
+                    {
+                        _ = _characterService.CheckName(
+                            request.ServerId,
                             request.CharacterName);
                     });
             _selectionSubscription = _eventBus.Subscribe<CharacterSelectedEvent>(OnCharacterSelected);
@@ -104,14 +136,13 @@ namespace KnightOnline.Client.Core.Bootstrap
 
         private void OnCharacterListReceived(CharacterListReceivedEvent e)
         {
-            SetActivePanel(e.Characters != null && e.Characters.Count > 0
-                ? _panels.CharacterSelectPanel
-                : _panels.CharacterCreationPanel);
+            SetActivePanel(_panels.CharacterSelectPanel);
         }
 
         private void OnCharacterCreationResult(CharacterCreationResultEvent e)
         {
-            if (e.Success) _ = _characterService.RequestListCharacters();
+            if (e.Success && e.Character != null)
+                _characterSelection.SelectCharacter(e.Character);
         }
 
         private void OnCharacterSelected(CharacterSelectedEvent e)
@@ -146,6 +177,9 @@ namespace KnightOnline.Client.Core.Bootstrap
             _accountReadySubscription?.Dispose();
             _backSubscription?.Dispose();
             _entryRequiredSubscription?.Dispose();
+            _creationSlotSubscription?.Dispose();
+            _creationCancelledSubscription?.Dispose();
+            _nameCheckSubscription?.Dispose();
         }
     }
 }

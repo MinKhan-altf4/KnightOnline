@@ -28,6 +28,7 @@ namespace KnightOnline.Client.Root
             "https://account.example.com/register";
 
         [Header("Client Gameplay Fallbacks")]
+        [SerializeField] private string _serverId = "server-1";
         [SerializeField] private int _initialLevel = 1;
         [SerializeField] private int _initialMaximumHealth = 100;
         [SerializeField] private float _defaultMoveSpeed = 4f;
@@ -42,7 +43,8 @@ namespace KnightOnline.Client.Root
             builder.RegisterInstance(new ClientGameplaySettings(
                 _initialLevel,
                 _initialMaximumHealth,
-                _defaultMoveSpeed));
+                _defaultMoveSpeed,
+                _serverId));
             builder.RegisterInstance(new ClientAuthenticationSettings(
                 _developmentAuthenticationBypass,
                 _initialSessionCheckSeconds,
@@ -53,6 +55,10 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler, ConnectResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, CreateCharacterResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ListCharactersResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                CharacterCreationCatalogResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                CharacterNameAvailabilityResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ListMonstersResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterHealthChangedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterDiedHandler>(Lifetime.Singleton);

@@ -1,6 +1,6 @@
 # CHARACTER FLOW — KẾ HOẠCH KIẾN TRÚC VÀ TRIỂN KHAI
 
-Trạng thái: **Đã chốt định hướng, chưa triển khai code**  
+Trạng thái: **Đang triển khai — Phase 1 đến Phase 4**
 Phạm vi: Entry → Authentication/Registration → Character Select → Character
 Creation → Starter Map → Tutorial → Class Promotion
 
@@ -28,7 +28,7 @@ của người chơi.
 ```text
 Mở ứng dụng
   → Entry
-      ├── Chơi mới
+      ├── Chơi mới / Chơi tiếp
       ├── Có tài khoản / Đổi tài khoản
       ├── Đăng ký tài khoản
       └── Chọn server
@@ -133,7 +133,8 @@ CharacterSelectPanel
 - Server trả slot index; client không tự suy ra theo thứ tự danh sách.
 - Character Select được tính là Active.
 - Back giải phóng đúng Active Account Lease.
-- Timeout 15 giây nếu không chọn; giá trị lấy từ config.
+- Character Select không tự disconnect theo thời gian. Active Account Lease
+  chỉ được giải phóng khi Back, disconnect thật hoặc lease/heartbeat hết hạn.
 
 ---
 
@@ -784,3 +785,28 @@ Các nội dung sau là dữ liệu, có thể quyết định sau mà không đ
 Khi bắt đầu thực thi, phải đi theo thứ tự contract → domain invariant →
 persistence/migration → server handler → client model/service → UI. Không dựng UI
 hardcode trước catalog rồi vá server về sau.
+
+---
+
+## 23. Tiến độ triển khai
+
+### Foundation increment
+
+- [x] Contract catalog class/body/appearance có version.
+- [x] Bốn starter class và hai body type lấy từ server config.
+- [x] Contract tạo nhân vật có `RequestId`, `ServerId`, `SlotIndex`, class,
+  body type, appearance selections và catalog version.
+- [x] Name policy và name availability pre-check phía server.
+- [x] Persistence cho slot, class, body, map/spawn, appearance, tutorial state
+  và idempotency request.
+- [x] Unique constraint theo account/server/slot và server/name.
+- [x] Migration backfill dữ liệu character cũ.
+- [x] Character Select render cố định ba slot.
+- [x] Creation form lấy class/body/starter appearance từ catalog.
+- [x] Tạo thành công tự gửi request chọn character.
+- [ ] Preview assembler bằng sprite/addressable thật.
+- [ ] Tutorial command/state transition và reward.
+- [ ] Cosmetic entitlement/equip command.
+- [ ] Class promotion requirement engine.
+- [ ] Admin API/UI; foundation hiện chỉ chuẩn bị domain/read boundary.
+- [ ] Platform integrity adapters và security load/replay tests.

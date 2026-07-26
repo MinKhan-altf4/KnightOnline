@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Collections.Generic;
 
 namespace KnightOnline.Client.Shared.Packets
 {
@@ -27,6 +29,13 @@ namespace KnightOnline.Client.Shared.Packets
         public float MoveSpeed { get; }
         public float PositionX { get; }
         public float PositionY { get; }
+        public int SlotIndex { get; }
+        public string ClassDefinitionId { get; }
+        public string BodyTypeDefinitionId { get; }
+        public string MapDefinitionId { get; }
+        public string SpawnPointId { get; }
+        public IReadOnlyList<AppearanceSelectionPacket> AppearanceSelections
+            { get; }
 
         public SelectedCharacterPacket(
             int characterId,
@@ -36,7 +45,13 @@ namespace KnightOnline.Client.Shared.Packets
             int maximumHealth,
             float moveSpeed,
             float positionX,
-            float positionY)
+            float positionY,
+            int slotIndex = 0,
+            string classDefinitionId = "",
+            string bodyTypeDefinitionId = "",
+            string mapDefinitionId = "",
+            string spawnPointId = "",
+            IReadOnlyList<AppearanceSelectionPacket>? appearanceSelections = null)
         {
             CharacterId = characterId;
             CharacterName = characterName;
@@ -46,6 +61,13 @@ namespace KnightOnline.Client.Shared.Packets
             MoveSpeed = moveSpeed;
             PositionX = positionX;
             PositionY = positionY;
+            SlotIndex = slotIndex;
+            ClassDefinitionId = classDefinitionId;
+            BodyTypeDefinitionId = bodyTypeDefinitionId;
+            MapDefinitionId = mapDefinitionId;
+            SpawnPointId = spawnPointId;
+            AppearanceSelections =
+                appearanceSelections ?? Array.Empty<AppearanceSelectionPacket>();
         }
     }
 

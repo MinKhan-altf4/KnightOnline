@@ -5,6 +5,7 @@ namespace KnightOnline.Client.Shared.Packets
         DuplicateAccountSession = 1,
         AccountTemporarilyLocked = 2,
         ServerShutdown = 3,
+        // Reserved for protocol compatibility. The timeout behavior was removed.
         CharacterSelectionTimeout = 4,
     }
 

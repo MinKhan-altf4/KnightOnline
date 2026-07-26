@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using KnightOnline.Client.Network;
+using KnightOnline.Client.Data.Models;
 
 namespace KnightOnline.Client.Gameplay.Services
 {
@@ -17,15 +18,23 @@ namespace KnightOnline.Client.Gameplay.Services
             _networkClient = networkClient;
         }
 
-        public UniTask RequestCreateCharacter(string characterName)
+        public UniTask RequestCreateCharacter(CharacterCreationDraftData draft)
         {
-            return _networkClient.SendCreateCharacterRequestAsync(characterName);
+            return _networkClient.SendCreateCharacterRequestAsync(draft);
         }
 
         public UniTask RequestListCharacters()
         {
             return _networkClient.SendListCharactersRequestAsync();
         }
+
+        public UniTask RequestCreationCatalog(string serverId) =>
+            _networkClient.SendCharacterCreationCatalogRequestAsync(serverId);
+
+        public UniTask CheckName(string serverId, string characterName) =>
+            _networkClient.SendCheckCharacterNameRequestAsync(
+                serverId,
+                characterName);
         
     }
 }

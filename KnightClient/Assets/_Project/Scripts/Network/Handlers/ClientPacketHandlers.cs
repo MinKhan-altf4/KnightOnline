@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
@@ -56,10 +57,9 @@ namespace KnightOnline.Client.Network.Handlers
             _events.Publish(new CharacterCreationResultEvent(
                 success,
                 packet.Message,
-                success
-                    ? CharacterPacketMapper.Create(
-                        packet.Message,
-                        _settings.InitialLevel,
+                success && packet.Character != null
+                    ? CharacterPacketMapper.ToModel(
+                        packet.Character,
                         _settings)
                     : null));
         }
@@ -92,15 +92,91 @@ namespace KnightOnline.Client.Network.Handlers
                 if (string.IsNullOrWhiteSpace(entry.CharacterName))
                     continue;
 
-                CharacterData character = CharacterPacketMapper.Create(
-                    entry.CharacterName,
-                    entry.Level,
-                    _settings);
-                character.CharacterId = entry.CharacterId;
-                characters.Add(character);
+                characters.Add(CharacterPacketMapper.ToModel(entry, _settings));
             }
 
             _events.Publish(new CharacterListReceivedEvent(characters));
+        }
+    }
+
+    public sealed class CharacterCreationCatalogResponseHandler :
+        IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public CharacterCreationCatalogResponseHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType =>
+            PacketType.GetCharacterCreationCatalogResponse;
+
+        public void Handle(string payload)
+        {
+            GetCharacterCreationCatalogResponsePacket packet =
+                JsonSerializer.Deserialize<
+                    GetCharacterCreationCatalogResponsePacket>(payload);
+            if (packet == null)
+                return;
+
+            var catalog = new CharacterCreationCatalogData
+            {
+                CatalogVersion = packet.CatalogVersion,
+                ServerId = packet.ServerId,
+                Classes = packet.Classes.Select(value =>
+                    new CharacterClassDefinitionData
+                    {
+                        DefinitionId = value.DefinitionId,
+                        DisplayName = value.DisplayName,
+                        Description = value.Description,
+                        AllowedBodyTypeIds = value.AllowedBodyTypeIds,
+                        PreviewAssetAddress = value.PreviewAssetAddress,
+                    }).ToArray(),
+                BodyTypes = packet.BodyTypes.Select(value =>
+                    new BodyTypeDefinitionData
+                    {
+                        DefinitionId = value.DefinitionId,
+                        DisplayName = value.DisplayName,
+                    }).ToArray(),
+                AppearanceOptions = packet.AppearanceOptions.Select(value =>
+                    new AppearanceDefinitionData
+                    {
+                        DefinitionId = value.DefinitionId,
+                        SlotDefinitionId = value.SlotDefinitionId,
+                        DisplayName = value.DisplayName,
+                        AllowedBodyTypeIds = value.AllowedBodyTypeIds,
+                        AllowedClassDefinitionIds =
+                            value.AllowedClassDefinitionIds,
+                        AssetAddress = value.AssetAddress,
+                        IsStarterOption = value.IsStarterOption,
+                    }).ToArray(),
+            };
+            _events.Publish(
+                new CharacterCreationCatalogReceivedEvent(catalog));
+        }
+    }
+
+    public sealed class CharacterNameAvailabilityResponseHandler :
+        IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public CharacterNameAvailabilityResponseHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType => PacketType.CheckCharacterNameResponse;
+
+        public void Handle(string payload)
+        {
+            CheckCharacterNameResponsePacket packet =
+                JsonSerializer.Deserialize<
+                    CheckCharacterNameResponsePacket>(payload);
+            if (packet != null)
+            {
+                _events.Publish(
+                    new CharacterNameAvailabilityReceivedEvent(
+                        packet.IsAvailable,
+                        packet.Message));
+            }
         }
     }
 
@@ -199,7 +275,19 @@ namespace KnightOnline.Client.Network.Handlers
                 CharacterId = selected.CharacterId,
                 SpawnPosition = new Vector2(
                     selected.PositionX,
-                    selected.PositionY)
+                    selected.PositionY),
+                SlotIndex = selected.SlotIndex,
+                ClassDefinitionId = selected.ClassDefinitionId,
+                BodyTypeDefinitionId = selected.BodyTypeDefinitionId,
+                CurrentMapDefinitionId = selected.MapDefinitionId,
+                CurrentSpawnPointId = selected.SpawnPointId,
+                AppearanceSelections =
+                    selected.AppearanceSelections.Select(value =>
+                        new AppearanceSelectionData
+                        {
+                            SlotDefinitionId = value.SlotDefinitionId,
+                            OptionDefinitionId = value.OptionDefinitionId,
+                        }).ToArray(),
             };
 
             _events.Publish(new CharacterSelectedEvent(character));
@@ -410,6 +498,33 @@ namespace KnightOnline.Client.Network.Handlers
                 settings.InitialMaximumHealth,
                 settings.InitialMaximumHealth,
                 settings.DefaultMoveSpeed);
+
+        public static CharacterData ToModel(
+            CharacterSummaryPacket packet,
+            ClientGameplaySettings settings)
+        {
+            CharacterData character = Create(
+                packet.CharacterName,
+                packet.Level,
+                settings);
+            character.CharacterId = packet.CharacterId;
+            character.SlotIndex = packet.SlotIndex;
+            character.ClassDefinitionId = packet.ClassDefinitionId;
+            character.BodyTypeDefinitionId = packet.BodyTypeDefinitionId;
+            character.CurrentMapDefinitionId =
+                packet.CurrentMapDefinitionId;
+            character.CurrentSpawnPointId = packet.CurrentSpawnPointId;
+            character.SpawnPosition =
+                new Vector2(packet.PositionX, packet.PositionY);
+            character.AppearanceSelections =
+                packet.AppearanceSelections.Select(value =>
+                    new AppearanceSelectionData
+                    {
+                        SlotDefinitionId = value.SlotDefinitionId,
+                        OptionDefinitionId = value.OptionDefinitionId,
+                    }).ToArray();
+            return character;
+        }
     }
 
     internal static class MonsterPacketMapper

@@ -33,6 +33,7 @@ namespace KnightOnline.Client.Gameplay.Services
         private string _registrationVerifier;
         private string _registrationUsername;
         private string _registrationPassword;
+        private bool _registrationPending;
 
         public AuthenticationFlowService(
             NetworkClient network,
@@ -81,10 +82,7 @@ namespace KnightOnline.Client.Gameplay.Services
             string username,
             string password)
         {
-            if (!_isAuthenticated ||
-                _session == null ||
-                !_session.IsGuest ||
-                string.IsNullOrWhiteSpace(username) ||
+            if (string.IsNullOrWhiteSpace(username) ||
                 string.IsNullOrEmpty(password))
             {
                 _events.Publish(new AuthenticationPopupRequestedEvent(
@@ -92,9 +90,55 @@ namespace KnightOnline.Client.Gameplay.Services
                 return;
             }
 
-            _registrationVerifier = CreatePkceVerifier();
             _registrationUsername = username.Trim();
             _registrationPassword = password;
+            _registrationPending = true;
+
+            if (!_isAuthenticated)
+            {
+                if (!_network.IsConnected)
+                {
+                    ReconnectAndRetryAsync(
+                        () => RegisterGuestForDevelopment(
+                            _registrationUsername,
+                            _registrationPassword)).Forget();
+                    return;
+                }
+
+                _isCreatingGuest = true;
+                _isManualLogin = false;
+                PublishLoading("Đang chuẩn bị phiên đăng ký...");
+                _network.SendCreateGuestRequestAsync(
+                        _store.GetOrCreateDeviceId())
+                    .Forget();
+                return;
+            }
+
+            if (_session == null || !_session.IsGuest)
+            {
+                ClearRegistrationSecrets();
+                _events.Publish(new AuthenticationPopupRequestedEvent(
+                    "Tài khoản hiện tại đã được đăng ký."));
+                return;
+            }
+
+            BeginRegistrationTransaction();
+        }
+
+        private void BeginRegistrationTransaction()
+        {
+            if (_session == null ||
+                !_session.IsGuest ||
+                string.IsNullOrWhiteSpace(_session.RefreshToken))
+            {
+                ClearRegistrationSecrets();
+                HideLoading();
+                _events.Publish(new AuthenticationPopupRequestedEvent(
+                    "Không thể chuẩn bị phiên đăng ký."));
+                return;
+            }
+
+            _registrationVerifier = CreatePkceVerifier();
             PublishLoading("Đang tạo giao dịch đăng ký...");
             _network.SendBeginRegistrationRequestAsync(
                     Guid.NewGuid(),
@@ -238,6 +282,14 @@ namespace KnightOnline.Client.Gameplay.Services
             {
                 case AuthenticationOutcome.Success:
                     SaveReturnedSession(result);
+                    if (_registrationPending && result.IsGuest)
+                    {
+                        _isAuthenticated = true;
+                        _isCreatingGuest = false;
+                        _isManualLogin = false;
+                        BeginRegistrationTransaction();
+                        return;
+                    }
                     ClearPendingCredentials();
                     CompleteSuccess(result);
                     return;
@@ -266,6 +318,8 @@ namespace KnightOnline.Client.Gameplay.Services
 
             if (_isCreatingGuest || _isManualLogin)
                 ClearPendingCredentials();
+            if (_registrationPending)
+                ClearRegistrationSecrets();
 
             _isCreatingGuest = false;
             _isManualLogin = false;
@@ -423,6 +477,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void ClearRegistrationSecrets()
         {
+            _registrationPending = false;
             _registrationVerifier = null;
             _registrationUsername = null;
             _registrationPassword = null;

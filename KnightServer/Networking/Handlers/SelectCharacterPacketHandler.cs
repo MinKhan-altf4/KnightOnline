@@ -91,8 +91,8 @@ public sealed class SelectCharacterPacketHandler(
 
         DateTime utcNow = clock.UtcNow;
         var spawnPosition = new Vector2(
-            characterOptions.SpawnPositionX,
-            characterOptions.SpawnPositionY);
+            character.PositionX,
+            character.PositionY);
         var session = new PlayerSession(
             character.CharacterId,
             character.CharacterName,
@@ -130,7 +130,13 @@ public sealed class SelectCharacterPacketHandler(
                     session.MaximumHealth,
                     session.MoveSpeed,
                     session.Position.X,
-                    session.Position.Y)),
+                    session.Position.Y,
+                    character.SlotIndex,
+                    character.ClassDefinitionId,
+                    character.BodyTypeDefinitionId,
+                    character.CurrentMapDefinitionId,
+                    character.CurrentSpawnPointId,
+                    character.AppearanceSelections)),
             cancellationToken);
     }
 

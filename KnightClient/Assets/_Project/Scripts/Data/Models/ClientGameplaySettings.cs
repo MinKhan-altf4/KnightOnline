@@ -11,7 +11,8 @@ namespace KnightOnline.Client.Data.Models
         public ClientGameplaySettings(
             int initialLevel,
             int initialMaximumHealth,
-            float defaultMoveSpeed)
+            float defaultMoveSpeed,
+            string serverId)
         {
             if (initialLevel <= 0)
                 throw new ArgumentOutOfRangeException(nameof(initialLevel));
@@ -19,14 +20,20 @@ namespace KnightOnline.Client.Data.Models
                 throw new ArgumentOutOfRangeException(nameof(initialMaximumHealth));
             if (defaultMoveSpeed <= 0f)
                 throw new ArgumentOutOfRangeException(nameof(defaultMoveSpeed));
+            if (string.IsNullOrWhiteSpace(serverId))
+                throw new ArgumentException(
+                    "ServerId is required.",
+                    nameof(serverId));
 
             InitialLevel = initialLevel;
             InitialMaximumHealth = initialMaximumHealth;
             DefaultMoveSpeed = defaultMoveSpeed;
+            ServerId = serverId;
         }
 
         public int InitialLevel { get; }
         public int InitialMaximumHealth { get; }
         public float DefaultMoveSpeed { get; }
+        public string ServerId { get; }
     }
 }

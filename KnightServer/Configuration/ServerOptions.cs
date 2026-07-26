@@ -74,16 +74,25 @@ public sealed class ServerOptions
                 "Guest.MaximumLevel must be positive.");
         if (Characters.MaximumPerAccount <= 0)
             throw new InvalidDataException("Characters.MaximumPerAccount must be positive.");
+        if (Characters.MaximumPerAccount != 3)
+            throw new InvalidDataException(
+                "Character flow currently requires exactly three slots.");
         if (Characters.InitialLevel <= 0)
             throw new InvalidDataException("Characters.InitialLevel must be positive.");
         if (Characters.InitialMaximumHealth <= 0 || Characters.MoveSpeed <= 0)
             throw new InvalidDataException(
                 "Character health and move speed must be positive.");
-        if (Characters.SelectionTimeoutSeconds <= 0)
-            throw new InvalidDataException(
-                "Characters.SelectionTimeoutSeconds must be positive.");
         if (string.IsNullOrWhiteSpace(Characters.DevelopmentAccountKey))
             throw new InvalidDataException("Characters.DevelopmentAccountKey is required.");
+        if (string.IsNullOrWhiteSpace(Characters.ServerId) ||
+            Characters.CatalogVersion <= 0 ||
+            string.IsNullOrWhiteSpace(Characters.StartingMapDefinitionId) ||
+            string.IsNullOrWhiteSpace(Characters.StartingSpawnPointId))
+        {
+            throw new InvalidDataException(
+                "Character server, catalog and starter spawn settings are required.");
+        }
+        ValidateCharacterCatalog(Characters);
         if (Combat.BaseAttackDamage <= 0)
             throw new InvalidDataException("Combat.BaseAttackDamage must be positive.");
         if (Combat.AttackRange <= 0 || Combat.AttackCooldownMilliseconds <= 0)
@@ -111,6 +120,72 @@ public sealed class ServerOptions
         if (MonsterSpawns.Any(spawn => !definitionIds.Contains(spawn.DefinitionId)))
             throw new InvalidDataException(
                 "Every monster spawn must reference an existing definition.");
+    }
+
+    private static void ValidateCharacterCatalog(CharacterOptions characters)
+    {
+        if (characters.Classes.Count == 0 ||
+            characters.BodyTypes.Count == 0 ||
+            characters.AppearanceOptions.Count == 0)
+        {
+            throw new InvalidDataException(
+                "Character creation catalog cannot be empty.");
+        }
+
+        EnsureUnique(
+            characters.Classes.Select(value => value.DefinitionId),
+            "character class");
+        EnsureUnique(
+            characters.BodyTypes.Select(value => value.DefinitionId),
+            "body type");
+        EnsureUnique(
+            characters.AppearanceOptions.Select(value => value.DefinitionId),
+            "appearance");
+
+        var bodyIds = characters.BodyTypes
+            .Select(value => value.DefinitionId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (CharacterClassOptions classDefinition in characters.Classes)
+        {
+            if (string.IsNullOrWhiteSpace(classDefinition.DefinitionId) ||
+                string.IsNullOrWhiteSpace(classDefinition.DisplayName) ||
+                classDefinition.AllowedBodyTypeIds.Count == 0 ||
+                classDefinition.AllowedBodyTypeIds.Any(id => !bodyIds.Contains(id)))
+            {
+                throw new InvalidDataException(
+                    $"Invalid class definition '{classDefinition.DefinitionId}'.");
+            }
+        }
+
+        string[] requiredSlots = ["base_body", "hair", "bottom", "expression"];
+        foreach (string slot in requiredSlots)
+        {
+            if (!characters.AppearanceOptions.Any(
+                    value =>
+                        value.IsStarterOption &&
+                        string.Equals(
+                            value.SlotDefinitionId,
+                            slot,
+                            StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidDataException(
+                    $"Missing starter appearance for slot '{slot}'.");
+            }
+        }
+    }
+
+    private static void EnsureUnique(
+        IEnumerable<string> ids,
+        string label)
+    {
+        string[] values = ids.ToArray();
+        if (values.Any(string.IsNullOrWhiteSpace) ||
+            values.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+            values.Length)
+        {
+            throw new InvalidDataException(
+                $"{label} definition ids must be non-empty and unique.");
+        }
     }
 }
 
@@ -144,6 +219,7 @@ public sealed class RegistrationOptions
 
 public sealed class CharacterOptions
 {
+    public string ServerId { get; set; } = "server-1";
     public string DevelopmentAccountKey { get; set; } = string.Empty;
     public int MaximumPerAccount { get; set; }
     public int InitialLevel { get; set; }
@@ -151,7 +227,39 @@ public sealed class CharacterOptions
     public float MoveSpeed { get; set; }
     public float SpawnPositionX { get; set; }
     public float SpawnPositionY { get; set; }
-    public int SelectionTimeoutSeconds { get; set; } = 15;
+    public int CatalogVersion { get; set; } = 1;
+    public string StartingMapDefinitionId { get; set; } = "tutorial_map_01";
+    public string StartingSpawnPointId { get; set; } =
+        "tutorial_spawn_default";
+    public List<CharacterClassOptions> Classes { get; set; } = [];
+    public List<BodyTypeOptions> BodyTypes { get; set; } = [];
+    public List<AppearanceDefinitionOptions> AppearanceOptions { get; set; } = [];
+}
+
+public sealed class CharacterClassOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public List<string> AllowedBodyTypeIds { get; set; } = [];
+    public string PreviewAssetAddress { get; set; } = string.Empty;
+}
+
+public sealed class BodyTypeOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+}
+
+public sealed class AppearanceDefinitionOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string SlotDefinitionId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public List<string> AllowedBodyTypeIds { get; set; } = [];
+    public List<string> AllowedClassDefinitionIds { get; set; } = [];
+    public string AssetAddress { get; set; } = string.Empty;
+    public bool IsStarterOption { get; set; }
 }
 
 public sealed class CombatOptions

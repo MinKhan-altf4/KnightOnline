@@ -91,7 +91,8 @@ Khi đăng nhập thành công:
 - Lease được claim sau khi xác thực thành công, trước khi hiện Character Select.
 - Thiết bị đến sau không được thay thế hoặc disconnect người đang Active.
 - Nếu account đã Active, thiết bị đến sau chỉ nhận popup rồi quay về Entry.
-- Character Select có timeout 15 giây nếu người chơi không chọn nhân vật.
+- Character Select không tự disconnect theo thời gian; phiên được quản lý bằng
+  Active Account Lease và heartbeat.
 - Khi timeout, server giải phóng đúng lease và disconnect về Entry.
 - Một account được tạo tối đa ba nhân vật trên mỗi server.
 - Chọn nhân vật vẫn phải kiểm tra:
@@ -440,7 +441,7 @@ Không mở Production nếu còn một trong các điều sau:
 | Token hợp lệ, account inactive | Rotate token, claim lease, vào Character Select |
 | Account đang Active nơi khác | Người cũ giữ phiên; người mới nhận popup |
 | Hai thiết bị đăng nhập gần đồng thời | Chỉ một atomic lease claim thành công |
-| Không chọn character trong 15 giây | Release đúng lease, disconnect về Entry |
+| Đứng lâu tại Character Select | Vẫn giữ phiên khi connection/lease còn hợp lệ |
 | Chọn character không thuộc account | Server từ chối |
 | Character đã online | Server từ chối |
 | Kill app/mất mạng | Lease hết hạn sau TTL/grace |

@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Accounts;
 using KnightOnline.Server.Combat;
+using KnightOnline.Server.Characters;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Monsters;
 using KnightOnline.Server.Networking;
@@ -26,11 +27,15 @@ public static class Program
         DbContextOptions<KnightDbContext> databaseOptions =
             await ConfigureDatabaseAsync();
         IServerClock clock = new SystemServerClock();
+        ICharacterCreationCatalog characterCatalog =
+            CreateCharacterCatalog(options.Characters);
+        var characterNamePolicy = new CharacterNamePolicy();
 
         var characterRepository = new CharacterRepository(
             databaseOptions,
-            options.Characters.MaximumPerAccount,
-            options.Characters.InitialLevel,
+            options.Characters,
+            characterCatalog,
+            characterNamePolicy,
             clock);
         await characterRepository.EnsureAccountExistsAsync(
             options.Characters.DevelopmentAccountKey);
@@ -42,10 +47,6 @@ public static class Program
         var activePlayers = new ActivePlayerRegistry();
         IActiveAccountLeaseStore accountSessions =
             new InMemoryActiveAccountLeaseStore();
-        var selectionLeases = new CharacterSelectionLeaseService(
-            accountSessions,
-            TimeSpan.FromSeconds(
-                options.Characters.SelectionTimeoutSeconds));
         var authentication = new AccountAuthenticationService(
             databaseOptions,
             new AuthTokenProtector(),
@@ -89,25 +90,29 @@ public static class Program
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock,
-                selectionLeases),
+                clock),
             new ResumeAccountPacketHandler(
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock,
-                selectionLeases),
+                clock),
             new LoginPacketHandler(
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock,
-                selectionLeases),
+                clock),
             new LeaveAccountSessionPacketHandler(accountSessions),
             new BeginRegistrationPacketHandler(registration),
             new CompleteDevelopmentRegistrationPacketHandler(
                 registration,
                 options.Registration.DevelopmentCompletionEnabled),
+            new GetCharacterCreationCatalogPacketHandler(
+                characterCatalog,
+                options.Characters),
+            new CheckCharacterNamePacketHandler(
+                characterRepository,
+                characterNamePolicy,
+                options.Characters),
             new CreateCharacterPacketHandler(characterRepository),
             new ListCharactersPacketHandler(characterRepository),
             new ListMonstersPacketHandler(monsterService),
@@ -159,6 +164,33 @@ public static class Program
                 "client-connection");
         }
     }
+
+    private static ICharacterCreationCatalog CreateCharacterCatalog(
+        CharacterOptions options) =>
+        new ConfiguredCharacterCreationCatalog(
+            new GetCharacterCreationCatalogResponsePacket(
+                options.CatalogVersion,
+                options.ServerId,
+                options.Classes.Select(value =>
+                    new CharacterClassDefinitionPacket(
+                        value.DefinitionId,
+                        value.DisplayName,
+                        value.Description,
+                        value.AllowedBodyTypeIds,
+                        value.PreviewAssetAddress)).ToArray(),
+                options.BodyTypes.Select(value =>
+                    new BodyTypeDefinitionPacket(
+                        value.DefinitionId,
+                        value.DisplayName)).ToArray(),
+                options.AppearanceOptions.Select(value =>
+                    new AppearanceDefinitionPacket(
+                        value.DefinitionId,
+                        value.SlotDefinitionId,
+                        value.DisplayName,
+                        value.AllowedBodyTypeIds,
+                        value.AllowedClassDefinitionIds,
+                        value.AssetAddress,
+                        value.IsStarterOption)).ToArray()));
 
     private static async Task RunConnectionAsync(
         ClientConnection connection,
