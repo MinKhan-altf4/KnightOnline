@@ -20,8 +20,18 @@ namespace KnightOnline.Client.UI
             AuthenticationFlowService authentication,
             IEventBus events)
         {
-            _authentication = authentication;
-            _events = events;
+            Initialize(authentication, events);
+        }
+
+        public void Initialize(
+            AuthenticationFlowService authentication,
+            IEventBus events)
+        {
+            _authentication = authentication ??
+                throw new ArgumentNullException(nameof(authentication));
+            _events = events ??
+                throw new ArgumentNullException(nameof(events));
+            SubscribeToResults();
         }
 
         private void Awake() => _view = GetComponent<GuestRegistrationPanel>();
@@ -30,9 +40,18 @@ namespace KnightOnline.Client.UI
         {
             if (_view != null)
                 _view.RegistrationRequested += Register;
-            if (_events != null)
-                _resultSubscription =
-                    _events.Subscribe<AuthenticationResultEvent>(OnResult);
+            SubscribeToResults();
+        }
+
+        private void SubscribeToResults()
+        {
+            if (!isActiveAndEnabled ||
+                _events == null ||
+                _resultSubscription != null)
+                return;
+
+            _resultSubscription =
+                _events.Subscribe<AuthenticationResultEvent>(OnResult);
         }
 
         private void OnDisable()

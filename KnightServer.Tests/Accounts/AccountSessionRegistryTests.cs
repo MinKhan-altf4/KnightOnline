@@ -32,8 +32,10 @@ public sealed class AccountSessionRegistryTests
         Guid other = Guid.NewGuid();
         await store.TryClaimAsync("account-1", owner);
 
-        await store.ReleaseAsync("account-1", other);
+        bool releasedByOther =
+            await store.ReleaseAsync("account-1", other);
 
+        Assert.False(releasedByOther);
         Assert.True(await store.IsOwnerAsync("account-1", owner));
     }
 }

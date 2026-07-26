@@ -4,6 +4,14 @@ using System.Collections.Generic;
 
 namespace KnightOnline.Client.Data.Events
 {
+    public readonly struct CharacterCreationRequestedEvent : IGameEvent
+    {
+        public readonly string CharacterName;
+
+        public CharacterCreationRequestedEvent(string characterName) =>
+            CharacterName = characterName;
+    }
+
     public readonly struct CharacterSelectionBackRequestedEvent : IGameEvent
     {
     }

@@ -19,7 +19,7 @@ public interface IActiveAccountLeaseStore
         Guid connectionId,
         CancellationToken cancellationToken = default);
 
-    ValueTask ReleaseAsync(
+    ValueTask<bool> ReleaseAsync(
         string accountKey,
         Guid connectionId,
         CancellationToken cancellationToken = default);
@@ -73,7 +73,7 @@ public sealed class InMemoryActiveAccountLeaseStore :
         }
     }
 
-    public ValueTask ReleaseAsync(
+    public ValueTask<bool> ReleaseAsync(
         string accountKey,
         Guid connectionId,
         CancellationToken cancellationToken = default)
@@ -85,9 +85,10 @@ public sealed class InMemoryActiveAccountLeaseStore :
                 current == connectionId)
             {
                 _owners.Remove(accountKey);
+                return ValueTask.FromResult(true);
             }
         }
 
-        return ValueTask.CompletedTask;
+        return ValueTask.FromResult(false);
     }
 }

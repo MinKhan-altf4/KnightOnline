@@ -30,8 +30,17 @@ namespace KnightOnline.Client.UI
         [Inject]
         public void Construct(IEventBus eventBus, CharacterSelectionService selectionService)
         {
-            _eventBus = eventBus;
-            _selectionService = selectionService;
+            Initialize(eventBus, selectionService);
+        }
+
+        public void Initialize(
+            IEventBus eventBus,
+            CharacterSelectionService selectionService)
+        {
+            _eventBus = eventBus ??
+                throw new ArgumentNullException(nameof(eventBus));
+            _selectionService = selectionService ??
+                throw new ArgumentNullException(nameof(selectionService));
         }
 
         private void Start()

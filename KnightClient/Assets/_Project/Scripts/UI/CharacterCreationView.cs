@@ -3,7 +3,6 @@ using TMPro;
 using VContainer;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
-using KnightOnline.Client.Gameplay.Services;
 
 namespace KnightOnline.Client.UI
 {
@@ -13,16 +12,14 @@ namespace KnightOnline.Client.UI
         [SerializeField] private TextMeshProUGUI _resultText;
 
         private IEventBus _eventBus;
-        private CharacterService _characterService;
         private System.IDisposable _subscription;
 
         [Inject]
-        public void Construct(IEventBus eventBus, CharacterService characterService)
-        { 
-            _eventBus = eventBus;
-            _characterService = characterService;
-          
-        }
+        public void Construct(IEventBus eventBus) => Initialize(eventBus);
+
+        public void Initialize(IEventBus eventBus) =>
+            _eventBus = eventBus ??
+                throw new System.ArgumentNullException(nameof(eventBus));
 
         private void Start()
         {   
@@ -32,12 +29,23 @@ namespace KnightOnline.Client.UI
         // Gắn method này vào OnClick của nút "Tạo nhân vật" trong Inspector
         public void OnCreateCharacterClicked()
         {
-            string name = _nameInput.text;
-            _ = _characterService.RequestCreateCharacter(name);
+            if (_eventBus == null)
+            {
+                Debug.LogError(
+                    "[CharacterCreationView] EventBus was not injected.",
+                    this);
+                return;
+            }
+
+            string name = _nameInput?.text?.Trim() ?? string.Empty;
+            _eventBus.Publish(new CharacterCreationRequestedEvent(name));
         }
 
         private void OnCharacterCreationResult(CharacterCreationResultEvent e)
         {
+            if (_resultText == null)
+                return;
+
             _resultText.text = e.Success
                 ? $"Tạo thành công: {e.Character.CharacterName}"
                 : $"Thất bại: {e.Message}";

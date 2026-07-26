@@ -37,6 +37,7 @@ namespace KnightOnline.Client.Core.Bootstrap
         private IDisposable _connectionSubscription;
         private IDisposable _listSubscription;
         private IDisposable _creationSubscription;
+        private IDisposable _creationRequestedSubscription;
         private IDisposable _selectionSubscription;
         private IDisposable _selectionFailedSubscription;
         private IDisposable _accountReadySubscription;
@@ -74,6 +75,13 @@ namespace KnightOnline.Client.Core.Bootstrap
                     });
             _listSubscription = _eventBus.Subscribe<CharacterListReceivedEvent>(OnCharacterListReceived);
             _creationSubscription = _eventBus.Subscribe<CharacterCreationResultEvent>(OnCharacterCreationResult);
+            _creationRequestedSubscription =
+                _eventBus.Subscribe<CharacterCreationRequestedEvent>(
+                    request =>
+                    {
+                        _ = _characterService.RequestCreateCharacter(
+                            request.CharacterName);
+                    });
             _selectionSubscription = _eventBus.Subscribe<CharacterSelectedEvent>(OnCharacterSelected);
             _selectionFailedSubscription =
                 _eventBus.Subscribe<CharacterSelectionFailedEvent>(
@@ -132,6 +140,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             _connectionSubscription?.Dispose();
             _listSubscription?.Dispose();
             _creationSubscription?.Dispose();
+            _creationRequestedSubscription?.Dispose();
             _selectionSubscription?.Dispose();
             _selectionFailedSubscription?.Dispose();
             _accountReadySubscription?.Dispose();

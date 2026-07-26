@@ -25,6 +25,11 @@ namespace KnightOnline.Client.Network
         private IEventBus _eventBus;
         private NetworkSettings _settings;
         private IReadOnlyDictionary<PacketType, IClientPacketHandler> _packetHandlers;
+        public bool IsConnected =>
+            !_isDisconnecting &&
+            _tcpClient != null &&
+            _tcpClient.Connected &&
+            _stream != null;
 
         [Inject]
         public void Construct(

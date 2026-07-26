@@ -27,9 +27,12 @@ public sealed class CharacterSelectionLeaseService(
                     connection.ConnectionId))
                 return;
 
-            await sessions.ReleaseAsync(
+            bool released = await sessions.ReleaseAsync(
                 accountKey,
                 connection.ConnectionId);
+            if (!released)
+                return;
+
             await connection.ForceDisconnectAsync(
                 ForcedDisconnectReason.CharacterSelectionTimeout,
                 "Bạn bị mất kết nối máy chủ");

@@ -29,6 +29,7 @@ namespace KnightOnline.Client.Gameplay.Services
         private bool _isCreatingGuest;
         private bool _isManualLogin;
         private bool _isAuthenticated;
+        private bool _isReconnectingForRequest;
         private string _registrationVerifier;
         private string _registrationUsername;
         private string _registrationPassword;
@@ -135,6 +136,11 @@ namespace KnightOnline.Client.Gameplay.Services
         {
             if (_isAuthenticated)
                 return;
+            if (!_network.IsConnected)
+            {
+                ReconnectAndRetryAsync(PlayNew).Forget();
+                return;
+            }
 
             _isCreatingGuest = true;
             _isManualLogin = false;
@@ -155,6 +161,11 @@ namespace KnightOnline.Client.Gameplay.Services
         {
             if (_isAuthenticated)
                 return;
+            if (!_network.IsConnected)
+            {
+                ReconnectAndRetryAsync(Continue).Forget();
+                return;
+            }
 
             _isCreatingGuest = false;
             PublishLoading("Đang kiểm tra tài khoản...");
@@ -203,8 +214,17 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void OnConnectionResult(ServerConnectionResultEvent result)
         {
-            if (result.Result != ConnectionOutcome.Success ||
-                _settings.DevelopmentBypassEnabled)
+            if (result.Result != ConnectionOutcome.Success)
+            {
+                HideLoading();
+                PublishEntry(
+                    string.IsNullOrWhiteSpace(result.Message)
+                        ? "Không thể kết nối tới máy chủ."
+                        : result.Message);
+                return;
+            }
+
+            if (_settings.DevelopmentBypassEnabled)
                 return;
 
             // A stored refresh token only changes Entry presentation. It is
@@ -289,15 +309,15 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void OnServerDisconnected(ServerDisconnectedEvent result)
         {
-            if (!result.IsForced)
-                return;
-
             _isAuthenticated = false;
             HideLoading();
             PublishEntry("Bạn bị mất kết nối máy chủ");
-            _events.Publish(new AuthenticationPopupRequestedEvent(
-                "Bạn bị mất kết nối máy chủ",
-                reconnectOnClose: true));
+            if (result.IsForced)
+            {
+                _events.Publish(new AuthenticationPopupRequestedEvent(
+                    "Bạn bị mất kết nối máy chủ",
+                    reconnectOnClose: true));
+            }
         }
 
         private void OnPopupDismissed(
@@ -311,6 +331,25 @@ namespace KnightOnline.Client.Gameplay.Services
         {
             await UniTask.Delay(TimeSpan.FromMilliseconds(300));
             await _network.ConnectAsync();
+        }
+
+        private async UniTaskVoid ReconnectAndRetryAsync(Action retry)
+        {
+            if (_isReconnectingForRequest)
+                return;
+
+            _isReconnectingForRequest = true;
+            PublishLoading("Đang kết nối lại máy chủ...");
+            await _network.ConnectAsync();
+            _isReconnectingForRequest = false;
+            if (_network.IsConnected)
+            {
+                retry?.Invoke();
+                return;
+            }
+
+            HideLoading();
+            PublishEntry("Không thể kết nối tới máy chủ.");
         }
 
         private void SaveReturnedSession(AuthenticationResultEvent result)
