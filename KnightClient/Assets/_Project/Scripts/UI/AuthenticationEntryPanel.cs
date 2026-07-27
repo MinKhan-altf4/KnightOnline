@@ -26,6 +26,8 @@ namespace KnightOnline.Client.UI
 
         [Header("Feedback")]
         [SerializeField] private TMP_Text _messageText;
+        [Header("Presentation")]
+        [SerializeField] private KnightUiTheme _theme;
 
         public event Action PlayNewRequested;
         public event Action ContinueRequested;
@@ -37,6 +39,8 @@ namespace KnightOnline.Client.UI
 
         private void Awake()
         {
+            _theme ??= KnightUiTheme.LoadDefault();
+            ApplyPresentation();
             if (_passwordInput != null)
                 _passwordInput.contentType =
                     TMP_InputField.ContentType.Password;
@@ -195,6 +199,53 @@ namespace KnightOnline.Client.UI
             TMP_Text text = button?.GetComponentInChildren<TMP_Text>(true);
             if (text != null)
                 text.text = label;
+        }
+
+        private void ApplyPresentation()
+        {
+            if (_theme == null)
+                return;
+
+            _theme.ApplyPanel(GetComponent<Image>(), true);
+            ConfigureContent(_entryContent, new Vector2(380f, 245f));
+            ConfigureContent(_loginContent, new Vector2(420f, 390f));
+
+            _theme.ApplyButton(_playNewButton);
+            _theme.ApplyButton(_showLoginButton);
+            _theme.ApplyButton(_serverButton);
+            _theme.ApplyButton(_loginButton);
+            _theme.ApplyButton(_showRegistrationButton);
+            _theme.ApplyButton(_backButton);
+            _theme.ApplyInput(_usernameInput);
+            _theme.ApplyInput(_passwordInput);
+            _theme.ApplyBodyText(_messageText, 22f);
+        }
+
+        private static void ConfigureContent(
+            GameObject content,
+            Vector2 size)
+        {
+            if (content == null)
+                return;
+
+            if (content.transform is RectTransform rect)
+            {
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition = Vector2.zero;
+                rect.sizeDelta = size;
+            }
+
+            var layout = content.GetComponent<VerticalLayoutGroup>() ??
+                content.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(10, 10, 10, 10);
+            layout.spacing = 12f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
         }
 
 #if UNITY_EDITOR

@@ -457,7 +457,8 @@ namespace KnightOnline.Client.Network.Handlers
                 packet.AccountKey,
                 packet.IsGuest,
                 packet.RefreshToken,
-                packet.RefreshTokenExpiresAtUtc));
+                packet.RefreshTokenExpiresAtUtc,
+                packet.DisplayName));
         }
 
         private static AuthenticationOutcome MapOutcome(

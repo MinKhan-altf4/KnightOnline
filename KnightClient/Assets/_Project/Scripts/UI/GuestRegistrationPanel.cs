@@ -13,12 +13,16 @@ namespace KnightOnline.Client.UI
         [SerializeField] private Button _registerButton;
         [SerializeField] private Button _cancelButton;
         [SerializeField] private TMP_Text _messageText;
+        [Header("Presentation")]
+        [SerializeField] private KnightUiTheme _theme;
 
         public event Action<string, string> RegistrationRequested;
         public event Action CancelRequested;
 
         private void Awake()
         {
+            _theme ??= KnightUiTheme.LoadDefault();
+            ApplyPresentation();
             SetPasswordMode(_passwordInput);
             SetPasswordMode(_confirmPasswordInput);
         }
@@ -103,6 +107,68 @@ namespace KnightOnline.Client.UI
         {
             if (input != null)
                 input.contentType = TMP_InputField.ContentType.Password;
+        }
+
+        private void ApplyPresentation()
+        {
+            if (_theme == null)
+                return;
+
+            _theme.ApplyPanel(GetComponent<Image>());
+            _theme.ApplyInput(_usernameInput);
+            _theme.ApplyInput(_passwordInput);
+            _theme.ApplyInput(_confirmPasswordInput);
+            _theme.ApplyButton(_registerButton);
+            _theme.ApplyButton(_cancelButton);
+            _theme.ApplyBodyText(_messageText, 20f);
+
+            RectTransform window = _usernameInput != null
+                ? _usernameInput.transform.parent as RectTransform
+                : null;
+            SetRect(
+                window,
+                Vector2.zero,
+                new Vector2(560f, 500f));
+            SetRect(
+                _usernameInput?.transform as RectTransform,
+                new Vector2(0f, 110f),
+                new Vector2(440f, 55f));
+            SetRect(
+                _passwordInput?.transform as RectTransform,
+                new Vector2(0f, 35f),
+                new Vector2(440f, 55f));
+            SetRect(
+                _confirmPasswordInput?.transform as RectTransform,
+                new Vector2(0f, -40f),
+                new Vector2(440f, 55f));
+            SetRect(
+                _registerButton?.transform as RectTransform,
+                new Vector2(-115f, -125f),
+                new Vector2(210f, 58f));
+            SetRect(
+                _cancelButton?.transform as RectTransform,
+                new Vector2(115f, -125f),
+                new Vector2(210f, 58f));
+            SetRect(
+                _messageText?.transform as RectTransform,
+                new Vector2(0f, -195f),
+                new Vector2(460f, 52f));
+        }
+
+        private static void SetRect(
+            RectTransform rect,
+            Vector2 position,
+            Vector2 size)
+        {
+            if (rect == null)
+                return;
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            rect.localScale = Vector3.one;
         }
     }
 }

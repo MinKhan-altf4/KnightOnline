@@ -191,8 +191,10 @@ public sealed class CharacterRepository(
         character.TutorialProgress.Add(
             new CharacterTutorialProgressEntity
             {
-                TutorialDefinitionId = "starter_tutorial_v1",
-                CurrentStepDefinitionId = "welcome",
+                TutorialDefinitionId =
+                    characterOptions.StartingTutorialDefinitionId,
+                CurrentStepDefinitionId =
+                    characterOptions.StartingTutorialStepDefinitionId,
                 State = TutorialProgressState.NotStarted,
                 UpdatedAtUtc = utcNow,
             });

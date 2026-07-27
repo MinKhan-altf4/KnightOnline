@@ -473,4 +473,4 @@ Bước nên thực hiện tiếp theo:
    nền tảng trước khi phát hành build cho người dùng thật.
 
 Tài liệu chi tiết riêng về registration:
-`Documentation/Production_Registration_Flow.md`.
+`Documentation/Production/Registration_Flow.md`.

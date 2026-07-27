@@ -63,6 +63,7 @@ namespace KnightOnline.Client.Shared.Packets
         public AuthenticationResultCode Result { get; }
         public string Message { get; }
         public string? AccountKey { get; }
+        public string? DisplayName { get; }
         public bool IsGuest { get; }
         public string? RefreshToken { get; }
         public DateTime RefreshTokenExpiresAtUtc { get; }
@@ -73,11 +74,13 @@ namespace KnightOnline.Client.Shared.Packets
             string? accountKey = null,
             bool isGuest = false,
             string? refreshToken = null,
-            DateTime refreshTokenExpiresAtUtc = default)
+            DateTime refreshTokenExpiresAtUtc = default,
+            string? displayName = null)
         {
             Result = result;
             Message = message;
             AccountKey = accountKey;
+            DisplayName = displayName;
             IsGuest = isGuest;
             RefreshToken = refreshToken;
             RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc;

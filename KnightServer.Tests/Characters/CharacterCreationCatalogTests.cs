@@ -59,6 +59,23 @@ public sealed class CharacterCreationCatalogTests
             result.Result);
     }
 
+    [Fact]
+    public void Validate_UsesConfiguredRequiredAppearanceSlots()
+    {
+        var catalog = new ConfiguredCharacterCreationCatalog(
+            CreateCatalog(),
+            ["base_body", "hair"]);
+
+        CharacterCreationValidationResult result = catalog.Validate(
+            CreateRequest(
+                [
+                    Selection("base_body", "body_male_001"),
+                    Selection("hair", "hair_001"),
+                ]));
+
+        Assert.True(result.IsValid);
+    }
+
     private static CreateCharacterRequestPacket CreateRequest(
         IReadOnlyList<AppearanceSelectionPacket> appearance,
         int catalogVersion = 1) =>

@@ -61,6 +61,7 @@ namespace KnightOnline.Client.Data.Events
         public readonly AuthenticationOutcome Result;
         public readonly string Message;
         public readonly string AccountKey;
+        public readonly string DisplayName;
         public readonly bool IsGuest;
         public readonly string RefreshToken;
         public readonly DateTime RefreshTokenExpiresAtUtc;
@@ -71,11 +72,13 @@ namespace KnightOnline.Client.Data.Events
             string accountKey,
             bool isGuest,
             string refreshToken,
-            DateTime refreshTokenExpiresAtUtc)
+            DateTime refreshTokenExpiresAtUtc,
+            string displayName)
         {
             Result = result;
             Message = message;
             AccountKey = accountKey;
+            DisplayName = displayName;
             IsGuest = isGuest;
             RefreshToken = refreshToken;
             RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc;

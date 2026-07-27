@@ -18,37 +18,49 @@ public sealed record CharacterCreationValidationResult(
         new(true, CreateCharacterResult.Success, string.Empty);
 }
 
-public sealed class ConfiguredCharacterCreationCatalog(
-    GetCharacterCreationCatalogResponsePacket catalog)
-    : ICharacterCreationCatalog
+public sealed class ConfiguredCharacterCreationCatalog :
+    ICharacterCreationCatalog
 {
     private static readonly StringComparer IdComparer =
         StringComparer.OrdinalIgnoreCase;
+    private readonly GetCharacterCreationCatalogResponsePacket _catalog;
+    private readonly IReadOnlyList<string> _requiredAppearanceSlotIds;
+
+    public ConfiguredCharacterCreationCatalog(
+        GetCharacterCreationCatalogResponsePacket catalog,
+        IReadOnlyList<string>? requiredAppearanceSlotIds = null)
+    {
+        _catalog = catalog ??
+            throw new ArgumentNullException(nameof(catalog));
+        _requiredAppearanceSlotIds =
+            requiredAppearanceSlotIds?.ToArray() ??
+            ["base_body", "hair", "bottom", "expression"];
+    }
 
     public GetCharacterCreationCatalogResponsePacket GetSnapshot(
         string serverId)
     {
-        if (!IdComparer.Equals(serverId, catalog.ServerId))
+        if (!IdComparer.Equals(serverId, _catalog.ServerId))
             throw new ArgumentException("Unknown server.", nameof(serverId));
 
-        return catalog;
+        return _catalog;
     }
 
     public CharacterCreationValidationResult Validate(
         CreateCharacterRequestPacket request)
     {
-        if (!IdComparer.Equals(request.ServerId, catalog.ServerId))
+        if (!IdComparer.Equals(request.ServerId, _catalog.ServerId))
             return Invalid(
                 CreateCharacterResult.InvalidSlot,
                 "The selected server is not available.");
 
-        if (request.CatalogVersion != catalog.CatalogVersion)
+        if (request.CatalogVersion != _catalog.CatalogVersion)
             return Invalid(
                 CreateCharacterResult.CatalogVersionMismatch,
                 "Character creation data changed. Please reload the catalog.");
 
         CharacterClassDefinitionPacket? selectedClass =
-            catalog.Classes.FirstOrDefault(
+            _catalog.Classes.FirstOrDefault(
                 definition => IdComparer.Equals(
                     definition.DefinitionId,
                     request.ClassDefinitionId));
@@ -60,7 +72,7 @@ public sealed class ConfiguredCharacterCreationCatalog(
         if (!selectedClass.AllowedBodyTypeIds.Contains(
                 request.BodyTypeDefinitionId,
                 IdComparer) ||
-            !catalog.BodyTypes.Any(
+            !_catalog.BodyTypes.Any(
                 definition => IdComparer.Equals(
                     definition.DefinitionId,
                     request.BodyTypeDefinitionId)))
@@ -80,7 +92,7 @@ public sealed class ConfiguredCharacterCreationCatalog(
                     "Only one appearance may be selected for each slot.");
 
             AppearanceDefinitionPacket? option =
-                catalog.AppearanceOptions.FirstOrDefault(
+                _catalog.AppearanceOptions.FirstOrDefault(
                     definition =>
                         IdComparer.Equals(
                             definition.DefinitionId,
@@ -103,8 +115,8 @@ public sealed class ConfiguredCharacterCreationCatalog(
             }
         }
 
-        string[] requiredSlots = ["base_body", "hair", "bottom", "expression"];
-        if (requiredSlots.Any(required => !selectedSlots.Contains(required)))
+        if (_requiredAppearanceSlotIds.Any(
+                required => !selectedSlots.Contains(required)))
             return Invalid(
                 CreateCharacterResult.InvalidAppearance,
                 "All required appearance slots must be selected.");

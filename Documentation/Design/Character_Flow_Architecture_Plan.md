@@ -802,7 +802,11 @@ hardcode trước catalog rồi vá server về sau.
 - [x] Unique constraint theo account/server/slot và server/name.
 - [x] Migration backfill dữ liệu character cũ.
 - [x] Character Select render cố định ba slot.
+- [x] Character Select lấy tên class từ catalog, hiển thị trạng thái slot và
+  khóa thao tác trong lúc chờ Select.
 - [x] Creation form lấy class/body/starter appearance từ catalog.
+- [x] UI placeholder tạo động lựa chọn appearance theo slot từ catalog; chưa
+  phụ thuộc sprite hoặc prefab nhân vật chính thức.
 - [x] Tạo thành công tự gửi request chọn character.
 - [ ] Preview assembler bằng sprite/addressable thật.
 - [ ] Tutorial command/state transition và reward.

@@ -87,10 +87,15 @@ public sealed class ServerOptions
         if (string.IsNullOrWhiteSpace(Characters.ServerId) ||
             Characters.CatalogVersion <= 0 ||
             string.IsNullOrWhiteSpace(Characters.StartingMapDefinitionId) ||
-            string.IsNullOrWhiteSpace(Characters.StartingSpawnPointId))
+            string.IsNullOrWhiteSpace(Characters.StartingSpawnPointId) ||
+            string.IsNullOrWhiteSpace(
+                Characters.StartingTutorialDefinitionId) ||
+            string.IsNullOrWhiteSpace(
+                Characters.StartingTutorialStepDefinitionId))
         {
             throw new InvalidDataException(
-                "Character server, catalog and starter spawn settings are required.");
+                "Character server, catalog, starter spawn and tutorial " +
+                "settings are required.");
         }
         ValidateCharacterCatalog(Characters);
         if (Combat.BaseAttackDamage <= 0)
@@ -157,8 +162,16 @@ public sealed class ServerOptions
             }
         }
 
-        string[] requiredSlots = ["base_body", "hair", "bottom", "expression"];
-        foreach (string slot in requiredSlots)
+        if (characters.RequiredStarterAppearanceSlotIds.Count == 0)
+        {
+            throw new InvalidDataException(
+                "At least one starter appearance slot is required.");
+        }
+        EnsureUnique(
+            characters.RequiredStarterAppearanceSlotIds,
+            "required starter appearance slot");
+        foreach (string slot in
+                 characters.RequiredStarterAppearanceSlotIds)
         {
             if (!characters.AppearanceOptions.Any(
                     value =>
@@ -231,6 +244,12 @@ public sealed class CharacterOptions
     public string StartingMapDefinitionId { get; set; } = "tutorial_map_01";
     public string StartingSpawnPointId { get; set; } =
         "tutorial_spawn_default";
+    public string StartingTutorialDefinitionId { get; set; } =
+        "starter_tutorial_v1";
+    public string StartingTutorialStepDefinitionId { get; set; } =
+        "welcome";
+    public List<string> RequiredStarterAppearanceSlotIds { get; set; } =
+        ["base_body", "hair", "bottom", "expression"];
     public List<CharacterClassOptions> Classes { get; set; } = [];
     public List<BodyTypeOptions> BodyTypes { get; set; } = [];
     public List<AppearanceDefinitionOptions> AppearanceOptions { get; set; } = [];

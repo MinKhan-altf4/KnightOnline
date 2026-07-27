@@ -14,6 +14,8 @@ namespace KnightOnline.Client.UI
         private AuthenticationFlowService _authentication;
         private IEventBus _events;
         private IDisposable _resultSubscription;
+        private IDisposable _registrationStartedSubscription;
+        private bool _submissionPending;
 
         [Inject]
         public void Construct(
@@ -52,6 +54,9 @@ namespace KnightOnline.Client.UI
 
             _resultSubscription =
                 _events.Subscribe<AuthenticationResultEvent>(OnResult);
+            _registrationStartedSubscription ??=
+                _events.Subscribe<RegistrationStartedEvent>(
+                    OnRegistrationStarted);
         }
 
         private void OnDisable()
@@ -60,6 +65,8 @@ namespace KnightOnline.Client.UI
                 _view.RegistrationRequested -= Register;
             _resultSubscription?.Dispose();
             _resultSubscription = null;
+            _registrationStartedSubscription?.Dispose();
+            _registrationStartedSubscription = null;
         }
 
         private void Register(string username, string password)
@@ -70,18 +77,50 @@ namespace KnightOnline.Client.UI
                 return;
             }
 
+            _submissionPending = true;
             _authentication.RegisterGuestForDevelopment(username, password);
         }
 
         private void OnResult(AuthenticationResultEvent result)
         {
+            if (!_submissionPending)
+                return;
+
             if (result.Result == AuthenticationOutcome.Success &&
                 !result.IsGuest)
             {
+                _submissionPending = false;
                 _view.Hide();
                 return;
             }
 
+            if (result.Result == AuthenticationOutcome.Success &&
+                result.IsGuest)
+            {
+                _view.SetBusy(
+                    true,
+                    "Đã tạo phiên chơi thử. Đang chuyển đổi tài khoản...");
+                return;
+            }
+
+            _submissionPending = false;
+            _view.SetBusy(false, result.Message);
+        }
+
+        private void OnRegistrationStarted(RegistrationStartedEvent result)
+        {
+            if (!_submissionPending)
+                return;
+
+            if (result.Success)
+            {
+                _view.SetBusy(
+                    true,
+                    "Giao dịch đăng ký đã được tạo. Đang xác nhận...");
+                return;
+            }
+
+            _submissionPending = false;
             _view.SetBusy(false, result.Message);
         }
     }

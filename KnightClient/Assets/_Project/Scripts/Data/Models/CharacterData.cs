@@ -57,37 +57,43 @@ namespace KnightOnline.Client.Data.Models
 
     public sealed class CharacterClassDefinitionData
     {
-        public string DefinitionId { get; set; }
-        public string DisplayName { get; set; }
-        public string Description { get; set; }
-        public IReadOnlyList<string> AllowedBodyTypeIds { get; set; }
-        public string PreviewAssetAddress { get; set; }
+        public string DefinitionId { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public IReadOnlyList<string> AllowedBodyTypeIds { get; set; } =
+            Array.Empty<string>();
+        public string PreviewAssetAddress { get; set; } = string.Empty;
     }
 
     public sealed class BodyTypeDefinitionData
     {
-        public string DefinitionId { get; set; }
-        public string DisplayName { get; set; }
+        public string DefinitionId { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
     }
 
     public sealed class AppearanceDefinitionData
     {
-        public string DefinitionId { get; set; }
-        public string SlotDefinitionId { get; set; }
-        public string DisplayName { get; set; }
-        public IReadOnlyList<string> AllowedBodyTypeIds { get; set; }
-        public IReadOnlyList<string> AllowedClassDefinitionIds { get; set; }
-        public string AssetAddress { get; set; }
+        public string DefinitionId { get; set; } = string.Empty;
+        public string SlotDefinitionId { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public IReadOnlyList<string> AllowedBodyTypeIds { get; set; } =
+            Array.Empty<string>();
+        public IReadOnlyList<string> AllowedClassDefinitionIds { get; set; } =
+            Array.Empty<string>();
+        public string AssetAddress { get; set; } = string.Empty;
         public bool IsStarterOption { get; set; }
     }
 
     public sealed class CharacterCreationCatalogData
     {
         public int CatalogVersion { get; set; }
-        public string ServerId { get; set; }
-        public IReadOnlyList<CharacterClassDefinitionData> Classes { get; set; }
-        public IReadOnlyList<BodyTypeDefinitionData> BodyTypes { get; set; }
-        public IReadOnlyList<AppearanceDefinitionData> AppearanceOptions { get; set; }
+        public string ServerId { get; set; } = string.Empty;
+        public IReadOnlyList<CharacterClassDefinitionData> Classes { get; set; } =
+            Array.Empty<CharacterClassDefinitionData>();
+        public IReadOnlyList<BodyTypeDefinitionData> BodyTypes { get; set; } =
+            Array.Empty<BodyTypeDefinitionData>();
+        public IReadOnlyList<AppearanceDefinitionData> AppearanceOptions
+            { get; set; } = Array.Empty<AppearanceDefinitionData>();
     }
 
     public sealed class CharacterCreationDraftData

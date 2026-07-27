@@ -190,7 +190,8 @@ public static class Program
                         value.AllowedBodyTypeIds,
                         value.AllowedClassDefinitionIds,
                         value.AssetAddress,
-                        value.IsStarterOption)).ToArray()));
+                        value.IsStarterOption)).ToArray()),
+            options.RequiredStarterAppearanceSlotIds);
 
     private static async Task RunConnectionAsync(
         ClientConnection connection,

@@ -138,8 +138,8 @@ background, sprite button, font, character slot và animation mà không sửa l
 
 Đã tạo:
 
-- `Documentation/Production_Registration_Flow.md`;
-- `Documentation/Production_Account_And_Character_Flow_Cutover.md`.
+- `Documentation/Production/Registration_Flow.md`;
+- `Documentation/Production/Account_And_Character_Flow_Cutover.md`.
 
 Tài liệu cutover tổng hợp:
 

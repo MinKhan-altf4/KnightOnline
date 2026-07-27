@@ -64,7 +64,7 @@ infrastructure.
 
 Xem:
 
-- `Documentation/Compliance/2026-07-25-core-rules-audit.md`.
+- `Documentation/Audits/2026-07-25-core-rules-audit.md`.
 
 Blocker chính: TLS, secure platform store, heartbeat/lease, distributed session,
 audit/outbox, DB integration tests và web registration callback.

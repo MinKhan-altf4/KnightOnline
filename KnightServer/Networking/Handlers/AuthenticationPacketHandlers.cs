@@ -309,7 +309,8 @@ internal static class AuthenticationPacketHandlerSupport
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,
-            account.RefreshTokenExpiresAtUtc);
+            account.RefreshTokenExpiresAtUtc,
+            account.DisplayName);
 
     private static AuthenticationResponsePacket ToSessionConflictResponse(
         AuthenticatedAccount account) =>
@@ -319,7 +320,8 @@ internal static class AuthenticationPacketHandlerSupport
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,
-            account.RefreshTokenExpiresAtUtc);
+            account.RefreshTokenExpiresAtUtc,
+            account.DisplayName);
 
     private static AuthenticationResponsePacket ToAccountActiveResponse(
         AuthenticatedAccount account) =>
@@ -329,7 +331,8 @@ internal static class AuthenticationPacketHandlerSupport
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,
-            account.RefreshTokenExpiresAtUtc);
+            account.RefreshTokenExpiresAtUtc,
+            account.DisplayName);
 
     internal static AuthenticationResponsePacket ToFailureResponse(
         AuthenticationFailure failure) =>

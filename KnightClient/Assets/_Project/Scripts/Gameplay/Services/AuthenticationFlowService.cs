@@ -414,6 +414,7 @@ namespace KnightOnline.Client.Gameplay.Services
             _session = new StoredAccountSession
             {
                 AccountKey = result.AccountKey,
+                DisplayName = result.DisplayName,
                 IsGuest = result.IsGuest,
                 RefreshToken = result.RefreshToken,
                 DeviceId = _store.GetOrCreateDeviceId(),
@@ -444,7 +445,9 @@ namespace KnightOnline.Client.Gameplay.Services
         {
             string value = HasPendingCredentials()
                 ? _pendingUsername
-                : _session?.AccountKey;
+                : !string.IsNullOrWhiteSpace(_session?.DisplayName)
+                    ? _session.DisplayName
+                    : _session?.AccountKey;
             if (string.IsNullOrWhiteSpace(value))
                 return string.Empty;
             if (value.Length <= 4)

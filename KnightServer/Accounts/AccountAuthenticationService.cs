@@ -365,6 +365,7 @@ public sealed class AccountAuthenticationService(
         DateTime now) =>
         new(
             account.AccountKey,
+            account.Username ?? account.AccountKey,
             account.Kind == AccountKind.Guest,
             rawToken,
             now.Add(refreshTokenLifetime));

@@ -2,6 +2,7 @@ namespace KnightOnline.Server.Accounts;
 
 public sealed record AuthenticatedAccount(
     string AccountKey,
+    string DisplayName,
     bool IsGuest,
     string RefreshToken,
     DateTime RefreshTokenExpiresAtUtc);

@@ -6,6 +6,7 @@ namespace KnightOnline.Client.Data.Models
     public sealed class StoredAccountSession
     {
         public string AccountKey;
+        public string DisplayName;
         public bool IsGuest;
         public string RefreshToken;
         public string DeviceId;

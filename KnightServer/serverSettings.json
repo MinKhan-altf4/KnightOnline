@@ -31,6 +31,14 @@
     "catalogVersion": 1,
     "startingMapDefinitionId": "tutorial_map_01",
     "startingSpawnPointId": "tutorial_spawn_default",
+    "startingTutorialDefinitionId": "starter_tutorial_v1",
+    "startingTutorialStepDefinitionId": "welcome",
+    "requiredStarterAppearanceSlotIds": [
+      "base_body",
+      "hair",
+      "bottom",
+      "expression"
+    ],
     "classes": [
       {
         "definitionId": "warrior",

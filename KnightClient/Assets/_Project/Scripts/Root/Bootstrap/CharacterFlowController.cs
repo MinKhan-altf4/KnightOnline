@@ -126,11 +126,21 @@ namespace KnightOnline.Client.Core.Bootstrap
         {
             if (e.Result == ConnectionOutcome.Success &&
                 _authenticationSettings.DevelopmentBypassEnabled)
-                _ = _characterService.RequestListCharacters();
+                RequestCharacterSelectData();
         }
 
         private void OnAccountReady(AccountReadyEvent e)
         {
+            RequestCharacterSelectData();
+        }
+
+        private void RequestCharacterSelectData()
+        {
+            // Character Select cần catalog để hiển thị tên class/visual theo
+            // definition ID. Hai request độc lập để sau này catalog có thể
+            // được cache/version hóa mà không ghép cứng vào character list.
+            _ = _characterService.RequestCreationCatalog(
+                _gameplaySettings.ServerId);
             _ = _characterService.RequestListCharacters();
         }
 
