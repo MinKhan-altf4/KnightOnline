@@ -1,6 +1,8 @@
 using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Accounts;
+using KnightOnline.Server.Configuration;
+using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
@@ -64,7 +66,10 @@ public sealed class BeginRegistrationPacketHandler(
 /// </summary>
 public sealed class CompleteDevelopmentRegistrationPacketHandler(
     RegistrationFlowService registration,
-    bool enabled) : IPacketHandler
+    bool enabled,
+    IActiveAccountLeaseStore accountSessions,
+    IServerClock clock,
+    AuthenticationOptions authenticationOptions) : IPacketHandler
 {
     public PacketType PacketType =>
         PacketType.CompleteDevelopmentRegistrationRequest;
@@ -108,9 +113,27 @@ public sealed class CompleteDevelopmentRegistrationPacketHandler(
             result.Authentication.Account is { } account)
         {
             connection.MarkAccountRegistered();
+            ActiveAccountLeaseRenewal renewal =
+                await accountSessions.RenewAsync(
+                    connection.AccountKey!,
+                    connection.ConnectionId,
+                    connection.AccountSessionGeneration,
+                    clock.UtcNow,
+                    cancellationToken);
+            if (!renewal.Renewed)
+            {
+                await connection.ForceDisconnectAsync(
+                    ForcedDisconnectReason.SessionLeaseExpired,
+                    "Account session lease expired.");
+                return;
+            }
             await connection.SendAsync(
                 PacketType.CompleteDevelopmentRegistrationResponse,
-                AuthenticationPacketHandlerSupport.ToSuccessResponse(account),
+                AuthenticationPacketHandlerSupport.ToSuccessResponse(
+                    account,
+                    connection.AccountSessionGeneration,
+                    renewal.ExpiresAtUtc,
+                    authenticationOptions.HeartbeatIntervalSeconds),
                 cancellationToken);
             return;
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
@@ -34,6 +35,8 @@ namespace KnightOnline.Client.Gameplay.Services
         private string _registrationUsername;
         private string _registrationPassword;
         private bool _registrationPending;
+        private CancellationTokenSource _heartbeatCancellation;
+        private Guid _sessionGeneration;
 
         public AuthenticationFlowService(
             NetworkClient network,
@@ -282,6 +285,8 @@ namespace KnightOnline.Client.Gameplay.Services
             {
                 case AuthenticationOutcome.Success:
                     SaveReturnedSession(result);
+                    if (!StartHeartbeat(result))
+                        return;
                     if (_registrationPending && result.IsGuest)
                     {
                         _isAuthenticated = true;
@@ -304,6 +309,20 @@ namespace KnightOnline.Client.Gameplay.Services
                     HideLoading();
                     _events.Publish(new AuthenticationPopupRequestedEvent(
                         "Tài khoản đang được đăng nhập ở nơi khác."));
+                    PublishEntry(result.Message);
+                    return;
+
+                case AuthenticationOutcome.ServerFull:
+                    // Authentication/token rotation may have committed before
+                    // active-account admission. Persist the returned session so
+                    // a later retry does not reuse a revoked refresh token.
+                    SaveReturnedSession(result);
+                    ClearPendingCredentials();
+                    _isCreatingGuest = false;
+                    _isManualLogin = false;
+                    HideLoading();
+                    _events.Publish(new AuthenticationPopupRequestedEvent(
+                        "Máy chủ hiện đã đầy. Vui lòng thử lại sau."));
                     PublishEntry(result.Message);
                     return;
 
@@ -354,6 +373,7 @@ namespace KnightOnline.Client.Gameplay.Services
             }
 
             _isAuthenticated = false;
+            StopHeartbeat();
             HideLoading();
             PublishEntry(
                 string.IsNullOrWhiteSpace(result.Message)
@@ -364,6 +384,7 @@ namespace KnightOnline.Client.Gameplay.Services
         private void OnServerDisconnected(ServerDisconnectedEvent result)
         {
             _isAuthenticated = false;
+            StopHeartbeat();
             HideLoading();
             PublishEntry("Bạn bị mất kết nối máy chủ");
             if (result.IsForced)
@@ -422,6 +443,58 @@ namespace KnightOnline.Client.Gameplay.Services
                     result.RefreshTokenExpiresAtUtc.ToUniversalTime().Ticks,
             };
             _store.Save(_session);
+        }
+
+        private bool StartHeartbeat(AuthenticationResultEvent result)
+        {
+            StopHeartbeat();
+            if (result.SessionGeneration == Guid.Empty ||
+                result.HeartbeatIntervalSeconds <= 0)
+            {
+                Debug.LogError(
+                    "[Authentication] Server did not establish a valid " +
+                    "account session lease.");
+                _network.Disconnect();
+                return false;
+            }
+
+            _sessionGeneration = result.SessionGeneration;
+            _heartbeatCancellation = new CancellationTokenSource();
+            RunHeartbeatAsync(
+                    TimeSpan.FromSeconds(result.HeartbeatIntervalSeconds),
+                    _heartbeatCancellation.Token)
+                .Forget();
+            return true;
+        }
+
+        private async UniTask RunHeartbeatAsync(
+            TimeSpan interval,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    await UniTask.Delay(interval, cancellationToken: cancellationToken);
+                    if (!_isAuthenticated || !_network.IsConnected)
+                        return;
+
+                    await _network.SendAccountSessionHeartbeatAsync(
+                        _sessionGeneration);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when leaving the account, disconnecting or quitting.
+            }
+        }
+
+        private void StopHeartbeat()
+        {
+            _heartbeatCancellation?.Cancel();
+            _heartbeatCancellation?.Dispose();
+            _heartbeatCancellation = null;
+            _sessionGeneration = Guid.Empty;
         }
 
         private void PublishEntry(string message)
@@ -510,6 +583,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public void Dispose()
         {
+            StopHeartbeat();
             ClearPendingCredentials();
             ClearRegistrationSecrets();
             _connectionSubscription?.Dispose();

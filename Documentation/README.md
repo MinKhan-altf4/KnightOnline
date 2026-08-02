@@ -17,6 +17,7 @@ toàn bộ thư mục; hãy đọc theo phạm vi công việc được chủ d�
 Documentation/
 ├── README.md
 ├── KNIGHT_PROJECT_CORE_RULES.md
+├── Architecture/
 ├── Design/
 ├── Production/
 ├── Audits/
@@ -26,6 +27,7 @@ Documentation/
 
 | Thư mục | Mục đích | Có phải nguồn sự thật hiện tại? |
 |---|---|---|
+| `Architecture/` | Kiến trúc và luồng runtime đã đối chiếu trực tiếp với code hiện tại | Có, theo ngày/trạng thái ghi trong từng file |
 | `Design/` | Luồng người chơi, game design, HUD và Character Flow | Có, theo đúng phạm vi của từng file |
 | `Production/` | Điều kiện và kế hoạch thay adapter local khi mở server thật | Có cho kế hoạch cutover; phải đối chiếu code trước rollout |
 | `Audits/` | Báo cáo kiểm tra tại một thời điểm | Không; là snapshot lịch sử |
@@ -37,6 +39,7 @@ Documentation/
 | Phạm vi | File |
 |---|---|
 | Quy tắc kỹ thuật bắt buộc | `KNIGHT_PROJECT_CORE_RULES.md` |
+| Luồng Unity hiện tại, nhiều thiết bị và Alpha 500 online | `Architecture/Current_Unity_Runtime_And_Alpha_500_Online.md` |
 | Luồng hệ thống và HUD | `Design/System_And_HUD_Flow_v2.md` |
 | Character Flow | `Design/Character_Flow_Architecture_Plan.md` |
 | Tầm nhìn và vòng lặp game | `Design/GameDesign.md` |
@@ -47,12 +50,13 @@ Documentation/
 
 Báo cáo baseline mới nhất:
 
-- `Audits/2026-07-28-pre-big-update-baseline-audit.md`
+- `Audits/2026-08-02-unity-server-baseline-and-session-lease.md`
 
 ## Khoảng trống tài liệu đã xác nhận
 
-- Chưa có `Architecture Overview` hiện hành phản ánh toàn bộ code sau các thay
-  đổi Authentication, Character Flow và Split 1.
+- Đã có kiến trúc runtime cho Unity, authentication, Character Flow và đánh giá
+  Alpha 500 online; vẫn chưa có sơ đồ toàn bộ module backend/gameplay ngoài phạm
+  vi file này.
 - Chưa có `Project Status/Roadmap` hiện hành để giao việc theo module.
 - Các bản Day 11/Phase 1/Roadmap cũ đã được chuyển vào `Archive/` và không được
   dùng làm acceptance criteria.

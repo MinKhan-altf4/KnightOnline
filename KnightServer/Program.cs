@@ -43,10 +43,16 @@ public static class Program
         MonsterService monsterService = CreateMonsterWorld(
             options.MonsterDefinitions,
             options.MonsterSpawns);
-        var connections = new ConnectionRegistry();
+        var connections = new ConnectionRegistry(
+            options.Capacity.MaximumTransportConnections);
         var activePlayers = new ActivePlayerRegistry();
         IActiveAccountLeaseStore accountSessions =
-            new InMemoryActiveAccountLeaseStore();
+            new InMemoryActiveAccountLeaseStore(
+                TimeSpan.FromSeconds(
+                    options.Authentication.SessionLeaseTtlSeconds),
+                TimeSpan.FromSeconds(
+                    options.Authentication.DisconnectGraceSeconds),
+                options.Capacity.MaximumActiveAccounts);
         var authentication = new AccountAuthenticationService(
             databaseOptions,
             new AuthTokenProtector(),
@@ -90,22 +96,31 @@ public static class Program
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock),
+                clock,
+                options.Authentication),
             new ResumeAccountPacketHandler(
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock),
+                clock,
+                options.Authentication),
             new LoginPacketHandler(
                 authentication,
                 accountSessions,
                 authenticationRateLimiter,
-                clock),
+                clock,
+                options.Authentication),
             new LeaveAccountSessionPacketHandler(accountSessions),
+            new AccountSessionHeartbeatPacketHandler(
+                accountSessions,
+                clock),
             new BeginRegistrationPacketHandler(registration),
             new CompleteDevelopmentRegistrationPacketHandler(
                 registration,
-                options.Registration.DevelopmentCompletionEnabled),
+                options.Registration.DevelopmentCompletionEnabled,
+                accountSessions,
+                clock,
+                options.Authentication),
             new GetCharacterCreationCatalogPacketHandler(
                 characterCatalog,
                 options.Characters),
@@ -130,7 +145,9 @@ public static class Program
                 monsterService,
                 connections,
                 clock),
-        ]);
+        ],
+            accountSessions,
+            clock);
 
         ObserveBackgroundTask(
             RunMonsterRespawnLoopAsync(
@@ -154,13 +171,26 @@ public static class Program
                 tcpClient,
                 packetDispatcher,
                 options.Network.MaximumPacketBytes);
-            connections.Add(connection);
+            if (!connections.TryAdd(connection))
+            {
+                Console.WriteLine(
+                    "[Capacity][Warning] Rejected transport connection: " +
+                    "server transport capacity reached.");
+                await connection.SendAsync(
+                    PacketType.ConnectResponse,
+                    new ConnectResponsePacket(
+                        ConnectResult.ServerFull,
+                        "Máy chủ hiện đã đầy. Vui lòng thử lại sau."));
+                await connection.DisposeAsync();
+                continue;
+            }
             ObserveBackgroundTask(
                 RunConnectionAsync(
                     connection,
                     connections,
                     activePlayers,
-                    accountSessions),
+                    accountSessions,
+                    clock),
                 "client-connection");
         }
     }
@@ -197,7 +227,8 @@ public static class Program
         ClientConnection connection,
         ConnectionRegistry connections,
         ActivePlayerRegistry activePlayers,
-        IActiveAccountLeaseStore accountSessions)
+        IActiveAccountLeaseStore accountSessions,
+        IServerClock clock)
     {
         try
         {
@@ -207,9 +238,11 @@ public static class Program
         {
             if (connection.AccountKey is { } accountKey)
             {
-                await accountSessions.ReleaseAsync(
+                await accountSessions.BeginDisconnectGraceAsync(
                     accountKey,
-                    connection.ConnectionId);
+                    connection.ConnectionId,
+                    connection.AccountSessionGeneration,
+                    clock.UtcNow);
             }
             activePlayers.Release(connection);
             connections.Remove(connection);

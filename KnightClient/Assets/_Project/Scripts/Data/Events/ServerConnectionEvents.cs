@@ -23,6 +23,7 @@ namespace KnightOnline.Client.Data.Events
         SessionConflict = 7,
         RateLimited = 8,
         AccountActive = 9,
+        ServerFull = 10,
     }
 
     // Đổi từ IGameEvent thành IStickyGameEvent - đây là event đại diện
@@ -65,6 +66,9 @@ namespace KnightOnline.Client.Data.Events
         public readonly bool IsGuest;
         public readonly string RefreshToken;
         public readonly DateTime RefreshTokenExpiresAtUtc;
+        public readonly Guid SessionGeneration;
+        public readonly DateTime SessionLeaseExpiresAtUtc;
+        public readonly int HeartbeatIntervalSeconds;
 
         public AuthenticationResultEvent(
             AuthenticationOutcome result,
@@ -73,7 +77,10 @@ namespace KnightOnline.Client.Data.Events
             bool isGuest,
             string refreshToken,
             DateTime refreshTokenExpiresAtUtc,
-            string displayName)
+            string displayName,
+            Guid sessionGeneration,
+            DateTime sessionLeaseExpiresAtUtc,
+            int heartbeatIntervalSeconds)
         {
             Result = result;
             Message = message;
@@ -82,6 +89,23 @@ namespace KnightOnline.Client.Data.Events
             IsGuest = isGuest;
             RefreshToken = refreshToken;
             RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc;
+            SessionGeneration = sessionGeneration;
+            SessionLeaseExpiresAtUtc = sessionLeaseExpiresAtUtc;
+            HeartbeatIntervalSeconds = heartbeatIntervalSeconds;
+        }
+    }
+
+    public readonly struct AccountSessionHeartbeatEvent : IGameEvent
+    {
+        public readonly bool Renewed;
+        public readonly DateTime LeaseExpiresAtUtc;
+
+        public AccountSessionHeartbeatEvent(
+            bool renewed,
+            DateTime leaseExpiresAtUtc)
+        {
+            Renewed = renewed;
+            LeaseExpiresAtUtc = leaseExpiresAtUtc;
         }
     }
 }

@@ -72,6 +72,8 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler,
                 LeaveAccountSessionResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler,
+                AccountSessionHeartbeatResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
                 BeginRegistrationResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler,
                 CompleteDevelopmentRegistrationResponseHandler>(

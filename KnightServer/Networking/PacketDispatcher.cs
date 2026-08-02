@@ -1,12 +1,19 @@
 using KnightOnline.Client.Shared.Packets;
+using KnightOnline.Server.Accounts;
+using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking;
 
 public sealed class PacketDispatcher
 {
     private readonly IReadOnlyDictionary<PacketType, IPacketHandler> _handlers;
+    private readonly IActiveAccountLeaseStore _accountSessions;
+    private readonly IServerClock _clock;
 
-    public PacketDispatcher(IEnumerable<IPacketHandler> handlers)
+    public PacketDispatcher(
+        IEnumerable<IPacketHandler> handlers,
+        IActiveAccountLeaseStore accountSessions,
+        IServerClock clock)
     {
         var handlerMap = new Dictionary<PacketType, IPacketHandler>();
 
@@ -20,6 +27,8 @@ public sealed class PacketDispatcher
         }
 
         _handlers = handlerMap;
+        _accountSessions = accountSessions;
+        _clock = clock;
     }
 
     public async Task DispatchAsync(
@@ -34,12 +43,28 @@ public sealed class PacketDispatcher
             return;
         }
 
-        if (!HasRequiredAccess(connection, handler.RequiredAccess))
+        if (!HasRequiredConnectionState(
+                connection,
+                handler.RequiredAccess))
         {
             Console.WriteLine(
                 $"[Security][Warning] Rejected packet {envelope.Type} from " +
                 $"{connection.RemoteAddress}: required access is " +
                 $"{handler.RequiredAccess}.");
+            return;
+        }
+
+        if (handler.RequiredAccess != PacketAccessLevel.Anonymous &&
+            !await OwnsLiveAccountLeaseAsync(
+                connection,
+                cancellationToken))
+        {
+            Console.WriteLine(
+                $"[Security][Warning] Rejected packet {envelope.Type}: " +
+                "account session lease is expired or stale.");
+            await connection.ForceDisconnectAsync(
+                ForcedDisconnectReason.SessionLeaseExpired,
+                "Account session lease expired.");
             return;
         }
 
@@ -49,7 +74,19 @@ public sealed class PacketDispatcher
             cancellationToken);
     }
 
-    private static bool HasRequiredAccess(
+    private async ValueTask<bool> OwnsLiveAccountLeaseAsync(
+        ClientConnection connection,
+        CancellationToken cancellationToken) =>
+        connection.AccountKey != null &&
+        connection.AccountSessionGeneration != Guid.Empty &&
+        await _accountSessions.IsOwnerAsync(
+            connection.AccountKey,
+            connection.ConnectionId,
+            connection.AccountSessionGeneration,
+            _clock.UtcNow,
+            cancellationToken);
+
+    private static bool HasRequiredConnectionState(
         ClientConnection connection,
         PacketAccessLevel requiredAccess) =>
         requiredAccess switch

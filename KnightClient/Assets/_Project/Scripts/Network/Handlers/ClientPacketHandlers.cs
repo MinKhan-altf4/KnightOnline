@@ -458,7 +458,10 @@ namespace KnightOnline.Client.Network.Handlers
                 packet.IsGuest,
                 packet.RefreshToken,
                 packet.RefreshTokenExpiresAtUtc,
-                packet.DisplayName));
+                packet.DisplayName,
+                packet.SessionGeneration,
+                packet.SessionLeaseExpiresAtUtc,
+                packet.HeartbeatIntervalSeconds));
         }
 
         private static AuthenticationOutcome MapOutcome(
@@ -483,8 +486,35 @@ namespace KnightOnline.Client.Network.Handlers
                     AuthenticationOutcome.RateLimited,
                 AuthenticationResultCode.AccountActive =>
                     AuthenticationOutcome.AccountActive,
+                AuthenticationResultCode.ServerFull =>
+                    AuthenticationOutcome.ServerFull,
                 _ => AuthenticationOutcome.InvalidRequest,
             };
+    }
+
+    public sealed class AccountSessionHeartbeatResponseHandler :
+        IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public AccountSessionHeartbeatResponseHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType =>
+            PacketType.AccountSessionHeartbeatResponse;
+
+        public void Handle(string payload)
+        {
+            AccountSessionHeartbeatResponsePacket packet =
+                JsonSerializer.Deserialize<
+                    AccountSessionHeartbeatResponsePacket>(payload);
+            if (packet == null)
+                return;
+
+            _events.Publish(new AccountSessionHeartbeatEvent(
+                packet.Renewed,
+                packet.LeaseExpiresAtUtc));
+        }
     }
 
     internal static class CharacterPacketMapper

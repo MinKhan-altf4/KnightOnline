@@ -4,11 +4,18 @@
     "port": 7777,
     "maximumPacketBytes": 1048576
   },
+  "capacity": {
+    "maximumActiveAccounts": 500,
+    "maximumTransportConnections": 750
+  },
   "authentication": {
     "developmentBypassEnabled": false,
     "refreshTokenLifetimeDays": 30,
     "maximumAttemptsPerWindow": 10,
-    "attemptWindowSeconds": 60
+    "attemptWindowSeconds": 60,
+    "heartbeatIntervalSeconds": 5,
+    "sessionLeaseTtlSeconds": 20,
+    "disconnectGraceSeconds": 10
   },
   "registration": {
     "portalBaseUrl": "http://127.0.0.1:8080/register",

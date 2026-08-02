@@ -26,6 +26,8 @@ namespace KnightOnline.Client.Network
         private IEventBus _eventBus;
         private NetworkSettings _settings;
         private IReadOnlyDictionary<PacketType, IClientPacketHandler> _packetHandlers;
+        private IDisposable _connectionResultSubscription;
+        private bool _suppressNextDisconnectEvent;
         public bool IsConnected =>
             !_isDisconnecting &&
             _tcpClient != null &&
@@ -49,6 +51,13 @@ namespace KnightOnline.Client.Network
             }
 
             _packetHandlers = handlers;
+            _connectionResultSubscription =
+                _eventBus.Subscribe<ServerConnectionResultEvent>(
+                    result =>
+                    {
+                        if (result.Result != ConnectionOutcome.Success)
+                            _suppressNextDisconnectEvent = true;
+                    });
         }
 
         public async UniTask ConnectAsync()
@@ -56,6 +65,7 @@ namespace KnightOnline.Client.Network
             try
             {
                 _isDisconnecting = false;
+                _suppressNextDisconnectEvent = false;
                 _tcpClient = new TcpClient();
                 _cts = new CancellationTokenSource();
                 await _tcpClient.ConnectAsync(_settings.Host, _settings.Port);
@@ -148,6 +158,11 @@ namespace KnightOnline.Client.Network
             SendPacketAsync(
                 PacketType.LeaveAccountSessionRequest,
                 new LeaveAccountSessionRequestPacket());
+
+        public UniTask SendAccountSessionHeartbeatAsync(Guid generation) =>
+            SendPacketAsync(
+                PacketType.AccountSessionHeartbeatRequest,
+                new AccountSessionHeartbeatRequestPacket(generation));
 
         public UniTask SendBeginRegistrationRequestAsync(
             Guid requestId,
@@ -302,10 +317,20 @@ namespace KnightOnline.Client.Network
             _stream = null;
             _tcpClient?.Dispose();
             _tcpClient = null;
+            if (_suppressNextDisconnectEvent)
+            {
+                _suppressNextDisconnectEvent = false;
+                return;
+            }
+
             _eventBus?.Publish(new ServerDisconnectedEvent());
         }
 
-        private void OnDestroy() => Disconnect();
+        private void OnDestroy()
+        {
+            _connectionResultSubscription?.Dispose();
+            Disconnect();
+        }
 
         private static IReadOnlyList<AppearanceSelectionPacket>
             ToAppearancePackets(

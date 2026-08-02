@@ -88,8 +88,8 @@ public sealed class AccountAuthenticationService(
                 cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             Console.WriteLine(
-                $"[Security][Warning] Refresh-token reuse detected for " +
-                $"account '{current.Account.AccountKey}'.");
+                "[Security][Warning] Refresh-token reuse detected; " +
+                "the token family was revoked.");
             return AuthenticationResult.Failed(
                 AuthenticationFailure.InvalidOrExpiredToken);
         }

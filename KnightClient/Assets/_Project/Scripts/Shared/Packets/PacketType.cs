@@ -36,5 +36,7 @@ namespace KnightOnline.Client.Shared.Packets
         GetCharacterCreationCatalogResponse = 31,
         CheckCharacterNameRequest = 32,
         CheckCharacterNameResponse = 33,
+        AccountSessionHeartbeatRequest = 34,
+        AccountSessionHeartbeatResponse = 35,
     }
 }

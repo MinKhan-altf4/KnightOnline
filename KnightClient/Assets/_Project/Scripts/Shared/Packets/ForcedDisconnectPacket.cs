@@ -7,6 +7,7 @@ namespace KnightOnline.Client.Shared.Packets
         ServerShutdown = 3,
         // Reserved for protocol compatibility. The timeout behavior was removed.
         CharacterSelectionTimeout = 4,
+        SessionLeaseExpired = 5,
     }
 
     public sealed class ForcedDisconnectPacket

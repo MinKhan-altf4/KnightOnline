@@ -1,6 +1,7 @@
 using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Accounts;
+using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
@@ -9,7 +10,8 @@ public sealed class CreateGuestPacketHandler(
     AccountAuthenticationService authentication,
     IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    AuthenticationOptions options) : IPacketHandler
 {
     public PacketType PacketType => PacketType.CreateGuestRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -49,6 +51,8 @@ public sealed class CreateGuestPacketHandler(
             result,
             PacketType.CreateGuestResponse,
             accountSessions,
+            clock.UtcNow,
+            options.HeartbeatIntervalSeconds,
             cancellationToken);
     }
 }
@@ -57,7 +61,8 @@ public sealed class ResumeAccountPacketHandler(
     AccountAuthenticationService authentication,
     IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    AuthenticationOptions options) : IPacketHandler
 {
     public PacketType PacketType => PacketType.ResumeAccountRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -100,6 +105,8 @@ public sealed class ResumeAccountPacketHandler(
             result,
             PacketType.ResumeAccountResponse,
             accountSessions,
+            clock.UtcNow,
+            options.HeartbeatIntervalSeconds,
             cancellationToken);
     }
 }
@@ -108,7 +115,8 @@ public sealed class LoginPacketHandler(
     AccountAuthenticationService authentication,
     IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    AuthenticationOptions options) : IPacketHandler
 {
     public PacketType PacketType => PacketType.LoginRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -154,6 +162,8 @@ public sealed class LoginPacketHandler(
             result,
             PacketType.LoginResponse,
             accountSessions,
+            clock.UtcNow,
+            options.HeartbeatIntervalSeconds,
             cancellationToken);
     }
 }
@@ -184,6 +194,7 @@ public sealed class LeaveAccountSessionPacketHandler(
         await accountSessions.ReleaseAsync(
             connection.AccountKey!,
             connection.ConnectionId,
+            connection.AccountSessionGeneration,
             cancellationToken);
         if (!connection.TryDetachAccount())
         {
@@ -213,6 +224,57 @@ public sealed class LeaveAccountSessionPacketHandler(
             cancellationToken);
 }
 
+public sealed class AccountSessionHeartbeatPacketHandler(
+    IActiveAccountLeaseStore accountSessions,
+    IServerClock clock) : IPacketHandler
+{
+    public PacketType PacketType =>
+        PacketType.AccountSessionHeartbeatRequest;
+    public PacketAccessLevel RequiredAccess =>
+        PacketAccessLevel.Authenticated;
+
+    public async Task HandleAsync(
+        ClientConnection connection,
+        string payload,
+        CancellationToken cancellationToken)
+    {
+        AccountSessionHeartbeatRequestPacket? request =
+            JsonSerializer.Deserialize<AccountSessionHeartbeatRequestPacket>(
+                payload);
+        if (request == null ||
+            request.SessionGeneration == Guid.Empty ||
+            request.SessionGeneration != connection.AccountSessionGeneration)
+        {
+            await connection.ForceDisconnectAsync(
+                ForcedDisconnectReason.SessionLeaseExpired,
+                "Account session lease is invalid.");
+            return;
+        }
+
+        ActiveAccountLeaseRenewal renewal =
+            await accountSessions.RenewAsync(
+                connection.AccountKey!,
+                connection.ConnectionId,
+                request.SessionGeneration,
+                clock.UtcNow,
+                cancellationToken);
+        if (!renewal.Renewed)
+        {
+            await connection.ForceDisconnectAsync(
+                ForcedDisconnectReason.SessionLeaseExpired,
+                "Account session lease expired.");
+            return;
+        }
+
+        await connection.SendAsync(
+            PacketType.AccountSessionHeartbeatResponse,
+            new AccountSessionHeartbeatResponsePacket(
+                true,
+                renewal.ExpiresAtUtc),
+            cancellationToken);
+    }
+}
+
 internal static class AuthenticationPacketHandlerSupport
 {
     public static async Task CompleteAsync(
@@ -220,6 +282,8 @@ internal static class AuthenticationPacketHandlerSupport
         AuthenticationResult result,
         PacketType responseType,
         IActiveAccountLeaseStore accountSessions,
+        DateTime utcNow,
+        int heartbeatIntervalSeconds,
         CancellationToken cancellationToken)
     {
         if (!result.IsSuccess || result.Account == null)
@@ -242,12 +306,13 @@ internal static class AuthenticationPacketHandlerSupport
             return;
         }
 
-        ActiveAccountLeaseClaimResult claim =
+        ActiveAccountLeaseClaim claim =
             await accountSessions.TryClaimAsync(
                 result.Account.AccountKey,
                 connection.ConnectionId,
+                utcNow,
                 cancellationToken);
-        if (claim == ActiveAccountLeaseClaimResult.ActiveElsewhere)
+        if (claim.Status == ActiveAccountLeaseClaimStatus.ActiveElsewhere)
         {
             await connection.SendAsync(
                 responseType,
@@ -255,14 +320,27 @@ internal static class AuthenticationPacketHandlerSupport
                 cancellationToken);
             return;
         }
+        if (claim.Status == ActiveAccountLeaseClaimStatus.CapacityReached)
+        {
+            Console.WriteLine(
+                "[Capacity][Warning] Rejected active account claim: " +
+                "server active-account capacity reached.");
+            await connection.SendAsync(
+                responseType,
+                ToServerFullResponse(result.Account),
+                cancellationToken);
+            return;
+        }
 
         if (!connection.TryAttachAccount(
                 result.Account.AccountKey,
+                claim.Generation,
                 result.Account.IsGuest))
         {
             await accountSessions.ReleaseAsync(
                 result.Account.AccountKey,
                 connection.ConnectionId,
+                claim.Generation,
                 cancellationToken);
             await connection.SendAsync(
                 responseType,
@@ -275,7 +353,11 @@ internal static class AuthenticationPacketHandlerSupport
 
         await connection.SendAsync(
             responseType,
-            ToSuccessResponse(result.Account),
+            ToSuccessResponse(
+                result.Account,
+                claim.Generation,
+                claim.ExpiresAtUtc,
+                heartbeatIntervalSeconds),
             cancellationToken);
     }
 
@@ -302,7 +384,10 @@ internal static class AuthenticationPacketHandlerSupport
             cancellationToken);
 
     internal static AuthenticationResponsePacket ToSuccessResponse(
-        AuthenticatedAccount account) =>
+        AuthenticatedAccount account,
+        Guid generation,
+        DateTime leaseExpiresAtUtc,
+        int heartbeatIntervalSeconds) =>
         new(
             AuthenticationResultCode.Success,
             "Authentication successful.",
@@ -310,7 +395,10 @@ internal static class AuthenticationPacketHandlerSupport
             account.IsGuest,
             account.RefreshToken,
             account.RefreshTokenExpiresAtUtc,
-            account.DisplayName);
+            account.DisplayName,
+            generation,
+            leaseExpiresAtUtc,
+            heartbeatIntervalSeconds);
 
     private static AuthenticationResponsePacket ToSessionConflictResponse(
         AuthenticatedAccount account) =>
@@ -328,6 +416,17 @@ internal static class AuthenticationPacketHandlerSupport
         new(
             AuthenticationResultCode.AccountActive,
             "Tài khoản đang được đăng nhập ở nơi khác.",
+            account.AccountKey,
+            account.IsGuest,
+            account.RefreshToken,
+            account.RefreshTokenExpiresAtUtc,
+            account.DisplayName);
+
+    private static AuthenticationResponsePacket ToServerFullResponse(
+        AuthenticatedAccount account) =>
+        new(
+            AuthenticationResultCode.ServerFull,
+            "Máy chủ hiện đã đầy. Vui lòng thử lại sau.",
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,

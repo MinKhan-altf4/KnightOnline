@@ -69,6 +69,8 @@ public sealed class SelectCharacterPacketHandler(
         if (!await accountSessions.IsOwnerAsync(
                 connection.AccountKey,
                 connection.ConnectionId,
+                connection.AccountSessionGeneration,
+                clock.UtcNow,
                 cancellationToken))
         {
             await SendFailure(

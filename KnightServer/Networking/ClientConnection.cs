@@ -19,20 +19,32 @@ public sealed class ClientConnection(
     public PlayerSession? PlayerSession { get; private set; }
     public Guid ConnectionId { get; } = Guid.NewGuid();
     public string? AccountKey { get; private set; }
+    public Guid AccountSessionGeneration { get; private set; }
     public bool IsGuest { get; private set; }
     public string RemoteAddress { get; } =
         (tcpClient.Client.RemoteEndPoint as IPEndPoint)?
             .Address.ToString() ?? "unknown";
 
-    public bool TryAttachAccount(string accountKey, bool isGuest = false)
+    public bool TryAttachAccount(
+        string accountKey,
+        Guid sessionGeneration,
+        bool isGuest = false)
     {
-        if (AccountKey != null || string.IsNullOrWhiteSpace(accountKey))
+        if (AccountKey != null ||
+            string.IsNullOrWhiteSpace(accountKey) ||
+            sessionGeneration == Guid.Empty)
             return false;
 
         AccountKey = accountKey;
+        AccountSessionGeneration = sessionGeneration;
         IsGuest = isGuest;
         return true;
     }
+
+    // Development bypass compatibility only. This path does not establish a
+    // server lease and must remain disabled in the checked-in configuration.
+    public bool TryAttachAccount(string accountKey, bool isGuest = false) =>
+        TryAttachAccount(accountKey, Guid.NewGuid(), isGuest);
 
     public bool TryDetachAccount()
     {
@@ -40,6 +52,7 @@ public sealed class ClientConnection(
             return false;
 
         AccountKey = null;
+        AccountSessionGeneration = Guid.Empty;
         IsGuest = false;
         return true;
     }

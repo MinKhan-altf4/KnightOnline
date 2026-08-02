@@ -7,6 +7,7 @@ public sealed class ServerOptions
     public string Environment { get; set; } = "Development";
     public NetworkOptions Network { get; set; } = new();
     public AuthenticationOptions Authentication { get; set; } = new();
+    public CapacityOptions Capacity { get; set; } = new();
     public RegistrationOptions Registration { get; set; } = new();
     public GuestOptions Guest { get; set; } = new();
     public CharacterOptions Characters { get; set; } = new();
@@ -51,6 +52,14 @@ public sealed class ServerOptions
             throw new InvalidDataException("Network.Port must be between 1 and 65535.");
         if (Network.MaximumPacketBytes <= 0)
             throw new InvalidDataException("Network.MaximumPacketBytes must be positive.");
+        if (Capacity.MaximumActiveAccounts <= 0 ||
+            Capacity.MaximumTransportConnections <
+                Capacity.MaximumActiveAccounts)
+        {
+            throw new InvalidDataException(
+                "Capacity requires a positive active-account limit and a " +
+                "transport limit greater than or equal to it.");
+        }
         if (Authentication.RefreshTokenLifetimeDays <= 0)
             throw new InvalidDataException(
                 "Authentication.RefreshTokenLifetimeDays must be positive.");
@@ -58,6 +67,17 @@ public sealed class ServerOptions
             Authentication.AttemptWindowSeconds <= 0)
             throw new InvalidDataException(
                 "Authentication rate-limit values must be positive.");
+        if (Authentication.HeartbeatIntervalSeconds <= 0 ||
+            Authentication.SessionLeaseTtlSeconds <=
+                Authentication.HeartbeatIntervalSeconds ||
+            Authentication.DisconnectGraceSeconds < 0 ||
+            Authentication.DisconnectGraceSeconds >=
+                Authentication.SessionLeaseTtlSeconds)
+        {
+            throw new InvalidDataException(
+                "Authentication session lease requires a positive heartbeat, " +
+                "TTL greater than heartbeat, and grace in [0, TTL).");
+        }
         if (Registration.TransactionLifetimeMinutes <= 0)
             throw new InvalidDataException(
                 "Registration.TransactionLifetimeMinutes must be positive.");
@@ -208,12 +228,21 @@ public sealed class NetworkOptions
     public int MaximumPacketBytes { get; set; }
 }
 
+public sealed class CapacityOptions
+{
+    public int MaximumActiveAccounts { get; set; } = 500;
+    public int MaximumTransportConnections { get; set; } = 750;
+}
+
 public sealed class AuthenticationOptions
 {
     public bool DevelopmentBypassEnabled { get; set; }
     public int RefreshTokenLifetimeDays { get; set; } = 30;
     public int MaximumAttemptsPerWindow { get; set; } = 10;
     public int AttemptWindowSeconds { get; set; } = 60;
+    public int HeartbeatIntervalSeconds { get; set; } = 5;
+    public int SessionLeaseTtlSeconds { get; set; } = 20;
+    public int DisconnectGraceSeconds { get; set; } = 10;
 }
 
 public sealed class GuestOptions

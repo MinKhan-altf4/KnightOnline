@@ -16,6 +16,7 @@ namespace KnightOnline.Client.Shared.Packets
         SessionConflict = 7,
         RateLimited = 8,
         AccountActive = 9,
+        ServerFull = 10,
     }
 
     public sealed class CreateGuestRequestPacket
@@ -67,6 +68,9 @@ namespace KnightOnline.Client.Shared.Packets
         public bool IsGuest { get; }
         public string? RefreshToken { get; }
         public DateTime RefreshTokenExpiresAtUtc { get; }
+        public Guid SessionGeneration { get; }
+        public DateTime SessionLeaseExpiresAtUtc { get; }
+        public int HeartbeatIntervalSeconds { get; }
 
         public AuthenticationResponsePacket(
             AuthenticationResultCode result,
@@ -75,7 +79,10 @@ namespace KnightOnline.Client.Shared.Packets
             bool isGuest = false,
             string? refreshToken = null,
             DateTime refreshTokenExpiresAtUtc = default,
-            string? displayName = null)
+            string? displayName = null,
+            Guid sessionGeneration = default,
+            DateTime sessionLeaseExpiresAtUtc = default,
+            int heartbeatIntervalSeconds = 0)
         {
             Result = result;
             Message = message;
@@ -84,6 +91,31 @@ namespace KnightOnline.Client.Shared.Packets
             IsGuest = isGuest;
             RefreshToken = refreshToken;
             RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc;
+            SessionGeneration = sessionGeneration;
+            SessionLeaseExpiresAtUtc = sessionLeaseExpiresAtUtc;
+            HeartbeatIntervalSeconds = heartbeatIntervalSeconds;
+        }
+    }
+
+    public sealed class AccountSessionHeartbeatRequestPacket
+    {
+        public Guid SessionGeneration { get; }
+
+        public AccountSessionHeartbeatRequestPacket(Guid sessionGeneration) =>
+            SessionGeneration = sessionGeneration;
+    }
+
+    public sealed class AccountSessionHeartbeatResponsePacket
+    {
+        public bool Renewed { get; }
+        public DateTime LeaseExpiresAtUtc { get; }
+
+        public AccountSessionHeartbeatResponsePacket(
+            bool renewed,
+            DateTime leaseExpiresAtUtc)
+        {
+            Renewed = renewed;
+            LeaseExpiresAtUtc = leaseExpiresAtUtc;
         }
     }
 
