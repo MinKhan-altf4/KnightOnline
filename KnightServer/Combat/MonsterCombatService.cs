@@ -3,6 +3,7 @@ using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Monsters;
 using KnightOnline.Server.Networking;
+using KnightOnline.Server.World;
 
 namespace KnightOnline.Server.Combat;
 
@@ -10,6 +11,7 @@ public sealed class MonsterCombatService(
     MonsterService monsters,
     ICombatStatsProvider statsProvider,
     IDamageCalculator damageCalculator,
+    IWorldMovementResolver movementResolver,
     CombatOptions options)
 {
     private readonly TimeSpan _attackCooldown =
@@ -42,7 +44,7 @@ public sealed class MonsterCombatService(
                 AttackResultStatus.MonsterDead,
                 monsterId);
 
-        session.AdvancePosition(utcNow);
+        session.AdvancePosition(utcNow, movementResolver);
         var monsterPosition = new Vector2(
             monster.SpawnPosition.X,
             monster.SpawnPosition.Y);

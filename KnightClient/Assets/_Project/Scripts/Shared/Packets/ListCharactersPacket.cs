@@ -4,7 +4,21 @@ using System.Collections.Generic;
 
 namespace KnightOnline.Client.Shared.Packets
 {
-    public sealed class ListCharactersRequestPacket { }
+    public enum ListCharactersResult : byte
+    {
+        Success = 0,
+        Unauthorized = 1,
+        InvalidServer = 2,
+        MalformedRequest = 3,
+    }
+
+    public sealed class ListCharactersRequestPacket
+    {
+        public string ServerId { get; }
+
+        public ListCharactersRequestPacket(string serverId = "") =>
+            ServerId = serverId ?? string.Empty;
+    }
 
     // Shared DTO keeps the server independent from Unity client models.
     public sealed class CharacterSummaryPacket
@@ -52,10 +66,17 @@ namespace KnightOnline.Client.Shared.Packets
     public sealed class ListCharactersResponsePacket
     {
         public IReadOnlyList<CharacterSummaryPacket> Characters { get; }
+        public ListCharactersResult Result { get; }
+        public string Message { get; }
 
-        public ListCharactersResponsePacket(IReadOnlyList<CharacterSummaryPacket> characters)
+        public ListCharactersResponsePacket(
+            IReadOnlyList<CharacterSummaryPacket> characters,
+            ListCharactersResult result = ListCharactersResult.Success,
+            string message = "")
         {
             Characters = characters ?? Array.Empty<CharacterSummaryPacket>();
+            Result = result;
+            Message = message ?? string.Empty;
         }
     }
 }

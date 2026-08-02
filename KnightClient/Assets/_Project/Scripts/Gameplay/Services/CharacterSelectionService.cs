@@ -20,5 +20,15 @@ namespace KnightOnline.Client.Gameplay.Services
                 .SendSelectCharacterRequestAsync(character.CharacterId)
                 .Forget();
         }
+
+        public void EnterWorld(System.Guid gameplaySessionId)
+        {
+            if (gameplaySessionId == System.Guid.Empty)
+                return;
+
+            _networkClient
+                .SendEnterWorldRequestAsync(gameplaySessionId)
+                .Forget();
+        }
     }
 }

@@ -23,9 +23,9 @@ namespace KnightOnline.Client.Gameplay.Services
             return _networkClient.SendCreateCharacterRequestAsync(draft);
         }
 
-        public UniTask RequestListCharacters()
+        public UniTask RequestListCharacters(string serverId)
         {
-            return _networkClient.SendListCharactersRequestAsync();
+            return _networkClient.SendListCharactersRequestAsync(serverId);
         }
 
         public UniTask RequestCreationCatalog(string serverId) =>

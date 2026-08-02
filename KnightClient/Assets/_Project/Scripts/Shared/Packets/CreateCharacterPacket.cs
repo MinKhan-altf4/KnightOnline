@@ -20,6 +20,7 @@ namespace KnightOnline.Client.Shared.Packets
         CatalogVersionMismatch = 11,
         InvalidName = 12,
         DuplicateRequest = 13,
+        MalformedRequest = 14,
     }
 
     public sealed class CreateCharacterRequestPacket

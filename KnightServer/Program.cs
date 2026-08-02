@@ -11,6 +11,7 @@ using KnightOnline.Server.Networking.Handlers;
 using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
 using KnightOnline.Server.Time;
+using KnightOnline.Server.World;
 using Microsoft.EntityFrameworkCore;
 
 namespace KnightOnline.Server;
@@ -43,6 +44,10 @@ public static class Program
         MonsterService monsterService = CreateMonsterWorld(
             options.MonsterDefinitions,
             options.MonsterSpawns);
+        IWorldMovementResolver movementResolver =
+            new MonsterCollisionMovementResolver(
+                monsterService,
+                options.World);
         var connections = new ConnectionRegistry(
             options.Capacity.MaximumTransportConnections);
         var activePlayers = new ActivePlayerRegistry();
@@ -85,6 +90,7 @@ public static class Program
             monsterService,
             combatStats,
             damageCalculator,
+            movementResolver,
             options.Combat);
 
         var packetDispatcher = new PacketDispatcher(
@@ -129,7 +135,9 @@ public static class Program
                 characterNamePolicy,
                 options.Characters),
             new CreateCharacterPacketHandler(characterRepository),
-            new ListCharactersPacketHandler(characterRepository),
+            new ListCharactersPacketHandler(
+                characterRepository,
+                options.Characters),
             new ListMonstersPacketHandler(monsterService),
             new SelectCharacterPacketHandler(
                 characterRepository,
@@ -139,7 +147,8 @@ public static class Program
                 options.Combat,
                 options.World,
                 clock),
-            new PlayerMoveInputPacketHandler(clock),
+            new EnterWorldPacketHandler(clock, movementResolver),
+            new PlayerMoveInputPacketHandler(clock, movementResolver),
             new AttackMonsterPacketHandler(
                 combatService,
                 monsterService,

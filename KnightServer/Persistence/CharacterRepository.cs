@@ -125,9 +125,16 @@ public sealed class CharacterRepository(
             IsolationLevel.ReadCommitted,
             cancellationToken);
 
-        AccountEntity account = await db.Accounts.SingleAsync(
+        AccountEntity? account = await db.Accounts.SingleOrDefaultAsync(
             value => value.AccountKey == accountKey,
             cancellationToken);
+        if (account == null)
+        {
+            return Failure(
+                CreateCharacterResult.Unauthorized,
+                "The authenticated account no longer exists.",
+                request.RequestId);
+        }
 
         CharacterCreationRequestEntity? prior =
             await db.CharacterCreationRequests

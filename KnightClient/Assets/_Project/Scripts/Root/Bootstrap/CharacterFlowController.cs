@@ -38,9 +38,12 @@ namespace KnightOnline.Client.Core.Bootstrap
 
         private IDisposable _connectionSubscription;
         private IDisposable _listSubscription;
+        private IDisposable _listFailedSubscription;
         private IDisposable _creationSubscription;
         private IDisposable _creationRequestedSubscription;
         private IDisposable _selectionSubscription;
+        private IDisposable _gameplaySessionReadySubscription;
+        private IDisposable _enterWorldFailedSubscription;
         private IDisposable _selectionFailedSubscription;
         private IDisposable _accountReadySubscription;
         private IDisposable _backSubscription;
@@ -83,6 +86,10 @@ namespace KnightOnline.Client.Core.Bootstrap
                             SetActivePanel(null);
                     });
             _listSubscription = _eventBus.Subscribe<CharacterListReceivedEvent>(OnCharacterListReceived);
+            _listFailedSubscription =
+                _eventBus.Subscribe<CharacterListFailedEvent>(
+                    e => Debug.LogError(
+                        $"[Character] List failed: {e.Message}"));
             _creationSubscription = _eventBus.Subscribe<CharacterCreationResultEvent>(OnCharacterCreationResult);
             _creationRequestedSubscription =
                 _eventBus.Subscribe<CharacterCreationRequestedEvent>(
@@ -104,7 +111,8 @@ namespace KnightOnline.Client.Core.Bootstrap
                     cancelled =>
                     {
                         SetActivePanel(_panels.CharacterSelectPanel);
-                        _ = _characterService.RequestListCharacters();
+                        _ = _characterService.RequestListCharacters(
+                            _gameplaySettings.ServerId);
                     });
             _nameCheckSubscription =
                 _eventBus.Subscribe<CharacterNameCheckRequestedEvent>(
@@ -115,6 +123,14 @@ namespace KnightOnline.Client.Core.Bootstrap
                             request.CharacterName);
                     });
             _selectionSubscription = _eventBus.Subscribe<CharacterSelectedEvent>(OnCharacterSelected);
+            _gameplaySessionReadySubscription =
+                _eventBus.Subscribe<GameplaySessionReadyEvent>(
+                    e => _characterSelection.EnterWorld(
+                        e.GameplaySessionId));
+            _enterWorldFailedSubscription =
+                _eventBus.Subscribe<EnterWorldFailedEvent>(
+                    e => Debug.LogError(
+                        $"[Character] Enter world failed: {e.Message}"));
             _selectionFailedSubscription =
                 _eventBus.Subscribe<CharacterSelectionFailedEvent>(
                     e => Debug.LogError($"[Character] Selection failed: {e.Message}"));
@@ -141,7 +157,8 @@ namespace KnightOnline.Client.Core.Bootstrap
             // được cache/version hóa mà không ghép cứng vào character list.
             _ = _characterService.RequestCreationCatalog(
                 _gameplaySettings.ServerId);
-            _ = _characterService.RequestListCharacters();
+            _ = _characterService.RequestListCharacters(
+                _gameplaySettings.ServerId);
         }
 
         private void OnCharacterListReceived(CharacterListReceivedEvent e)
@@ -180,9 +197,12 @@ namespace KnightOnline.Client.Core.Bootstrap
         {
             _connectionSubscription?.Dispose();
             _listSubscription?.Dispose();
+            _listFailedSubscription?.Dispose();
             _creationSubscription?.Dispose();
             _creationRequestedSubscription?.Dispose();
             _selectionSubscription?.Dispose();
+            _gameplaySessionReadySubscription?.Dispose();
+            _enterWorldFailedSubscription?.Dispose();
             _selectionFailedSubscription?.Dispose();
             _accountReadySubscription?.Dispose();
             _backSubscription?.Dispose();

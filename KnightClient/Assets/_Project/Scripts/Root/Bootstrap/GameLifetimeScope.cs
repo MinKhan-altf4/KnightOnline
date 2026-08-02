@@ -70,7 +70,6 @@ namespace KnightOnline.Client.Core.Bootstrap
         protected override void Configure(IContainerBuilder builder)
         {
             builder.RegisterEntryPoint<GameBootstrap>();
-            builder.RegisterEntryPoint<AuthenticationFlowService>().AsSelf();
 
             builder.RegisterInstance(_panelRefs);
             builder.RegisterEntryPoint<CharacterFlowController>();

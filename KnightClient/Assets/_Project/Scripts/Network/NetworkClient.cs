@@ -96,8 +96,10 @@ namespace KnightOnline.Client.Network
                     ToAppearancePackets(draft.AppearanceSelections),
                     draft.CatalogVersion));
 
-        public UniTask SendListCharactersRequestAsync() =>
-            SendPacketAsync(PacketType.ListCharactersRequest, new ListCharactersRequestPacket());
+        public UniTask SendListCharactersRequestAsync(string serverId) =>
+            SendPacketAsync(
+                PacketType.ListCharactersRequest,
+                new ListCharactersRequestPacket(serverId));
 
         public UniTask SendCharacterCreationCatalogRequestAsync(string serverId) =>
             SendPacketAsync(
@@ -123,6 +125,11 @@ namespace KnightOnline.Client.Network
             SendPacketAsync(
                 PacketType.SelectCharacterRequest,
                 new SelectCharacterRequestPacket(characterId));
+
+        public UniTask SendEnterWorldRequestAsync(Guid gameplaySessionId) =>
+            SendPacketAsync(
+                PacketType.EnterWorldRequest,
+                new EnterWorldRequestPacket(gameplaySessionId));
 
         public UniTask SendPlayerMoveInputAsync(Vector2 direction) =>
             SendPacketAsync(
@@ -201,11 +208,25 @@ namespace KnightOnline.Client.Network
                     var envelope = await ReadEnvelopeAsync(ct);
                     if (envelope == null) break;
                     HandlePacket(envelope);
+                    if (envelope.Type == PacketType.ForcedDisconnect)
+                    {
+                        // The handler already published the authoritative
+                        // reason. Avoid another read after the server closes
+                        // the socket and suppress the duplicate generic event.
+                        _suppressNextDisconnectEvent = true;
+                        break;
+                    }
                 }
             }
             catch (OperationCanceledException) { }
             catch (ObjectDisposedException) { }
-            catch (IOException) when (ct.IsCancellationRequested) { } // ← fix: bỏ 'ex' không dùng
+            catch (IOException ex)
+            {
+                if (!ct.IsCancellationRequested && !_isDisconnecting)
+                    Debug.LogWarning(
+                        $"[Network] Transport connection closed: " +
+                        $"{ex.Message}");
+            }
             catch (Exception ex)
             {
                 if (!ct.IsCancellationRequested) Debug.LogError($"[Network] Receive error: {ex.Message}");

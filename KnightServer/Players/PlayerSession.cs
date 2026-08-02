@@ -1,4 +1,5 @@
 using System.Numerics;
+using KnightOnline.Server.World;
 
 namespace KnightOnline.Server.Players;
 
@@ -9,9 +10,7 @@ public sealed class PlayerSession
     private DateTime _lastMovementUpdateUtc;
 
     public PlayerSession(
-        int characterId,
-        string characterName,
-        int level,
+        PlayerSessionProfile profile,
         int currentHealth,
         int maximumHealth,
         float moveSpeed,
@@ -20,9 +19,8 @@ public sealed class PlayerSession
         TimeSpan maximumMovementDelta,
         DateTime utcNow)
     {
-        CharacterId = characterId;
-        CharacterName = characterName;
-        Level = level;
+        Profile = profile ?? throw new ArgumentNullException(nameof(profile));
+        SessionId = Guid.NewGuid();
         CurrentHealth = currentHealth;
         MaximumHealth = maximumHealth;
         MoveSpeed = moveSpeed;
@@ -32,9 +30,11 @@ public sealed class PlayerSession
         _lastMovementUpdateUtc = utcNow;
     }
 
-    public int CharacterId { get; }
-    public string CharacterName { get; }
-    public int Level { get; }
+    public Guid SessionId { get; }
+    public PlayerSessionProfile Profile { get; }
+    public int CharacterId => Profile.CharacterId;
+    public string CharacterName => Profile.CharacterName;
+    public int Level => Profile.Level;
     public int CurrentHealth { get; private set; }
     public int MaximumHealth { get; }
     public float MoveSpeed { get; }
@@ -43,22 +43,29 @@ public sealed class PlayerSession
     public DateTime NextAttackAtUtc { get; private set; }
     public bool IsAlive => CurrentHealth > 0;
 
-    public void SetMovement(Vector2 direction, DateTime utcNow)
+    public void SetMovement(
+        Vector2 direction,
+        DateTime utcNow,
+        IWorldMovementResolver movementResolver)
     {
-        AdvancePosition(utcNow);
+        AdvancePosition(utcNow, movementResolver);
         _movementDirection = direction.LengthSquared() > 1f
             ? Vector2.Normalize(direction)
             : direction;
     }
 
-    public void AdvancePosition(DateTime utcNow)
+    public void AdvancePosition(
+        DateTime utcNow,
+        IWorldMovementResolver movementResolver)
     {
         double elapsedSeconds = Math.Clamp(
             (utcNow - _lastMovementUpdateUtc).TotalSeconds,
             0,
             _maximumMovementDeltaSeconds);
 
-        Position += _movementDirection * MoveSpeed * (float)elapsedSeconds;
+        Vector2 desiredPosition = Position +
+            _movementDirection * MoveSpeed * (float)elapsedSeconds;
+        Position = movementResolver.Resolve(Position, desiredPosition);
         _lastMovementUpdateUtc = utcNow;
     }
 

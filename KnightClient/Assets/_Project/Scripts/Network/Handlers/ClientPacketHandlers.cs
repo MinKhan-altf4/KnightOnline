@@ -86,6 +86,12 @@ namespace KnightOnline.Client.Network.Handlers
             if (packet == null)
                 return;
 
+            if (packet.Result != ListCharactersResult.Success)
+            {
+                _events.Publish(new CharacterListFailedEvent(packet.Message));
+                return;
+            }
+
             var characters = new List<CharacterData>(packet.Characters.Count);
             foreach (CharacterSummaryPacket entry in packet.Characters)
             {
@@ -257,40 +263,42 @@ namespace KnightOnline.Client.Network.Handlers
         {
             var packet = JsonSerializer.Deserialize<SelectCharacterResponsePacket>(payload);
             if (packet?.Result != SelectCharacterResult.Success ||
-                packet.Character == null)
+                packet.Character == null ||
+                packet.GameplaySessionId == System.Guid.Empty)
             {
                 _events.Publish(new CharacterSelectionFailedEvent(
                     packet?.Message ?? "Character selection failed."));
                 return;
             }
 
-            SelectedCharacterPacket selected = packet.Character;
-            var character = new CharacterData(
-                selected.CharacterName,
-                selected.Level,
-                selected.MaximumHealth,
-                selected.CurrentHealth,
-                selected.MoveSpeed)
-            {
-                CharacterId = selected.CharacterId,
-                SpawnPosition = new Vector2(
-                    selected.PositionX,
-                    selected.PositionY),
-                SlotIndex = selected.SlotIndex,
-                ClassDefinitionId = selected.ClassDefinitionId,
-                BodyTypeDefinitionId = selected.BodyTypeDefinitionId,
-                CurrentMapDefinitionId = selected.MapDefinitionId,
-                CurrentSpawnPointId = selected.SpawnPointId,
-                AppearanceSelections =
-                    selected.AppearanceSelections.Select(value =>
-                        new AppearanceSelectionData
-                        {
-                            SlotDefinitionId = value.SlotDefinitionId,
-                            OptionDefinitionId = value.OptionDefinitionId,
-                        }).ToArray(),
-            };
+            _events.Publish(new GameplaySessionReadyEvent(
+                packet.GameplaySessionId));
+        }
+    }
 
-            _events.Publish(new CharacterSelectedEvent(character));
+    public sealed class EnterWorldResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public EnterWorldResponseHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType => PacketType.EnterWorldResponse;
+
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<EnterWorldResponsePacket>(
+                payload);
+            if (packet?.Result != EnterWorldResult.Success ||
+                packet.Snapshot?.Character == null)
+            {
+                _events.Publish(new EnterWorldFailedEvent(
+                    packet?.Message ?? "Enter world failed."));
+                return;
+            }
+
+            _events.Publish(new CharacterSelectedEvent(
+                CharacterPacketMapper.ToModel(packet.Snapshot.Character)));
         }
     }
 
@@ -554,6 +562,35 @@ namespace KnightOnline.Client.Network.Handlers
                         SlotDefinitionId = value.SlotDefinitionId,
                         OptionDefinitionId = value.OptionDefinitionId,
                     }).ToArray();
+            return character;
+        }
+
+        public static CharacterData ToModel(SelectedCharacterPacket packet)
+        {
+            var character = new CharacterData(
+                packet.CharacterName,
+                packet.Level,
+                packet.MaximumHealth,
+                packet.CurrentHealth,
+                packet.MoveSpeed)
+            {
+                CharacterId = packet.CharacterId,
+                SlotIndex = packet.SlotIndex,
+                ClassDefinitionId = packet.ClassDefinitionId,
+                BodyTypeDefinitionId = packet.BodyTypeDefinitionId,
+                CurrentMapDefinitionId = packet.MapDefinitionId,
+                CurrentSpawnPointId = packet.SpawnPointId,
+                SpawnPosition = new Vector2(
+                    packet.PositionX,
+                    packet.PositionY),
+                AppearanceSelections =
+                    packet.AppearanceSelections.Select(value =>
+                        new AppearanceSelectionData
+                        {
+                            SlotDefinitionId = value.SlotDefinitionId,
+                            OptionDefinitionId = value.OptionDefinitionId,
+                        }).ToArray(),
+            };
             return character;
         }
     }

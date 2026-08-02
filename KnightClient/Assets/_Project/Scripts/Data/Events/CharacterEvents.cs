@@ -1,5 +1,6 @@
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Models;
+using System;
 using System.Collections.Generic;
 
 namespace KnightOnline.Client.Data.Events
@@ -97,6 +98,16 @@ namespace KnightOnline.Client.Data.Events
         }
     }
 
+    public readonly struct CharacterListFailedEvent : IGameEvent
+    {
+        public readonly string Message;
+
+        public CharacterListFailedEvent(string message)
+        {
+            Message = message;
+        }
+    }
+
     public readonly struct CharacterSelectedEvent : IGameEvent
     {
         public readonly CharacterData Character;
@@ -104,6 +115,26 @@ namespace KnightOnline.Client.Data.Events
         public CharacterSelectedEvent(CharacterData character)
         {
             Character = character;
+        }
+    }
+
+    public readonly struct GameplaySessionReadyEvent : IGameEvent
+    {
+        public readonly Guid GameplaySessionId;
+
+        public GameplaySessionReadyEvent(Guid gameplaySessionId)
+        {
+            GameplaySessionId = gameplaySessionId;
+        }
+    }
+
+    public readonly struct EnterWorldFailedEvent : IGameEvent
+    {
+        public readonly string Message;
+
+        public EnterWorldFailedEvent(string message)
+        {
+            Message = message;
         }
     }
 

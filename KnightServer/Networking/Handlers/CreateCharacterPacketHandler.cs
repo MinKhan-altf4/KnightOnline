@@ -14,11 +14,27 @@ public sealed class CreateCharacterPacketHandler(
         string payload,
         CancellationToken cancellationToken)
     {
-        CreateCharacterRequestPacket? request =
-            JsonSerializer.Deserialize<CreateCharacterRequestPacket>(payload);
+        CreateCharacterRequestPacket? request;
+        try
+        {
+            request = JsonSerializer.Deserialize<CreateCharacterRequestPacket>(
+                payload);
+        }
+        catch (JsonException)
+        {
+            request = null;
+        }
 
         if (request == null)
+        {
+            await connection.SendAsync(
+                PacketType.CreateCharacterResponse,
+                new CreateCharacterResponsePacket(
+                    CreateCharacterResult.MalformedRequest,
+                    "The character creation request is malformed."),
+                cancellationToken);
             return;
+        }
 
         if (connection.AccountKey == null)
         {

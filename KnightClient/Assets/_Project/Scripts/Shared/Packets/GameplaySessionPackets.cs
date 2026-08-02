@@ -11,6 +11,7 @@ namespace KnightOnline.Client.Shared.Packets
         AlreadySelected = 2,
         CharacterAlreadyOnline = 3,
         Unauthorized = 4,
+        MalformedRequest = 5,
     }
 
     public sealed class SelectCharacterRequestPacket
@@ -76,15 +77,72 @@ namespace KnightOnline.Client.Shared.Packets
         public SelectCharacterResult Result { get; }
         public string Message { get; }
         public SelectedCharacterPacket? Character { get; }
+        public Guid GameplaySessionId { get; }
 
         public SelectCharacterResponsePacket(
             SelectCharacterResult result,
             string message,
-            SelectedCharacterPacket? character = null)
+            SelectedCharacterPacket? character = null,
+            Guid gameplaySessionId = default)
         {
             Result = result;
             Message = message;
             Character = character;
+            GameplaySessionId = gameplaySessionId;
+        }
+    }
+
+    public enum EnterWorldResult : byte
+    {
+        Success = 0,
+        Unauthorized = 1,
+        NoGameplaySession = 2,
+        SessionMismatch = 3,
+        MalformedRequest = 4,
+    }
+
+    public sealed class EnterWorldRequestPacket
+    {
+        public Guid GameplaySessionId { get; }
+
+        public EnterWorldRequestPacket(Guid gameplaySessionId) =>
+            GameplaySessionId = gameplaySessionId;
+    }
+
+    public sealed class EnterWorldSnapshotPacket
+    {
+        public Guid GameplaySessionId { get; }
+        public long SnapshotVersion { get; }
+        public DateTime ServerUtc { get; }
+        public SelectedCharacterPacket Character { get; }
+
+        public EnterWorldSnapshotPacket(
+            Guid gameplaySessionId,
+            long snapshotVersion,
+            DateTime serverUtc,
+            SelectedCharacterPacket character)
+        {
+            GameplaySessionId = gameplaySessionId;
+            SnapshotVersion = snapshotVersion;
+            ServerUtc = serverUtc;
+            Character = character;
+        }
+    }
+
+    public sealed class EnterWorldResponsePacket
+    {
+        public EnterWorldResult Result { get; }
+        public string Message { get; }
+        public EnterWorldSnapshotPacket? Snapshot { get; }
+
+        public EnterWorldResponsePacket(
+            EnterWorldResult result,
+            string message,
+            EnterWorldSnapshotPacket? snapshot = null)
+        {
+            Result = result;
+            Message = message ?? string.Empty;
+            Snapshot = snapshot;
         }
     }
 

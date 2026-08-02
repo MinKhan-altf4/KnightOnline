@@ -52,6 +52,11 @@ namespace KnightOnline.Client.Root
                 _registrationUrl));
             builder.Register<ILocalAccountSessionStore,
                 DevelopmentAccountSessionStore>(Lifetime.Singleton);
+            // Account authentication and its lease heartbeat must outlive the
+            // Bootstrap scene. EnterWorld loads InGame with Single mode, so a
+            // scene-scoped service would be disposed and silently stop lease
+            // renewal while the persistent NetworkClient remains connected.
+            builder.RegisterEntryPoint<AuthenticationFlowService>().AsSelf();
             builder.Register<IClientPacketHandler, ConnectResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, CreateCharacterResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ListCharactersResponseHandler>(Lifetime.Singleton);
@@ -64,6 +69,7 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler, MonsterDiedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterRespawnedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, SelectCharacterResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, EnterWorldResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, AttackResultHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ForcedDisconnectHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, CreateGuestResponseHandler>(Lifetime.Singleton);

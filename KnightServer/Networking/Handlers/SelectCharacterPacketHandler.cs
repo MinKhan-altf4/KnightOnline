@@ -25,11 +25,26 @@ public sealed class SelectCharacterPacketHandler(
         string payload,
         CancellationToken cancellationToken)
     {
-        var request =
-            JsonSerializer.Deserialize<SelectCharacterRequestPacket>(payload);
+        SelectCharacterRequestPacket? request;
+        try
+        {
+            request = JsonSerializer.Deserialize<SelectCharacterRequestPacket>(
+                payload);
+        }
+        catch (JsonException)
+        {
+            request = null;
+        }
 
         if (request == null)
+        {
+            await SendFailure(
+                connection,
+                SelectCharacterResult.MalformedRequest,
+                "The character selection request is malformed.",
+                cancellationToken);
             return;
+        }
 
         if (connection.AccountKey == null)
         {
@@ -43,6 +58,15 @@ public sealed class SelectCharacterPacketHandler(
 
         if (connection.PlayerSession != null)
         {
+            if (connection.PlayerSession.CharacterId == request.CharacterId)
+            {
+                await SendSuccess(
+                    connection,
+                    connection.PlayerSession,
+                    cancellationToken);
+                return;
+            }
+
             await SendFailure(
                 connection,
                 SelectCharacterResult.AlreadySelected,
@@ -95,10 +119,21 @@ public sealed class SelectCharacterPacketHandler(
         var spawnPosition = new Vector2(
             character.PositionX,
             character.PositionY);
-        var session = new PlayerSession(
+        var profile = new PlayerSessionProfile(
             character.CharacterId,
             character.CharacterName,
             character.Level,
+            character.SlotIndex,
+            character.ClassDefinitionId,
+            character.BodyTypeDefinitionId,
+            character.CurrentMapDefinitionId,
+            character.CurrentSpawnPointId,
+            character.AppearanceSelections.Select(value =>
+                new PlayerAppearanceSelection(
+                    value.SlotDefinitionId,
+                    value.OptionDefinitionId)).ToArray());
+        var session = new PlayerSession(
+            profile,
             characterOptions.InitialMaximumHealth,
             characterOptions.InitialMaximumHealth,
             characterOptions.MoveSpeed,
@@ -119,28 +154,21 @@ public sealed class SelectCharacterPacketHandler(
             return;
         }
 
-        await connection.SendAsync(
+        await SendSuccess(connection, session, cancellationToken);
+    }
+
+    private static Task SendSuccess(
+        ClientConnection connection,
+        PlayerSession session,
+        CancellationToken cancellationToken) =>
+        connection.SendAsync(
             PacketType.SelectCharacterResponse,
             new SelectCharacterResponsePacket(
                 SelectCharacterResult.Success,
-                "Character selected.",
-                new SelectedCharacterPacket(
-                    session.CharacterId,
-                    session.CharacterName,
-                    session.Level,
-                    session.CurrentHealth,
-                    session.MaximumHealth,
-                    session.MoveSpeed,
-                    session.Position.X,
-                    session.Position.Y,
-                    character.SlotIndex,
-                    character.ClassDefinitionId,
-                    character.BodyTypeDefinitionId,
-                    character.CurrentMapDefinitionId,
-                    character.CurrentSpawnPointId,
-                    character.AppearanceSelections)),
+                "Gameplay session created.",
+                GameplaySessionPacketMapper.ToCharacterPacket(session),
+                session.SessionId),
             cancellationToken);
-    }
 
     private static Task SendFailure(
         ClientConnection connection,

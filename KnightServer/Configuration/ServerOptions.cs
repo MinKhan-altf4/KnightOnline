@@ -128,6 +128,12 @@ public sealed class ServerOptions
         if (World.MaximumMovementDeltaMilliseconds <= 0)
             throw new InvalidDataException(
                 "World.MaximumMovementDeltaMilliseconds must be positive.");
+        if (World.PlayerCollisionRadius <= 0 ||
+            World.MonsterCollisionRadius <= 0)
+        {
+            throw new InvalidDataException(
+                "World collision radii must be positive.");
+        }
         if (MonsterDefinitions.Count == 0)
             throw new InvalidDataException("At least one MonsterDefinitions entry is required.");
         if (MonsterSpawns.Count == 0)
@@ -321,6 +327,8 @@ public sealed class WorldOptions
 {
     public int TickMilliseconds { get; set; }
     public int MaximumMovementDeltaMilliseconds { get; set; }
+    public float PlayerCollisionRadius { get; set; } = 0.35f;
+    public float MonsterCollisionRadius { get; set; } = 0.5f;
 }
 
 public sealed class MonsterDefinitionOptions

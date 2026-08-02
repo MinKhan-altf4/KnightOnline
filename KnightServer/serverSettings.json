@@ -135,7 +135,9 @@
   },
   "world": {
     "tickMilliseconds": 250,
-    "maximumMovementDeltaMilliseconds": 250
+    "maximumMovementDeltaMilliseconds": 250,
+    "playerCollisionRadius": 0.35,
+    "monsterCollisionRadius": 0.5
   },
   "monsterDefinitions": [
     {
