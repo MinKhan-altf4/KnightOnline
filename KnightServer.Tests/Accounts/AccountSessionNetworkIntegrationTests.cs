@@ -157,7 +157,7 @@ public sealed class AccountSessionNetworkIntegrationTests
             ActiveAccountLeaseClaimStatus.ActiveElsewhere,
             bWhileAActive.Status);
         Assert.Equal(
-            ActiveAccountLeaseClaimStatus.ActiveElsewhere,
+            ActiveAccountLeaseClaimStatus.CoolingDown,
             bDuringGrace.Status);
         Assert.Equal(
             ActiveAccountLeaseClaimStatus.Acquired,

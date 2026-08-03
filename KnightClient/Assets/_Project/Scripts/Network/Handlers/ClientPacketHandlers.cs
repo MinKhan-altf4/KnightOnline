@@ -95,6 +95,41 @@ namespace KnightOnline.Client.Network.Handlers
         }
     }
 
+    public sealed class CharacterVitalsSnapshotHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public CharacterVitalsSnapshotHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType => PacketType.CharacterVitalsSnapshot;
+
+        public void Handle(string payload)
+        {
+            CharacterVitalsSnapshotPacket packet =
+                JsonSerializer.Deserialize<CharacterVitalsSnapshotPacket>(
+                    payload);
+            if (packet == null ||
+                packet.Sequence <= 0 ||
+                packet.MaximumHealth <= 0 ||
+                packet.CurrentHealth < 0 ||
+                packet.CurrentHealth > packet.MaximumHealth ||
+                packet.MaximumMana < 0 ||
+                packet.CurrentMana < 0 ||
+                packet.CurrentMana > packet.MaximumMana)
+                return;
+
+            _events.Publish(new CharacterVitalsChangedEvent(
+                packet.Sequence,
+                (CharacterVitalsReason)packet.Reason,
+                packet.CurrentHealth,
+                packet.MaximumHealth,
+                packet.CurrentMana,
+                packet.MaximumMana,
+                packet.ServerTimeUtc));
+        }
+    }
+
     public sealed class CreateCharacterResponseHandler : IClientPacketHandler
     {
         private readonly IEventBus _events;
@@ -532,7 +567,8 @@ namespace KnightOnline.Client.Network.Handlers
                 packet.DisplayName,
                 packet.SessionGeneration,
                 packet.SessionLeaseExpiresAtUtc,
-                packet.HeartbeatIntervalSeconds));
+                packet.HeartbeatIntervalSeconds,
+                packet.RetryAfterSeconds));
         }
 
         private static AuthenticationOutcome MapOutcome(

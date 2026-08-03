@@ -42,5 +42,6 @@ namespace KnightOnline.Client.Shared.Packets
         EnterWorldResponse = 37,
         PlayerPositionSnapshot = 38,
         CharacterProgressionChanged = 39,
+        CharacterVitalsSnapshot = 40,
     }
 }

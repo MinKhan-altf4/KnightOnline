@@ -2,7 +2,6 @@ using System;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Data.Models;
-using KnightOnline.Client.Gameplay.Player;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -17,11 +16,6 @@ namespace KnightOnline.Client.UI
     /// </summary>
     public sealed class InGameHUD : MonoBehaviour
     {
-        [Header("HUD Elements")]
-        [SerializeField] private TextMeshProUGUI _characterNameText;
-        [SerializeField] private TextMeshProUGUI _connectionStatusText;
-        [SerializeField] private TextMeshProUGUI _positionDebugText;
-
         [Header("Player Status")]
         [SerializeField] private TextMeshProUGUI _levelText;
         [SerializeField] private TextMeshProUGUI _healthText;
@@ -32,57 +26,34 @@ namespace KnightOnline.Client.UI
         [SerializeField] private Image _experienceFill;
 
         private CharacterData _characterData;
-        private Transform _playerTransform;
         private IDisposable _disconnectionSubscription;
         private IDisposable _progressionSubscription;
+        private IDisposable _vitalsSubscription;
+        private long _lastVitalsSequence;
 
         [Inject]
         public void Construct(
             CharacterData characterData,
-            PlayerController playerController,
             IEventBus eventBus)
         {
             _characterData = characterData;
-            _playerTransform = playerController.transform;
             _disconnectionSubscription =
                 eventBus.Subscribe<ServerDisconnectedEvent>(OnDisconnected);
             _progressionSubscription =
                 eventBus.Subscribe<CharacterProgressionChangedEvent>(
                     OnProgressionChanged);
+            _vitalsSubscription =
+                eventBus.Subscribe<CharacterVitalsChangedEvent>(
+                    OnVitalsChanged);
         }
 
         private void Start()
         {
-            if (_characterNameText != null)
-            {
-                _characterNameText.text =
-                    _characterData?.CharacterName ?? "Unknown";
-            }
             RefreshPlayerStatus();
-            SetConnectionStatus(true);
-        }
-
-        private void Update()
-        {
-            if (_playerTransform == null) return;
-            var pos = _playerTransform.position;
-            if (_positionDebugText != null)
-                _positionDebugText.text = $"X: {pos.x:F1}  Y: {pos.y:F1}";
-        }
-
-        public void SetConnectionStatus(bool connected)
-        {
-            if (_connectionStatusText == null)
-                return;
-
-            _connectionStatusText.text =
-                connected ? "● Connected" : "● Disconnected";
-            _connectionStatusText.color = connected ? Color.green : Color.red;
         }
 
         private void OnDisconnected(ServerDisconnectedEvent gameEvent)
         {
-            SetConnectionStatus(false);
             if (gameEvent.IsForced && !string.IsNullOrWhiteSpace(gameEvent.Message))
                 Debug.LogError($"[Network] {gameEvent.Message}");
         }
@@ -108,13 +79,29 @@ namespace KnightOnline.Client.UI
             RefreshPlayerStatus();
         }
 
+        private void OnVitalsChanged(CharacterVitalsChangedEvent vitals)
+        {
+            if (_characterData == null ||
+                vitals.Sequence <= _lastVitalsSequence)
+            {
+                return;
+            }
+
+            _lastVitalsSequence = vitals.Sequence;
+            _characterData.CurrentHp = vitals.CurrentHealth;
+            _characterData.MaxHp = vitals.MaximumHealth;
+            _characterData.CurrentMana = vitals.CurrentMana;
+            _characterData.MaxMana = vitals.MaximumMana;
+            RefreshPlayerStatus();
+        }
+
         private void RefreshPlayerStatus()
         {
             if (_characterData == null)
                 return;
 
             if (_levelText != null)
-                _levelText.text = $"Lv. {_characterData.Level}";
+                _levelText.text = $"Lv.{_characterData.Level}";
 
             SetResourceBar(
                 _healthText,
@@ -138,8 +125,11 @@ namespace KnightOnline.Client.UI
                 experienceToNext);
             if (_experienceText != null)
             {
+                double percentage = experienceToNext > 0
+                    ? experienceIntoLevel * 100d / experienceToNext
+                    : 100d;
                 _experienceText.text = experienceToNext > 0
-                    ? $"EXP {experienceIntoLevel:N0}/{experienceToNext:N0}"
+                    ? $"EXP {percentage:F1}%"
                     : "EXP MAX";
             }
             if (_experienceFill != null)
@@ -172,9 +162,26 @@ namespace KnightOnline.Client.UI
 #if UNITY_EDITOR
         private void OnValidate()
         {
+            if (_levelText == null ||
+                _healthText == null ||
+                _healthFill == null ||
+                _manaText == null ||
+                _manaFill == null ||
+                _experienceText == null)
+            {
+                Debug.LogWarning(
+                    "[InGameHUD] One or more serialized HUD references are " +
+                    "missing. Run KnightOnline > UI > Build Player Status " +
+                    "HUD or reconnect them in the Inspector.",
+                    this);
+            }
+
             ValidateFilledImage(_healthFill, nameof(_healthFill));
             ValidateFilledImage(_manaFill, nameof(_manaFill));
-            ValidateFilledImage(_experienceFill, nameof(_experienceFill));
+            if (_experienceFill != null)
+                ValidateFilledImage(
+                    _experienceFill,
+                    nameof(_experienceFill));
         }
 
         private static void ValidateFilledImage(
@@ -194,6 +201,7 @@ namespace KnightOnline.Client.UI
         {
             _disconnectionSubscription?.Dispose();
             _progressionSubscription?.Dispose();
+            _vitalsSubscription?.Dispose();
         }
     }
 }

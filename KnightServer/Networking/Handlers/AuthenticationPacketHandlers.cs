@@ -2,6 +2,7 @@ using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Accounts;
 using KnightOnline.Server.Configuration;
+using KnightOnline.Server.Players;
 using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
@@ -169,7 +170,9 @@ public sealed class LoginPacketHandler(
 }
 
 public sealed class LeaveAccountSessionPacketHandler(
-    IActiveAccountLeaseStore accountSessions) : IPacketHandler
+    IActiveAccountLeaseStore accountSessions,
+    ActivePlayerRegistry activePlayers,
+    IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType =>
         PacketType.LeaveAccountSessionRequest;
@@ -183,18 +186,23 @@ public sealed class LeaveAccountSessionPacketHandler(
     {
         if (connection.PlayerSession != null)
         {
-            await SendResponseAsync(
-                connection,
-                false,
-                "Cannot leave the account after selecting a character.",
-                cancellationToken);
-            return;
+            activePlayers.Release(connection);
+            if (!connection.TryDetachPlayerSession(out _))
+            {
+                await SendResponseAsync(
+                    connection,
+                    false,
+                    "The gameplay session could not be released.",
+                    cancellationToken);
+                return;
+            }
         }
 
-        await accountSessions.ReleaseAsync(
+        await accountSessions.BeginDisconnectGraceAsync(
             connection.AccountKey!,
             connection.ConnectionId,
             connection.AccountSessionGeneration,
+            clock.UtcNow,
             cancellationToken);
         if (!connection.TryDetachAccount())
         {
@@ -320,6 +328,19 @@ internal static class AuthenticationPacketHandlerSupport
                 cancellationToken);
             return;
         }
+        if (claim.Status == ActiveAccountLeaseClaimStatus.CoolingDown)
+        {
+            int retryAfterSeconds = Math.Max(
+                1,
+                (int)Math.Ceiling((claim.ExpiresAtUtc - utcNow).TotalSeconds));
+            await connection.SendAsync(
+                responseType,
+                ToSessionConflictResponse(
+                    result.Account,
+                    retryAfterSeconds),
+                cancellationToken);
+            return;
+        }
         if (claim.Status == ActiveAccountLeaseClaimStatus.CapacityReached)
         {
             Console.WriteLine(
@@ -401,7 +422,8 @@ internal static class AuthenticationPacketHandlerSupport
             heartbeatIntervalSeconds);
 
     private static AuthenticationResponsePacket ToSessionConflictResponse(
-        AuthenticatedAccount account) =>
+        AuthenticatedAccount account,
+        int retryAfterSeconds) =>
         new(
             AuthenticationResultCode.SessionConflict,
             "Another device is active. Retry is required.",
@@ -409,7 +431,8 @@ internal static class AuthenticationPacketHandlerSupport
             account.IsGuest,
             account.RefreshToken,
             account.RefreshTokenExpiresAtUtc,
-            account.DisplayName);
+            account.DisplayName,
+            retryAfterSeconds: retryAfterSeconds);
 
     private static AuthenticationResponsePacket ToAccountActiveResponse(
         AuthenticatedAccount account) =>

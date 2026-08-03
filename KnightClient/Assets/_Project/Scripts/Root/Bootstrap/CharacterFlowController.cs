@@ -77,7 +77,7 @@ namespace KnightOnline.Client.Core.Bootstrap
                     OnAccountReady);
             _backSubscription =
                 _eventBus.Subscribe<CharacterSelectionBackRequestedEvent>(
-                    _ => _authenticationFlow.ReturnToAuthenticationEntry());
+                    _ => _authenticationFlow.ShowEntryKeepingSession());
             _entryRequiredSubscription =
                 _eventBus.Subscribe<AuthenticationEntryRequiredEvent>(
                     state =>

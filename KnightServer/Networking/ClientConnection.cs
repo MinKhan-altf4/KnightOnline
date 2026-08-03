@@ -75,6 +75,16 @@ public sealed class ClientConnection(
         return true;
     }
 
+    public bool TryDetachPlayerSession(out PlayerSession? session)
+    {
+        session = PlayerSession;
+        if (session == null)
+            return false;
+
+        PlayerSession = null;
+        return true;
+    }
+
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         try

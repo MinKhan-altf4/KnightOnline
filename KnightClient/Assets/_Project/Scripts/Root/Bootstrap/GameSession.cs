@@ -11,6 +11,8 @@ namespace KnightOnline.Client.Core.Bootstrap
 
         public void SetSelectedCharacter(CharacterData character) => SelectedCharacter = character;
 
+        public void ClearSelectedCharacter() => SelectedCharacter = null;
+
         private void Awake()
         {
             if (Current != null && Current != this)

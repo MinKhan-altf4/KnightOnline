@@ -6,6 +6,7 @@ public enum ActiveAccountLeaseClaimStatus : byte
     AlreadyOwned = 1,
     ActiveElsewhere = 2,
     CapacityReached = 3,
+    CoolingDown = 4,
 }
 
 public readonly record struct ActiveAccountLeaseClaim(
@@ -72,7 +73,8 @@ public sealed class InMemoryActiveAccountLeaseStore :
     private sealed record Lease(
         Guid ConnectionId,
         Guid Generation,
-        DateTime ExpiresAtUtc);
+        DateTime ExpiresAtUtc,
+        bool IsCoolingDown = false);
 
     private readonly object _syncRoot = new();
     private readonly Dictionary<string, Lease> _leases =
@@ -137,10 +139,12 @@ public sealed class InMemoryActiveAccountLeaseStore :
             }
 
             return ValueTask.FromResult(new ActiveAccountLeaseClaim(
-                current.ConnectionId == connectionId
-                    ? ActiveAccountLeaseClaimStatus.AlreadyOwned
-                    : ActiveAccountLeaseClaimStatus.ActiveElsewhere,
-                current.ConnectionId == connectionId
+                current.IsCoolingDown
+                    ? ActiveAccountLeaseClaimStatus.CoolingDown
+                    : current.ConnectionId == connectionId
+                        ? ActiveAccountLeaseClaimStatus.AlreadyOwned
+                        : ActiveAccountLeaseClaimStatus.ActiveElsewhere,
+                !current.IsCoolingDown && current.ConnectionId == connectionId
                     ? current.Generation
                     : Guid.Empty,
                 current.ExpiresAtUtc));
@@ -224,6 +228,7 @@ public sealed class InMemoryActiveAccountLeaseStore :
                 ExpiresAtUtc = graceExpiry < current.ExpiresAtUtc
                     ? graceExpiry
                     : current.ExpiresAtUtc,
+                IsCoolingDown = true,
             };
             return ValueTask.FromResult(true);
         }
@@ -281,7 +286,8 @@ public sealed class InMemoryActiveAccountLeaseStore :
             return false;
         }
 
-        return lease.ConnectionId == connectionId &&
+        return !lease.IsCoolingDown &&
+               lease.ConnectionId == connectionId &&
                lease.Generation == generation;
     }
 

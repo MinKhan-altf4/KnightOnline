@@ -74,6 +74,8 @@ namespace KnightOnline.Client.Root
                 PlayerPositionSnapshotHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler,
                 CharacterProgressionChangedHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                CharacterVitalsSnapshotHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, AttackResultHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ForcedDisconnectHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, CreateGuestResponseHandler>(Lifetime.Singleton);

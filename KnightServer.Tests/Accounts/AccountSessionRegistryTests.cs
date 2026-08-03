@@ -131,9 +131,37 @@ public sealed class AccountSessionRegistryTests
             Now.AddSeconds(13));
 
         Assert.Equal(
-            ActiveAccountLeaseClaimStatus.ActiveElsewhere,
+            ActiveAccountLeaseClaimStatus.CoolingDown,
             duringGrace.Status);
         Assert.Equal(ActiveAccountLeaseClaimStatus.Acquired, afterGrace.Status);
+    }
+
+    [Fact]
+    public async Task DisconnectGrace_BlocksOriginalConnectionUntilExpiry()
+    {
+        var store = CreateStore();
+        Guid connection = Guid.NewGuid();
+        ActiveAccountLeaseClaim claim =
+            await store.TryClaimAsync("account-1", connection, Now);
+
+        await store.BeginDisconnectGraceAsync(
+            "account-1",
+            connection,
+            claim.Generation,
+            Now);
+        ActiveAccountLeaseClaim immediateRetry = await store.TryClaimAsync(
+            "account-1",
+            connection,
+            Now.AddSeconds(1));
+
+        Assert.Equal(
+            ActiveAccountLeaseClaimStatus.CoolingDown,
+            immediateRetry.Status);
+        Assert.False(await store.IsOwnerAsync(
+            "account-1",
+            connection,
+            claim.Generation,
+            Now.AddSeconds(1)));
     }
 
     [Fact]

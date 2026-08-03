@@ -69,6 +69,7 @@ namespace KnightOnline.Client.Data.Events
         public readonly Guid SessionGeneration;
         public readonly DateTime SessionLeaseExpiresAtUtc;
         public readonly int HeartbeatIntervalSeconds;
+        public readonly int RetryAfterSeconds;
 
         public AuthenticationResultEvent(
             AuthenticationOutcome result,
@@ -80,7 +81,8 @@ namespace KnightOnline.Client.Data.Events
             string displayName,
             Guid sessionGeneration,
             DateTime sessionLeaseExpiresAtUtc,
-            int heartbeatIntervalSeconds)
+            int heartbeatIntervalSeconds,
+            int retryAfterSeconds)
         {
             Result = result;
             Message = message;
@@ -92,6 +94,7 @@ namespace KnightOnline.Client.Data.Events
             SessionGeneration = sessionGeneration;
             SessionLeaseExpiresAtUtc = sessionLeaseExpiresAtUtc;
             HeartbeatIntervalSeconds = heartbeatIntervalSeconds;
+            RetryAfterSeconds = retryAfterSeconds;
         }
     }
 

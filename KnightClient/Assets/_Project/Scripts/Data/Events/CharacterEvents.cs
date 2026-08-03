@@ -191,4 +191,45 @@ namespace KnightOnline.Client.Data.Events
             Defense = defense;
         }
     }
+
+    public enum CharacterVitalsReason : byte
+    {
+        InitialSnapshot = 0,
+        Progression = 1,
+        Damage = 2,
+        Healing = 3,
+        ManaSpent = 4,
+        ManaRestored = 5,
+        Respawn = 6,
+        Correction = 7,
+    }
+
+    public readonly struct CharacterVitalsChangedEvent : IGameEvent
+    {
+        public readonly long Sequence;
+        public readonly CharacterVitalsReason Reason;
+        public readonly int CurrentHealth;
+        public readonly int MaximumHealth;
+        public readonly int CurrentMana;
+        public readonly int MaximumMana;
+        public readonly DateTime ServerTimeUtc;
+
+        public CharacterVitalsChangedEvent(
+            long sequence,
+            CharacterVitalsReason reason,
+            int currentHealth,
+            int maximumHealth,
+            int currentMana,
+            int maximumMana,
+            DateTime serverTimeUtc)
+        {
+            Sequence = sequence;
+            Reason = reason;
+            CurrentHealth = currentHealth;
+            MaximumHealth = maximumHealth;
+            CurrentMana = currentMana;
+            MaximumMana = maximumMana;
+            ServerTimeUtc = serverTimeUtc;
+        }
+    }
 }

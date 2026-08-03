@@ -129,7 +129,10 @@ public static class Program
                 authenticationRateLimiter,
                 clock,
                 options.Authentication),
-            new LeaveAccountSessionPacketHandler(accountSessions),
+            new LeaveAccountSessionPacketHandler(
+                accountSessions,
+                activePlayers,
+                clock),
             new AccountSessionHeartbeatPacketHandler(
                 accountSessions,
                 clock),

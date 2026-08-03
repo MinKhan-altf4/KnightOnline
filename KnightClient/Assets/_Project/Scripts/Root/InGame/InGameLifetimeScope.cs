@@ -34,6 +34,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             builder.RegisterComponentInHierarchy<MonsterSpawner>();
             builder.RegisterComponentInHierarchy<SelectionMarkerView>();
             builder.RegisterComponentInHierarchy<InGameHUD>();
+            builder.RegisterComponentInHierarchy<InGameMenuView>();
             builder.RegisterComponentInHierarchy<TargetHUD>();
             builder.RegisterComponentInHierarchy<NpcDialogUI>();
             builder.RegisterComponentInHierarchy<InGameSceneRoot>();

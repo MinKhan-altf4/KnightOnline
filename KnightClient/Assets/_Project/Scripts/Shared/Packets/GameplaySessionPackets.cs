@@ -294,4 +294,45 @@ namespace KnightOnline.Client.Shared.Packets
             Defense = defense;
         }
     }
+
+    public enum CharacterVitalsChangeReason : byte
+    {
+        InitialSnapshot = 0,
+        Progression = 1,
+        Damage = 2,
+        Healing = 3,
+        ManaSpent = 4,
+        ManaRestored = 5,
+        Respawn = 6,
+        Correction = 7,
+    }
+
+    public sealed class CharacterVitalsSnapshotPacket
+    {
+        public long Sequence { get; }
+        public CharacterVitalsChangeReason Reason { get; }
+        public int CurrentHealth { get; }
+        public int MaximumHealth { get; }
+        public int CurrentMana { get; }
+        public int MaximumMana { get; }
+        public DateTime ServerTimeUtc { get; }
+
+        public CharacterVitalsSnapshotPacket(
+            long sequence,
+            CharacterVitalsChangeReason reason,
+            int currentHealth,
+            int maximumHealth,
+            int currentMana,
+            int maximumMana,
+            DateTime serverTimeUtc)
+        {
+            Sequence = sequence;
+            Reason = reason;
+            CurrentHealth = currentHealth;
+            MaximumHealth = maximumHealth;
+            CurrentMana = currentMana;
+            MaximumMana = maximumMana;
+            ServerTimeUtc = serverTimeUtc;
+        }
+    }
 }

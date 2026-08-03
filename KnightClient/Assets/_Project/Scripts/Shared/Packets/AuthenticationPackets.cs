@@ -71,6 +71,7 @@ namespace KnightOnline.Client.Shared.Packets
         public Guid SessionGeneration { get; }
         public DateTime SessionLeaseExpiresAtUtc { get; }
         public int HeartbeatIntervalSeconds { get; }
+        public int RetryAfterSeconds { get; }
 
         public AuthenticationResponsePacket(
             AuthenticationResultCode result,
@@ -82,7 +83,8 @@ namespace KnightOnline.Client.Shared.Packets
             string? displayName = null,
             Guid sessionGeneration = default,
             DateTime sessionLeaseExpiresAtUtc = default,
-            int heartbeatIntervalSeconds = 0)
+            int heartbeatIntervalSeconds = 0,
+            int retryAfterSeconds = 0)
         {
             Result = result;
             Message = message;
@@ -94,6 +96,7 @@ namespace KnightOnline.Client.Shared.Packets
             SessionGeneration = sessionGeneration;
             SessionLeaseExpiresAtUtc = sessionLeaseExpiresAtUtc;
             HeartbeatIntervalSeconds = heartbeatIntervalSeconds;
+            RetryAfterSeconds = retryAfterSeconds;
         }
     }
 

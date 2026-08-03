@@ -96,7 +96,7 @@ public sealed class AttackMonsterPacketHandler(
                 CharacterStats stats = statsPipeline.Calculate(
                     session.Profile.ClassDefinitionId,
                     grant.LevelAfter);
-                session.ApplyProgression(
+                PlayerVitalsState vitals = session.ApplyProgression(
                     grant.LevelAfter,
                     grant.TotalExperience,
                     grant.ExperienceIntoLevel,
@@ -117,6 +117,12 @@ public sealed class AttackMonsterPacketHandler(
                         session.MaximumMana,
                         session.BaseAttack,
                         session.Defense),
+                    cancellationToken);
+                await connection.SendAsync(
+                    PacketType.CharacterVitalsSnapshot,
+                    GameplaySessionPacketMapper.ToVitalsPacket(
+                        vitals,
+                        clock.UtcNow),
                     cancellationToken);
             }
         }

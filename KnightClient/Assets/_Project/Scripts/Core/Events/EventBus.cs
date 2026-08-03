@@ -47,6 +47,24 @@ namespace KnightOnline.Client.Core.Events
 
             foreach (var del in snapshot)
             {
+                // A previous handler can synchronously unload a scene. Its
+                // MonoBehaviours unsubscribe from OnDestroy, but their
+                // delegates are still present in this publish snapshot.
+                // Never invoke a binding that is no longer live.
+                if (!handlerList.Contains(del))
+                    continue;
+
+                // Unity keeps the managed delegate target alive briefly after
+                // Destroy, while its overloaded null comparison already marks
+                // the native object as gone. Remove that stale binding before
+                // invoking it.
+                if (del.Target is UnityEngine.Object unityTarget &&
+                    unityTarget == null)
+                {
+                    handlerList.Remove(del);
+                    continue;
+                }
+
                 if (del is Action<T> typedHandler)
                 {
                     typedHandler.Invoke(gameEvent);

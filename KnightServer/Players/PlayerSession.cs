@@ -16,6 +16,7 @@ public sealed class PlayerSession
     private long _totalExperience;
     private long _experienceIntoLevel;
     private long _experienceToNextLevel;
+    private long _vitalsSequence;
 
     public PlayerSession(
         PlayerSessionProfile profile,
@@ -142,7 +143,7 @@ public sealed class PlayerSession
         }
     }
 
-    public void ApplyProgression(
+    public PlayerVitalsState ApplyProgression(
         int level,
         long totalExperience,
         long experienceIntoLevel,
@@ -171,8 +172,104 @@ public sealed class PlayerSession
                 CurrentMana + manaIncrease);
             BaseAttack = stats.Attack;
             Defense = stats.Defense;
+            return CaptureVitalsSnapshotUnsafe(PlayerVitalsChange.Progression);
         }
     }
+
+    public PlayerVitalsState ApplyDamage(int requestedDamage)
+    {
+        lock (_syncRoot)
+        {
+            int damage = Math.Max(0, requestedDamage);
+            if (damage == 0)
+            {
+                return CaptureVitalsSnapshotUnsafe(
+                    PlayerVitalsChange.Damage,
+                    incrementSequence: false);
+            }
+            CurrentHealth = Math.Max(0, CurrentHealth - damage);
+            return CaptureVitalsSnapshotUnsafe(PlayerVitalsChange.Damage);
+        }
+    }
+
+    public PlayerVitalsState ApplyHealing(int requestedHealing)
+    {
+        lock (_syncRoot)
+        {
+            int healing = Math.Max(0, requestedHealing);
+            if (healing == 0)
+            {
+                return CaptureVitalsSnapshotUnsafe(
+                    PlayerVitalsChange.Healing,
+                    incrementSequence: false);
+            }
+            CurrentHealth += Math.Min(healing, MaximumHealth - CurrentHealth);
+            return CaptureVitalsSnapshotUnsafe(PlayerVitalsChange.Healing);
+        }
+    }
+
+    public bool TrySpendMana(
+        int requestedMana,
+        out PlayerVitalsState snapshot)
+    {
+        lock (_syncRoot)
+        {
+            if (requestedMana < 0 || CurrentMana < requestedMana)
+            {
+                snapshot = CaptureVitalsSnapshotUnsafe(
+                    PlayerVitalsChange.Correction,
+                    incrementSequence: false);
+                return false;
+            }
+
+            if (requestedMana == 0)
+            {
+                snapshot = CaptureVitalsSnapshotUnsafe(
+                    PlayerVitalsChange.ManaSpent,
+                    incrementSequence: false);
+                return true;
+            }
+
+            CurrentMana -= requestedMana;
+            snapshot = CaptureVitalsSnapshotUnsafe(
+                PlayerVitalsChange.ManaSpent);
+            return true;
+        }
+    }
+
+    public PlayerVitalsState RestoreMana(int requestedMana)
+    {
+        lock (_syncRoot)
+        {
+            int restoredMana = Math.Max(0, requestedMana);
+            if (restoredMana == 0)
+            {
+                return CaptureVitalsSnapshotUnsafe(
+                    PlayerVitalsChange.ManaRestored,
+                    incrementSequence: false);
+            }
+            CurrentMana += Math.Min(restoredMana, MaximumMana - CurrentMana);
+            return CaptureVitalsSnapshotUnsafe(PlayerVitalsChange.ManaRestored);
+        }
+    }
+
+    public PlayerVitalsState CaptureVitalsSnapshot(
+        PlayerVitalsChange reason = PlayerVitalsChange.Correction)
+    {
+        lock (_syncRoot)
+            return CaptureVitalsSnapshotUnsafe(reason);
+    }
+
+    private PlayerVitalsState CaptureVitalsSnapshotUnsafe(
+        PlayerVitalsChange reason,
+        bool incrementSequence = true) =>
+        new(
+            incrementSequence ? ++_vitalsSequence : _vitalsSequence,
+            reason,
+            CurrentHealth,
+            MaximumHealth,
+            CurrentMana,
+            MaximumMana);
 
     private void AdvancePositionUnsafe(
         DateTime utcNow,
@@ -205,3 +302,23 @@ public readonly record struct PlayerPositionState(
     long ServerSequence,
     long AcknowledgedClientSequence,
     Vector2 Position);
+
+public enum PlayerVitalsChange : byte
+{
+    InitialSnapshot = 0,
+    Progression = 1,
+    Damage = 2,
+    Healing = 3,
+    ManaSpent = 4,
+    ManaRestored = 5,
+    Respawn = 6,
+    Correction = 7,
+}
+
+public readonly record struct PlayerVitalsState(
+    long Sequence,
+    PlayerVitalsChange Reason,
+    int CurrentHealth,
+    int MaximumHealth,
+    int CurrentMana,
+    int MaximumMana);

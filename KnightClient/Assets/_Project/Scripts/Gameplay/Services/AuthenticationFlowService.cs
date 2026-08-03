@@ -37,6 +37,7 @@ namespace KnightOnline.Client.Gameplay.Services
         private string _registrationPassword;
         private bool _registrationPending;
         private CancellationTokenSource _heartbeatCancellation;
+        private CancellationTokenSource _sessionRetryCancellation;
         private Guid _sessionGeneration;
 
         public AuthenticationFlowService(
@@ -198,6 +199,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public void PlayNew()
         {
+            CancelSessionRetry();
             if (_isAuthenticated)
                 return;
             if (!_network.IsConnected)
@@ -218,6 +220,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public void StageLogin(string username, string password)
         {
+            CancelSessionRetry();
             _pendingUsername = username?.Trim();
             _pendingPassword = password;
             PublishEntry("Nhấn Chơi tiếp để xác thực tài khoản.");
@@ -226,7 +229,16 @@ namespace KnightOnline.Client.Gameplay.Services
         public void Continue()
         {
             if (_isAuthenticated)
+            {
+                HideLoading();
+                _events.Publish(new AuthenticationEntryRequiredEvent(
+                    string.Empty,
+                    isVisible: false));
+                _events.Publish(new AccountReadyEvent(
+                    _session?.AccountKey ?? string.Empty,
+                    _session?.IsGuest ?? false));
                 return;
+            }
             if (!_network.IsConnected)
             {
                 ReconnectAndRetryAsync(Continue).Forget();
@@ -270,7 +282,13 @@ namespace KnightOnline.Client.Gameplay.Services
                 .Forget();
         }
 
-        public void ReturnToAuthenticationEntry()
+        public void ShowEntryKeepingSession()
+        {
+            HideLoading();
+            PublishEntry("Choose Continue or another account.");
+        }
+
+        public void LogoutToAuthenticationEntry()
         {
             if (!_isAuthenticated)
             {
@@ -306,6 +324,7 @@ namespace KnightOnline.Client.Gameplay.Services
             switch (result.Result)
             {
                 case AuthenticationOutcome.Success:
+                    CancelSessionRetry();
                     if (!SaveReturnedSession(result))
                     {
                         _network.Disconnect();
@@ -323,6 +342,21 @@ namespace KnightOnline.Client.Gameplay.Services
                     }
                     ClearPendingCredentials();
                     CompleteSuccess(result);
+                    return;
+
+                case AuthenticationOutcome.SessionConflict:
+                    if (!SaveReturnedSession(result))
+                    {
+                        _network.Disconnect();
+                        return;
+                    }
+                    ClearPendingCredentials();
+                    _isCreatingGuest = false;
+                    _isManualLogin = false;
+                    StartSessionRetryCountdown(Math.Clamp(
+                        result.RetryAfterSeconds,
+                        1,
+                        60));
                     return;
 
                 case AuthenticationOutcome.AccountActive:
@@ -627,6 +661,60 @@ namespace KnightOnline.Client.Gameplay.Services
                 message));
         }
 
+        private void PublishLoading(string message, float remainingSeconds)
+        {
+            _events.Publish(new AuthenticationLoadingEvent(
+                true,
+                remainingSeconds,
+                message));
+        }
+
+        private void StartSessionRetryCountdown(int retryAfterSeconds)
+        {
+            CancelSessionRetry();
+            _sessionRetryCancellation = new CancellationTokenSource();
+            RunSessionRetryCountdownAsync(
+                    retryAfterSeconds,
+                    _sessionRetryCancellation.Token)
+                .Forget();
+        }
+
+        private async UniTask RunSessionRetryCountdownAsync(
+            int retryAfterSeconds,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                for (int remaining = retryAfterSeconds;
+                     remaining > 0;
+                     remaining--)
+                {
+                    PublishLoading(
+                        "Đang chờ phiên đăng xuất kết thúc...",
+                        remaining);
+                    await UniTask.Delay(
+                        TimeSpan.FromSeconds(1),
+                        DelayType.Realtime,
+                        cancellationToken: cancellationToken);
+                }
+
+                _sessionRetryCancellation?.Dispose();
+                _sessionRetryCancellation = null;
+                Continue();
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the player selects another authentication path.
+            }
+        }
+
+        private void CancelSessionRetry()
+        {
+            _sessionRetryCancellation?.Cancel();
+            _sessionRetryCancellation?.Dispose();
+            _sessionRetryCancellation = null;
+        }
+
         private void HideLoading()
         {
             _events.Publish(new AuthenticationLoadingEvent(
@@ -674,6 +762,7 @@ namespace KnightOnline.Client.Gameplay.Services
         public void Dispose()
         {
             StopHeartbeat();
+            CancelSessionRetry();
             ClearPendingCredentials();
             ClearRegistrationSecrets();
             _connectionSubscription?.Dispose();

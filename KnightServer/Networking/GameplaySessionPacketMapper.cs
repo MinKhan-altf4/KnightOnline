@@ -32,4 +32,16 @@ public static class GameplaySessionPacketMapper
             session.MaximumMana,
             session.BaseAttack,
             session.Defense);
+
+    public static CharacterVitalsSnapshotPacket ToVitalsPacket(
+        PlayerVitalsState state,
+        DateTime serverTimeUtc) =>
+        new(
+            state.Sequence,
+            (CharacterVitalsChangeReason)state.Reason,
+            state.CurrentHealth,
+            state.MaximumHealth,
+            state.CurrentMana,
+            state.MaximumMana,
+            serverTimeUtc);
 }

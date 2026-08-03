@@ -211,7 +211,20 @@ namespace KnightOnline.Client.Network
                 {
                     var envelope = await ReadEnvelopeAsync(ct);
                     if (envelope == null) break;
-                    HandlePacket(envelope);
+                    try
+                    {
+                        HandlePacket(envelope);
+                    }
+                    catch (Exception ex)
+                    {
+                        // A presentation/event callback failure is not a
+                        // transport failure. Keep the authenticated socket
+                        // alive and report the packet boundary separately.
+                        Debug.LogError(
+                            $"[Network] Packet handler failed for " +
+                            $"{envelope.Type}: {ex.Message}");
+                        Debug.LogException(ex);
+                    }
                     if (envelope.Type == PacketType.ForcedDisconnect)
                     {
                         // The handler already published the authoritative
