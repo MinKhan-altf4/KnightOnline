@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
+using KnightOnline.Server.Players;
 using KnightOnline.Server.Time;
 using KnightOnline.Server.World;
 
@@ -14,24 +15,48 @@ public sealed class PlayerMoveInputPacketHandler(
     public PacketAccessLevel RequiredAccess =>
         PacketAccessLevel.CharacterSelected;
 
-    public Task HandleAsync(
+    public async Task HandleAsync(
         ClientConnection connection,
         string payload,
         CancellationToken cancellationToken)
     {
-        var packet = JsonSerializer.Deserialize<PlayerMoveInputPacket>(payload);
+        PlayerMoveInputPacket? packet;
+        try
+        {
+            packet = JsonSerializer.Deserialize<PlayerMoveInputPacket>(payload);
+        }
+        catch (JsonException)
+        {
+            return;
+        }
         if (packet == null || connection.PlayerSession == null)
-            return Task.CompletedTask;
+            return;
 
         if (!float.IsFinite(packet.DirectionX) ||
-            !float.IsFinite(packet.DirectionY))
-            return Task.CompletedTask;
+            !float.IsFinite(packet.DirectionY) ||
+            packet.ClientSequence <= 0)
+            return;
 
-        connection.PlayerSession.SetMovement(
+        DateTime utcNow = clock.UtcNow;
+        bool accepted = connection.PlayerSession.TrySetMovement(
             new Vector2(packet.DirectionX, packet.DirectionY),
-            clock.UtcNow,
+            packet.ClientSequence,
+            utcNow,
             movementResolver);
 
-        return Task.CompletedTask;
+        PlayerPositionState snapshot =
+            connection.PlayerSession.CapturePositionSnapshot();
+        await connection.SendAsync(
+            PacketType.PlayerPositionSnapshot,
+            new PlayerPositionSnapshotPacket(
+                snapshot.ServerSequence,
+                snapshot.AcknowledgedClientSequence,
+                accepted
+                    ? PlayerPositionSnapshotReason.MovementAccepted
+                    : PlayerPositionSnapshotReason.MovementRejected,
+                snapshot.Position.X,
+                snapshot.Position.Y,
+                utcNow),
+            cancellationToken);
     }
 }

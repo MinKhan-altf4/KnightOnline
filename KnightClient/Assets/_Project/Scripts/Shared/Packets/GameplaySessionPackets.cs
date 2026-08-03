@@ -25,8 +25,15 @@ namespace KnightOnline.Client.Shared.Packets
         public int CharacterId { get; }
         public string CharacterName { get; }
         public int Level { get; }
+        public long TotalExperience { get; }
+        public long ExperienceIntoLevel { get; }
+        public long ExperienceToNextLevel { get; }
         public int CurrentHealth { get; }
         public int MaximumHealth { get; }
+        public int CurrentMana { get; }
+        public int MaximumMana { get; }
+        public int Attack { get; }
+        public int Defense { get; }
         public float MoveSpeed { get; }
         public float PositionX { get; }
         public float PositionY { get; }
@@ -52,13 +59,27 @@ namespace KnightOnline.Client.Shared.Packets
             string bodyTypeDefinitionId = "",
             string mapDefinitionId = "",
             string spawnPointId = "",
-            IReadOnlyList<AppearanceSelectionPacket>? appearanceSelections = null)
+            IReadOnlyList<AppearanceSelectionPacket>? appearanceSelections = null,
+            long totalExperience = 0,
+            long experienceIntoLevel = 0,
+            long experienceToNextLevel = 0,
+            int currentMana = 0,
+            int maximumMana = 0,
+            int attack = 0,
+            int defense = 0)
         {
             CharacterId = characterId;
             CharacterName = characterName;
             Level = level;
+            TotalExperience = totalExperience;
+            ExperienceIntoLevel = experienceIntoLevel;
+            ExperienceToNextLevel = experienceToNextLevel;
             CurrentHealth = currentHealth;
             MaximumHealth = maximumHealth;
+            CurrentMana = currentMana;
+            MaximumMana = maximumMana;
+            Attack = attack;
+            Defense = defense;
             MoveSpeed = moveSpeed;
             PositionX = positionX;
             PositionY = positionY;
@@ -150,11 +171,51 @@ namespace KnightOnline.Client.Shared.Packets
     {
         public float DirectionX { get; }
         public float DirectionY { get; }
+        public long ClientSequence { get; }
 
-        public PlayerMoveInputPacket(float directionX, float directionY)
+        public PlayerMoveInputPacket(
+            float directionX,
+            float directionY,
+            long clientSequence)
         {
             DirectionX = directionX;
             DirectionY = directionY;
+            ClientSequence = clientSequence;
+        }
+    }
+
+    public enum PlayerPositionSnapshotReason : byte
+    {
+        MovementAccepted = 0,
+        MovementRejected = 1,
+        RespawnDisplacement = 2,
+    }
+
+    public sealed class PlayerPositionSnapshotPacket
+    {
+        public long ServerSequence { get; }
+        public long AcknowledgedSequence { get; }
+        public PlayerPositionSnapshotReason Reason { get; }
+        public bool InputAccepted =>
+            Reason != PlayerPositionSnapshotReason.MovementRejected;
+        public float PositionX { get; }
+        public float PositionY { get; }
+        public DateTime ServerTimeUtc { get; }
+
+        public PlayerPositionSnapshotPacket(
+            long serverSequence,
+            long acknowledgedSequence,
+            PlayerPositionSnapshotReason reason,
+            float positionX,
+            float positionY,
+            DateTime serverTimeUtc)
+        {
+            ServerSequence = serverSequence;
+            AcknowledgedSequence = acknowledgedSequence;
+            Reason = reason;
+            PositionX = positionX;
+            PositionY = positionY;
+            ServerTimeUtc = serverTimeUtc;
         }
     }
 
@@ -167,6 +228,7 @@ namespace KnightOnline.Client.Shared.Packets
         OutOfRange = 4,
         Cooldown = 5,
         PlayerDead = 6,
+        WrongMap = 7,
     }
 
     public sealed class AttackResultPacket
@@ -186,6 +248,50 @@ namespace KnightOnline.Client.Shared.Packets
             MonsterId = monsterId;
             AppliedDamage = appliedDamage;
             CooldownRemainingMilliseconds = cooldownRemainingMilliseconds;
+        }
+    }
+
+    public sealed class CharacterProgressionChangedPacket
+    {
+        public Guid RequestId { get; }
+        public long AppliedExperience { get; }
+        public long TotalExperience { get; }
+        public int Level { get; }
+        public long ExperienceIntoLevel { get; }
+        public long ExperienceToNextLevel { get; }
+        public int CurrentHealth { get; }
+        public int MaximumHealth { get; }
+        public int CurrentMana { get; }
+        public int MaximumMana { get; }
+        public int Attack { get; }
+        public int Defense { get; }
+
+        public CharacterProgressionChangedPacket(
+            Guid requestId,
+            long appliedExperience,
+            long totalExperience,
+            int level,
+            long experienceIntoLevel,
+            long experienceToNextLevel,
+            int currentHealth,
+            int maximumHealth,
+            int currentMana,
+            int maximumMana,
+            int attack,
+            int defense)
+        {
+            RequestId = requestId;
+            AppliedExperience = appliedExperience;
+            TotalExperience = totalExperience;
+            Level = level;
+            ExperienceIntoLevel = experienceIntoLevel;
+            ExperienceToNextLevel = experienceToNextLevel;
+            CurrentHealth = currentHealth;
+            MaximumHealth = maximumHealth;
+            CurrentMana = currentMana;
+            MaximumMana = maximumMana;
+            Attack = attack;
+            Defense = defense;
         }
     }
 }

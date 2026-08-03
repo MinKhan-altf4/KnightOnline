@@ -52,28 +52,36 @@
         "displayName": "Chiến binh",
         "description": "Cận chiến bền bỉ, công thủ cân bằng.",
         "allowedBodyTypeIds": ["male", "female"],
-        "previewAssetAddress": "class/warrior/preview"
+        "previewAssetAddress": "class/warrior/preview",
+        "baseStats": { "maximumHealth": 120, "maximumMana": 30, "attack": 12, "defense": 8 },
+        "perLevelGrowth": { "maximumHealth": 12, "maximumMana": 3, "attack": 3, "defense": 2 }
       },
       {
         "definitionId": "assassin",
         "displayName": "Sát thủ",
         "description": "Nhanh nhẹn, áp sát và gây sát thương chớp nhoáng.",
         "allowedBodyTypeIds": ["male", "female"],
-        "previewAssetAddress": "class/assassin/preview"
+        "previewAssetAddress": "class/assassin/preview",
+        "baseStats": { "maximumHealth": 100, "maximumMana": 45, "attack": 14, "defense": 5 },
+        "perLevelGrowth": { "maximumHealth": 9, "maximumMana": 4, "attack": 4, "defense": 1 }
       },
       {
         "definitionId": "mage",
         "displayName": "Pháp sư",
         "description": "Sử dụng phép thuật và kiểm soát chiến trường.",
         "allowedBodyTypeIds": ["male", "female"],
-        "previewAssetAddress": "class/mage/preview"
+        "previewAssetAddress": "class/mage/preview",
+        "baseStats": { "maximumHealth": 85, "maximumMana": 100, "attack": 16, "defense": 3 },
+        "perLevelGrowth": { "maximumHealth": 7, "maximumMana": 10, "attack": 5, "defense": 1 }
       },
       {
         "definitionId": "archer",
         "displayName": "Xạ thủ",
         "description": "Tấn công tầm xa và giữ khoảng cách.",
         "allowedBodyTypeIds": ["male", "female"],
-        "previewAssetAddress": "class/archer/preview"
+        "previewAssetAddress": "class/archer/preview",
+        "baseStats": { "maximumHealth": 95, "maximumMana": 55, "attack": 13, "defense": 4 },
+        "perLevelGrowth": { "maximumHealth": 8, "maximumMana": 5, "attack": 4, "defense": 1 }
       }
     ],
     "bodyTypes": [
@@ -133,11 +141,18 @@
     "attackRange": 2.0,
     "attackCooldownMilliseconds": 750
   },
+  "progression": {
+    "maximumLevel": 40,
+    "baseExperienceToNextLevel": 100,
+    "linearExperienceGrowth": 25,
+    "quadraticExperienceGrowth": 5
+  },
   "world": {
     "tickMilliseconds": 250,
     "maximumMovementDeltaMilliseconds": 250,
     "playerCollisionRadius": 0.35,
-    "monsterCollisionRadius": 0.5
+    "monsterCollisionRadius": 0.5,
+    "respawnDisplacementAngularSamples": 32
   },
   "monsterDefinitions": [
     {
@@ -145,12 +160,14 @@
       "name": "Training Wolf",
       "level": 1,
       "maximumHealth": 50,
+      "experienceReward": 25,
       "respawnSeconds": 10
     }
   ],
   "monsterSpawns": [
     {
       "definitionId": 1,
+      "mapDefinitionId": "tutorial_map_01",
       "positionX": 2.0,
       "positionY": 2.0
     }

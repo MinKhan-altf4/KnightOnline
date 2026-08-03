@@ -43,6 +43,30 @@ public sealed class AccountSessionNetworkIntegrationTests
     }
 
     [Fact]
+    public async Task AuthenticatedGameplayTraffic_RenewsAccountLease()
+    {
+        var clock = new MutableClock(InitialUtc);
+        var store = CreateStore();
+        var handler = new RecordingAuthenticatedPacketHandler();
+        await using TestConnection pair = await CreateConnectionAsync(
+            store,
+            clock,
+            handler);
+        ActiveAccountLeaseClaim claim = await AttachLeaseAsync(pair, store);
+        clock.UtcNow = InitialUtc.AddSeconds(15);
+
+        await pair.DispatchAsync(PacketType.PlayerMoveInput, new { });
+        clock.UtcNow = InitialUtc.AddSeconds(34);
+
+        Assert.True(handler.WasHandled);
+        Assert.True(await store.IsOwnerAsync(
+            "account-1",
+            pair.Server.ConnectionId,
+            claim.Generation,
+            clock.UtcNow));
+    }
+
+    [Fact]
     public async Task ExpiredLease_IsRejectedAtDispatcherBoundary()
     {
         var clock = new MutableClock(InitialUtc);
@@ -163,7 +187,8 @@ public sealed class AccountSessionNetworkIntegrationTests
 
     private static async Task<TestConnection> CreateConnectionAsync(
         IActiveAccountLeaseStore store,
-        IServerClock clock)
+        IServerClock clock,
+        IPacketHandler? additionalHandler = null)
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -174,8 +199,14 @@ public sealed class AccountSessionNetworkIntegrationTests
         await connect;
         listener.Stop();
 
+        IPacketHandler[] handlers = additionalHandler == null
+            ? [new AccountSessionHeartbeatPacketHandler(store, clock)]
+            : [
+                new AccountSessionHeartbeatPacketHandler(store, clock),
+                additionalHandler,
+            ];
         var dispatcher = new PacketDispatcher(
-            [new AccountSessionHeartbeatPacketHandler(store, clock)],
+            handlers,
             store,
             clock);
         var server = new ClientConnection(
@@ -188,6 +219,21 @@ public sealed class AccountSessionNetworkIntegrationTests
     private sealed class MutableClock(DateTime utcNow) : IServerClock
     {
         public DateTime UtcNow { get; set; } = utcNow;
+    }
+
+    private sealed class RecordingAuthenticatedPacketHandler : IPacketHandler
+    {
+        public PacketType PacketType => PacketType.PlayerMoveInput;
+        public bool WasHandled { get; private set; }
+
+        public Task HandleAsync(
+            ClientConnection connection,
+            string payload,
+            CancellationToken cancellationToken)
+        {
+            WasHandled = true;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class TestConnection(

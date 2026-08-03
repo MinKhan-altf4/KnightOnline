@@ -13,4 +13,5 @@ public sealed record MonsterDamageResult(
     int MonsterId,
     int AppliedDamage,
     int RemainingHealth,
-    bool WasKilled);
+    bool WasKilled,
+    Guid MonsterLifeId = default);

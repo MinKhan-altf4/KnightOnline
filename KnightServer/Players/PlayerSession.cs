@@ -5,9 +5,17 @@ namespace KnightOnline.Server.Players;
 
 public sealed class PlayerSession
 {
+    private readonly object _syncRoot = new();
     private readonly double _maximumMovementDeltaSeconds;
     private Vector2 _movementDirection;
+    private Vector2 _position;
     private DateTime _lastMovementUpdateUtc;
+    private long _lastProcessedMovementSequence;
+    private long _positionSnapshotSequence;
+    private int _level;
+    private long _totalExperience;
+    private long _experienceIntoLevel;
+    private long _experienceToNextLevel;
 
     public PlayerSession(
         PlayerSessionProfile profile,
@@ -17,15 +25,27 @@ public sealed class PlayerSession
         Vector2 spawnPosition,
         int baseAttack,
         TimeSpan maximumMovementDelta,
-        DateTime utcNow)
+        DateTime utcNow,
+        long totalExperience = 0,
+        long experienceIntoLevel = 0,
+        long experienceToNextLevel = 0,
+        int maximumMana = 0,
+        int defense = 0)
     {
         Profile = profile ?? throw new ArgumentNullException(nameof(profile));
         SessionId = Guid.NewGuid();
         CurrentHealth = currentHealth;
         MaximumHealth = maximumHealth;
         MoveSpeed = moveSpeed;
-        Position = spawnPosition;
+        _position = spawnPosition;
         BaseAttack = baseAttack;
+        Defense = defense;
+        MaximumMana = maximumMana;
+        CurrentMana = maximumMana;
+        _level = profile.Level;
+        _totalExperience = totalExperience;
+        _experienceIntoLevel = experienceIntoLevel;
+        _experienceToNextLevel = experienceToNextLevel;
         _maximumMovementDeltaSeconds = maximumMovementDelta.TotalSeconds;
         _lastMovementUpdateUtc = utcNow;
     }
@@ -34,27 +54,127 @@ public sealed class PlayerSession
     public PlayerSessionProfile Profile { get; }
     public int CharacterId => Profile.CharacterId;
     public string CharacterName => Profile.CharacterName;
-    public int Level => Profile.Level;
+    public int Level { get { lock (_syncRoot) return _level; } }
+    public long TotalExperience
+        { get { lock (_syncRoot) return _totalExperience; } }
+    public long ExperienceIntoLevel
+        { get { lock (_syncRoot) return _experienceIntoLevel; } }
+    public long ExperienceToNextLevel
+        { get { lock (_syncRoot) return _experienceToNextLevel; } }
     public int CurrentHealth { get; private set; }
-    public int MaximumHealth { get; }
+    public int MaximumHealth { get; private set; }
+    public int CurrentMana { get; private set; }
+    public int MaximumMana { get; private set; }
     public float MoveSpeed { get; }
-    public int BaseAttack { get; }
-    public Vector2 Position { get; private set; }
+    public int BaseAttack { get; private set; }
+    public int Defense { get; private set; }
+    public Vector2 Position
+    {
+        get
+        {
+            lock (_syncRoot)
+                return _position;
+        }
+    }
     public DateTime NextAttackAtUtc { get; private set; }
     public bool IsAlive => CurrentHealth > 0;
+    public long LastProcessedMovementSequence
+    {
+        get
+        {
+            lock (_syncRoot)
+                return _lastProcessedMovementSequence;
+        }
+    }
 
-    public void SetMovement(
+    public bool TrySetMovement(
         Vector2 direction,
+        long clientSequence,
         DateTime utcNow,
         IWorldMovementResolver movementResolver)
     {
-        AdvancePosition(utcNow, movementResolver);
-        _movementDirection = direction.LengthSquared() > 1f
-            ? Vector2.Normalize(direction)
-            : direction;
+        lock (_syncRoot)
+        {
+            if (clientSequence <= _lastProcessedMovementSequence)
+                return false;
+
+            AdvancePositionUnsafe(utcNow, movementResolver);
+            _movementDirection = direction.LengthSquared() > 1f
+                ? Vector2.Normalize(direction)
+                : direction;
+            _lastProcessedMovementSequence = clientSequence;
+            return true;
+        }
     }
 
     public void AdvancePosition(
+        DateTime utcNow,
+        IWorldMovementResolver movementResolver)
+    {
+        lock (_syncRoot)
+            AdvancePositionUnsafe(utcNow, movementResolver);
+    }
+
+    public bool TryResolveAuthoritativePosition(
+        Func<Vector2, Vector2> resolver,
+        out Vector2 resolvedPosition)
+    {
+        ArgumentNullException.ThrowIfNull(resolver);
+        lock (_syncRoot)
+        {
+            resolvedPosition = resolver(_position);
+            if (resolvedPosition == _position)
+                return false;
+
+            _position = resolvedPosition;
+            return true;
+        }
+    }
+
+    public PlayerPositionState CapturePositionSnapshot()
+    {
+        lock (_syncRoot)
+        {
+            return new PlayerPositionState(
+                ++_positionSnapshotSequence,
+                _lastProcessedMovementSequence,
+                _position);
+        }
+    }
+
+    public void ApplyProgression(
+        int level,
+        long totalExperience,
+        long experienceIntoLevel,
+        long experienceToNextLevel,
+        CharacterStats stats)
+    {
+        lock (_syncRoot)
+        {
+            int healthIncrease = Math.Max(
+                0,
+                stats.MaximumHealth - MaximumHealth);
+            int manaIncrease = Math.Max(
+                0,
+                stats.MaximumMana - MaximumMana);
+            _level = level;
+            _totalExperience = totalExperience;
+            _experienceIntoLevel = experienceIntoLevel;
+            _experienceToNextLevel = experienceToNextLevel;
+            MaximumHealth = stats.MaximumHealth;
+            MaximumMana = stats.MaximumMana;
+            CurrentHealth = Math.Min(
+                MaximumHealth,
+                CurrentHealth + healthIncrease);
+            CurrentMana = Math.Min(
+                MaximumMana,
+                CurrentMana + manaIncrease);
+            BaseAttack = stats.Attack;
+            Defense = stats.Defense;
+        }
+    }
+
+    private void AdvancePositionUnsafe(
         DateTime utcNow,
         IWorldMovementResolver movementResolver)
     {
@@ -63,9 +183,12 @@ public sealed class PlayerSession
             0,
             _maximumMovementDeltaSeconds);
 
-        Vector2 desiredPosition = Position +
+        Vector2 desiredPosition = _position +
             _movementDirection * MoveSpeed * (float)elapsedSeconds;
-        Position = movementResolver.Resolve(Position, desiredPosition);
+        _position = movementResolver.Resolve(
+            Profile.MapDefinitionId,
+            _position,
+            desiredPosition);
         _lastMovementUpdateUtc = utcNow;
     }
 
@@ -77,3 +200,8 @@ public sealed class PlayerSession
     public void CommitAttack(DateTime utcNow, TimeSpan cooldown) =>
         NextAttackAtUtc = utcNow + cooldown;
 }
+
+public readonly record struct PlayerPositionState(
+    long ServerSequence,
+    long AcknowledgedClientSequence,
+    Vector2 Position);

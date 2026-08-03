@@ -12,6 +12,7 @@ public sealed class ServerOptions
     public GuestOptions Guest { get; set; } = new();
     public CharacterOptions Characters { get; set; } = new();
     public CombatOptions Combat { get; set; } = new();
+    public ProgressionOptions Progression { get; set; } = new();
     public WorldOptions World { get; set; } = new();
     public List<MonsterDefinitionOptions> MonsterDefinitions { get; set; } = [];
     public List<MonsterSpawnOptions> MonsterSpawns { get; set; } = [];
@@ -123,6 +124,18 @@ public sealed class ServerOptions
         if (Combat.AttackRange <= 0 || Combat.AttackCooldownMilliseconds <= 0)
             throw new InvalidDataException(
                 "Combat attack range and cooldown must be positive.");
+        Progression.Validate();
+        if (Characters.InitialLevel > Progression.MaximumLevel)
+        {
+            throw new InvalidDataException(
+                "Characters.InitialLevel cannot exceed " +
+                "Progression.MaximumLevel.");
+        }
+        if (Guest.MaximumLevel > Progression.MaximumLevel)
+        {
+            throw new InvalidDataException(
+                "Guest.MaximumLevel cannot exceed Progression.MaximumLevel.");
+        }
         if (World.TickMilliseconds <= 0)
             throw new InvalidDataException("World.TickMilliseconds must be positive.");
         if (World.MaximumMovementDeltaMilliseconds <= 0)
@@ -134,6 +147,9 @@ public sealed class ServerOptions
             throw new InvalidDataException(
                 "World collision radii must be positive.");
         }
+        if (World.RespawnDisplacementAngularSamples < 8)
+            throw new InvalidDataException(
+                "World.RespawnDisplacementAngularSamples must be at least 8.");
         if (MonsterDefinitions.Count == 0)
             throw new InvalidDataException("At least one MonsterDefinitions entry is required.");
         if (MonsterSpawns.Count == 0)
@@ -151,6 +167,10 @@ public sealed class ServerOptions
         if (MonsterSpawns.Any(spawn => !definitionIds.Contains(spawn.DefinitionId)))
             throw new InvalidDataException(
                 "Every monster spawn must reference an existing definition.");
+        if (MonsterSpawns.Any(spawn =>
+                string.IsNullOrWhiteSpace(spawn.MapDefinitionId)))
+            throw new InvalidDataException(
+                "Every monster spawn must reference a map definition.");
     }
 
     private static void ValidateCharacterCatalog(CharacterOptions characters)
@@ -181,7 +201,15 @@ public sealed class ServerOptions
             if (string.IsNullOrWhiteSpace(classDefinition.DefinitionId) ||
                 string.IsNullOrWhiteSpace(classDefinition.DisplayName) ||
                 classDefinition.AllowedBodyTypeIds.Count == 0 ||
-                classDefinition.AllowedBodyTypeIds.Any(id => !bodyIds.Contains(id)))
+                classDefinition.AllowedBodyTypeIds.Any(id => !bodyIds.Contains(id)) ||
+                classDefinition.BaseStats.MaximumHealth <= 0 ||
+                classDefinition.BaseStats.MaximumMana < 0 ||
+                classDefinition.BaseStats.Attack <= 0 ||
+                classDefinition.BaseStats.Defense < 0 ||
+                classDefinition.PerLevelGrowth.MaximumHealth < 0 ||
+                classDefinition.PerLevelGrowth.MaximumMana < 0 ||
+                classDefinition.PerLevelGrowth.Attack < 0 ||
+                classDefinition.PerLevelGrowth.Defense < 0)
             {
                 throw new InvalidDataException(
                     $"Invalid class definition '{classDefinition.DefinitionId}'.");
@@ -297,6 +325,36 @@ public sealed class CharacterClassOptions
     public string Description { get; set; } = string.Empty;
     public List<string> AllowedBodyTypeIds { get; set; } = [];
     public string PreviewAssetAddress { get; set; } = string.Empty;
+    public CharacterBaseStatsOptions BaseStats { get; set; } = new();
+    public CharacterBaseStatsOptions PerLevelGrowth { get; set; } = new();
+}
+
+public sealed class CharacterBaseStatsOptions
+{
+    public int MaximumHealth { get; set; }
+    public int MaximumMana { get; set; }
+    public int Attack { get; set; }
+    public int Defense { get; set; }
+}
+
+public sealed class ProgressionOptions
+{
+    public int MaximumLevel { get; set; } = 40;
+    public long BaseExperienceToNextLevel { get; set; } = 100;
+    public long LinearExperienceGrowth { get; set; } = 25;
+    public long QuadraticExperienceGrowth { get; set; } = 5;
+
+    internal void Validate()
+    {
+        if (MaximumLevel < 2 ||
+            BaseExperienceToNextLevel <= 0 ||
+            LinearExperienceGrowth < 0 ||
+            QuadraticExperienceGrowth < 0)
+        {
+            throw new InvalidDataException(
+                "Progression configuration is invalid.");
+        }
+    }
 }
 
 public sealed class BodyTypeOptions
@@ -329,6 +387,7 @@ public sealed class WorldOptions
     public int MaximumMovementDeltaMilliseconds { get; set; }
     public float PlayerCollisionRadius { get; set; } = 0.35f;
     public float MonsterCollisionRadius { get; set; } = 0.5f;
+    public int RespawnDisplacementAngularSamples { get; set; } = 32;
 }
 
 public sealed class MonsterDefinitionOptions
@@ -338,10 +397,12 @@ public sealed class MonsterDefinitionOptions
     public int Level { get; set; }
     public int MaximumHealth { get; set; }
     public double RespawnSeconds { get; set; }
+    public int ExperienceReward { get; set; }
 
     internal void Validate()
     {
-        if (DefinitionId <= 0 || Level <= 0 || MaximumHealth <= 0)
+        if (DefinitionId <= 0 || Level <= 0 || MaximumHealth <= 0 ||
+            ExperienceReward <= 0)
             throw new InvalidDataException(
                 "Monster definition id, level and maximum health must be positive.");
         if (string.IsNullOrWhiteSpace(Name))
@@ -354,6 +415,7 @@ public sealed class MonsterDefinitionOptions
 public sealed class MonsterSpawnOptions
 {
     public int DefinitionId { get; set; }
+    public string MapDefinitionId { get; set; } = string.Empty;
     public float PositionX { get; set; }
     public float PositionY { get; set; }
 }

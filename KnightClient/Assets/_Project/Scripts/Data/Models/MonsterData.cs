@@ -8,6 +8,7 @@ namespace KnightOnline.Client.Data.Models
         public int DefinitionId { get; set; }
         public string MonsterName { get; set; }
         public int Level { get; set; }
+        public string MapDefinitionId { get; set; }
         public int CurrentHealth { get; set; }
         public int MaximumHealth { get; set; }
         public bool IsAlive { get; set; }

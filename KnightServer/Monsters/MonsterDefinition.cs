@@ -7,7 +7,8 @@ public sealed record MonsterDefinition
         string name,
         int level,
         int maximumHealth,
-        TimeSpan respawnDelay)
+        TimeSpan respawnDelay,
+        int experienceReward = 0)
     {
         if (definitionId <= 0)
             throw new ArgumentOutOfRangeException(nameof(definitionId));
@@ -25,6 +26,7 @@ public sealed record MonsterDefinition
         Level = level;
         MaximumHealth = maximumHealth;
         RespawnDelay = respawnDelay;
+        ExperienceReward = experienceReward;
     }
 
     public int DefinitionId { get; }
@@ -32,4 +34,5 @@ public sealed record MonsterDefinition
     public int Level { get; }
     public int MaximumHealth { get; }
     public TimeSpan RespawnDelay { get; }
+    public int ExperienceReward { get; }
 }

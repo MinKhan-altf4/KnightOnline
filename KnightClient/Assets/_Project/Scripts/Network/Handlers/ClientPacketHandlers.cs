@@ -32,6 +32,69 @@ namespace KnightOnline.Client.Network.Handlers
         }
     }
 
+    public sealed class PlayerPositionSnapshotHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public PlayerPositionSnapshotHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType => PacketType.PlayerPositionSnapshot;
+
+        public void Handle(string payload)
+        {
+            PlayerPositionSnapshotPacket packet =
+                JsonSerializer.Deserialize<PlayerPositionSnapshotPacket>(
+                    payload);
+            if (packet == null ||
+                !float.IsFinite(packet.PositionX) ||
+                !float.IsFinite(packet.PositionY))
+                return;
+
+            _events.Publish(new PlayerPositionSnapshotEvent(
+                packet.ServerSequence,
+                packet.AcknowledgedSequence,
+                packet.InputAccepted,
+                packet.PositionX,
+                packet.PositionY));
+        }
+    }
+
+    public sealed class CharacterProgressionChangedHandler :
+        IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+
+        public CharacterProgressionChangedHandler(IEventBus events) =>
+            _events = events;
+
+        public PacketType PacketType =>
+            PacketType.CharacterProgressionChanged;
+
+        public void Handle(string payload)
+        {
+            CharacterProgressionChangedPacket packet =
+                JsonSerializer.Deserialize<CharacterProgressionChangedPacket>(
+                    payload);
+            if (packet == null)
+                return;
+
+            _events.Publish(new CharacterProgressionChangedEvent(
+                packet.RequestId,
+                packet.AppliedExperience,
+                packet.TotalExperience,
+                packet.Level,
+                packet.ExperienceIntoLevel,
+                packet.ExperienceToNextLevel,
+                packet.CurrentHealth,
+                packet.MaximumHealth,
+                packet.CurrentMana,
+                packet.MaximumMana,
+                packet.Attack,
+                packet.Defense));
+        }
+    }
+
     public sealed class CreateCharacterResponseHandler : IClientPacketHandler
     {
         private readonly IEventBus _events;
@@ -555,6 +618,7 @@ namespace KnightOnline.Client.Network.Handlers
             character.CurrentSpawnPointId = packet.CurrentSpawnPointId;
             character.SpawnPosition =
                 new Vector2(packet.PositionX, packet.PositionY);
+            character.TotalExperience = packet.TotalExperience;
             character.AppearanceSelections =
                 packet.AppearanceSelections.Select(value =>
                     new AppearanceSelectionData
@@ -583,6 +647,13 @@ namespace KnightOnline.Client.Network.Handlers
                 SpawnPosition = new Vector2(
                     packet.PositionX,
                     packet.PositionY),
+                TotalExperience = packet.TotalExperience,
+                ExperienceIntoLevel = packet.ExperienceIntoLevel,
+                ExperienceToNextLevel = packet.ExperienceToNextLevel,
+                CurrentMana = packet.CurrentMana,
+                MaxMana = packet.MaximumMana,
+                Attack = packet.Attack,
+                Defense = packet.Defense,
                 AppearanceSelections =
                     packet.AppearanceSelections.Select(value =>
                         new AppearanceSelectionData
@@ -604,6 +675,7 @@ namespace KnightOnline.Client.Network.Handlers
                 DefinitionId = packet.DefinitionId,
                 MonsterName = packet.MonsterName,
                 Level = packet.Level,
+                MapDefinitionId = packet.MapDefinitionId,
                 CurrentHealth = packet.CurrentHealth,
                 MaximumHealth = packet.MaximumHealth,
                 IsAlive = packet.IsAlive,

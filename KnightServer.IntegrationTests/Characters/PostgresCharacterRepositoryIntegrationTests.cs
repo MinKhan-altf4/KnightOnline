@@ -11,6 +11,7 @@ using KnightOnline.Server.Networking.Handlers;
 using KnightOnline.Server.Monsters;
 using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
+using KnightOnline.Server.Progression;
 using KnightOnline.Server.World;
 using KnightOnline.Server.Time;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,113 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
 {
     private static readonly DateTime InitialUtc =
         new(2026, 8, 2, 9, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task ExperienceGrant_IsIdempotentAndPersistsAtomically()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        TestContext context = await CreateContextAsync(database);
+        CreateCharacterResponsePacket created =
+            await context.Repository.CreateAsync(
+                context.AccountKey,
+                CreateRequest(
+                    context.Options,
+                    $"Progress {context.Suffix}",
+                    slotIndex: 1),
+                CancellationToken.None);
+        Assert.Equal(CreateCharacterResult.Success, created.Result);
+
+        ServerOptions serverOptions = LoadServerOptions();
+        var curve = new ConfiguredExperienceCurve(serverOptions.Progression);
+        var service = new CharacterProgressionService(
+            database.Options,
+            curve,
+            new FixedClock(InitialUtc));
+        Guid requestId = Guid.NewGuid();
+        long reward = curve.GetExperienceRequiredToAdvance(1);
+
+        ProgressionGrantResult first = await service.GrantExperienceAsync(
+            requestId,
+            created.Character!.CharacterId,
+            reward,
+            serverOptions.Progression.MaximumLevel,
+            "integration_test",
+            "monster-life-1",
+            CancellationToken.None);
+        ProgressionGrantResult retry = await service.GrantExperienceAsync(
+            requestId,
+            created.Character.CharacterId,
+            reward,
+            serverOptions.Progression.MaximumLevel,
+            "integration_test",
+            "monster-life-1",
+            CancellationToken.None);
+
+        Assert.Equal(ProgressionGrantStatus.Applied, first.Status);
+        Assert.Equal(2, first.LevelAfter);
+        Assert.Equal(ProgressionGrantStatus.AlreadyApplied, retry.Status);
+        Assert.Equal(first.TotalExperience, retry.TotalExperience);
+        await using var verification = new KnightDbContext(database.Options);
+        Assert.Equal(
+            first.TotalExperience,
+            await verification.Characters
+                .Where(value => value.Id == created.Character.CharacterId)
+                .Select(value => value.TotalExperience)
+                .SingleAsync());
+        Assert.Equal(
+            1,
+            await verification.CharacterProgressionGrants.CountAsync(
+                value => value.CharacterId == created.Character.CharacterId));
+    }
+
+    [Fact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task LegacyCharacterLevel_IsNotReducedByFirstExperienceGrant()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        TestContext context = await CreateContextAsync(database);
+        CreateCharacterResponsePacket created =
+            await context.Repository.CreateAsync(
+                context.AccountKey,
+                CreateRequest(
+                    context.Options,
+                    $"Legacy {context.Suffix}",
+                    slotIndex: 1),
+                CancellationToken.None);
+        Assert.Equal(CreateCharacterResult.Success, created.Result);
+
+        await using (var setup = new KnightDbContext(database.Options))
+        {
+            await setup.Characters
+                .Where(value => value.Id == created.Character!.CharacterId)
+                .ExecuteUpdateAsync(value => value
+                    .SetProperty(character => character.Level, 5)
+                    .SetProperty(character => character.TotalExperience, 0));
+        }
+
+        ServerOptions serverOptions = LoadServerOptions();
+        var curve = new ConfiguredExperienceCurve(serverOptions.Progression);
+        var service = new CharacterProgressionService(
+            database.Options,
+            curve,
+            new FixedClock(InitialUtc));
+        ProgressionGrantResult result = await service.GrantExperienceAsync(
+            Guid.NewGuid(),
+            created.Character!.CharacterId,
+            1,
+            serverOptions.Progression.MaximumLevel,
+            "legacy_normalization",
+            "integration-test",
+            CancellationToken.None);
+
+        Assert.Equal(ProgressionGrantStatus.Applied, result.Status);
+        Assert.Equal(5, result.LevelBefore);
+        Assert.Equal(5, result.LevelAfter);
+        Assert.Equal(
+            curve.GetTotalExperienceRequiredForLevel(5) + 1,
+            result.TotalExperience);
+    }
 
     [Fact]
     [Trait("Category", "PostgreSQLIntegration")]
@@ -342,6 +450,23 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
         EnterWorldResponsePacket retriedEntry =
             await connection.ReadPayloadAsync<EnterWorldResponsePacket>(
                 PacketType.EnterWorldResponse);
+        // A malformed movement payload must not terminate the authenticated
+        // transport; the next valid sequenced input still receives a snapshot.
+        await connection.SendRawPayloadAsync(
+            PacketType.PlayerMoveInput,
+            "{");
+        await connection.SendAsync(
+            PacketType.PlayerMoveInput,
+            new PlayerMoveInputPacket(1f, 0f, clientSequence: 1));
+        PlayerPositionSnapshotPacket movementSnapshot =
+            await connection.ReadPayloadAsync<PlayerPositionSnapshotPacket>(
+                PacketType.PlayerPositionSnapshot);
+        await connection.SendAsync(
+            PacketType.PlayerMoveInput,
+            new PlayerMoveInputPacket(0f, 1f, clientSequence: 1));
+        PlayerPositionSnapshotPacket duplicateMovementSnapshot =
+            await connection.ReadPayloadAsync<PlayerPositionSnapshotPacket>(
+                PacketType.PlayerPositionSnapshot);
 
         Assert.Equal(SelectCharacterResult.Success, selected.Result);
         Assert.NotEqual(Guid.Empty, selected.GameplaySessionId);
@@ -362,6 +487,19 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
         Assert.Equal(
             entered.Snapshot.Character.CharacterId,
             retriedEntry.Snapshot!.Character.CharacterId);
+        Assert.True(movementSnapshot.InputAccepted);
+        Assert.True(movementSnapshot.ServerSequence > 0);
+        Assert.Equal(1, movementSnapshot.AcknowledgedSequence);
+        Assert.False(duplicateMovementSnapshot.InputAccepted);
+        Assert.True(
+            duplicateMovementSnapshot.ServerSequence >
+            movementSnapshot.ServerSequence);
+        Assert.Equal(
+            movementSnapshot.PositionX,
+            duplicateMovementSnapshot.PositionX);
+        Assert.Equal(
+            movementSnapshot.PositionY,
+            duplicateMovementSnapshot.PositionY);
     }
 
     [Fact]
@@ -490,9 +628,11 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
             maximumActiveAccounts: 500);
 
     private static CharacterOptions LoadCharacterOptions() =>
+        LoadServerOptions().Characters;
+
+    private static ServerOptions LoadServerOptions() =>
         ServerOptions.Load(
-            Path.Combine(AppContext.BaseDirectory, "serverSettings.json"))
-        .Characters;
+            Path.Combine(AppContext.BaseDirectory, "serverSettings.json"));
 
     private static ICharacterCreationCatalog CreateCatalog(
         CharacterOptions options) =>
@@ -611,15 +751,15 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
                         new ActivePlayerRegistry(),
                         leases,
                         context.Options,
-                        new CombatOptions
-                        {
-                            BaseAttackDamage = 10,
-                            AttackRange = 2,
-                            AttackCooldownMilliseconds = 750,
-                        },
                         worldOptions,
+                        new CharacterStatsPipeline(context.Options),
+                        new ConfiguredExperienceCurve(
+                            new ProgressionOptions()),
                         clock),
                     new EnterWorldPacketHandler(clock, movementResolver),
+                    new PlayerMoveInputPacketHandler(
+                        clock,
+                        movementResolver),
                 ],
                 leases,
                 clock);

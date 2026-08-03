@@ -9,6 +9,7 @@ public sealed class CharacterEntity
     public required string Name { get; set; }
     public required string NormalizedName { get; set; }
     public int Level { get; set; } = 1;
+    public long TotalExperience { get; set; }
     public required string CurrentClassDefinitionId { get; set; }
     public required string BodyTypeDefinitionId { get; set; }
     public required string CurrentMapDefinitionId { get; set; }
@@ -20,4 +21,6 @@ public sealed class CharacterEntity
     public AccountEntity Account { get; set; } = null!;
     public ICollection<CharacterAppearanceEntity> Appearances { get; set; } = [];
     public ICollection<CharacterTutorialProgressEntity> TutorialProgress { get; set; } = [];
+    public ICollection<CharacterProgressionGrantEntity> ProgressionGrants
+        { get; set; } = [];
 }

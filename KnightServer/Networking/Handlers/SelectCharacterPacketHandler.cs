@@ -5,6 +5,7 @@ using KnightOnline.Server.Accounts;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
+using KnightOnline.Server.Progression;
 using KnightOnline.Server.Time;
 
 namespace KnightOnline.Server.Networking.Handlers;
@@ -14,8 +15,9 @@ public sealed class SelectCharacterPacketHandler(
     ActivePlayerRegistry activePlayers,
     IActiveAccountLeaseStore accountSessions,
     CharacterOptions characterOptions,
-    CombatOptions combatOptions,
     WorldOptions worldOptions,
+    CharacterStatsPipeline statsPipeline,
+    IExperienceCurve experienceCurve,
     IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.SelectCharacterRequest;
@@ -132,16 +134,29 @@ public sealed class SelectCharacterPacketHandler(
                 new PlayerAppearanceSelection(
                     value.SlotDefinitionId,
                     value.OptionDefinitionId)).ToArray());
+        CharacterStats stats = statsPipeline.Calculate(
+            character.ClassDefinitionId,
+            character.Level);
+        long levelFloor = experienceCurve
+            .GetTotalExperienceRequiredForLevel(character.Level);
+        long normalizedTotalExperience = Math.Max(
+            character.TotalExperience,
+            levelFloor);
         var session = new PlayerSession(
             profile,
-            characterOptions.InitialMaximumHealth,
-            characterOptions.InitialMaximumHealth,
+            stats.MaximumHealth,
+            stats.MaximumHealth,
             characterOptions.MoveSpeed,
             spawnPosition,
-            combatOptions.BaseAttackDamage,
+            stats.Attack,
             TimeSpan.FromMilliseconds(
                 worldOptions.MaximumMovementDeltaMilliseconds),
-            utcNow);
+            utcNow,
+            normalizedTotalExperience,
+            normalizedTotalExperience - levelFloor,
+            experienceCurve.GetExperienceRequiredToAdvance(character.Level),
+            stats.MaximumMana,
+            stats.Defense);
 
         if (!connection.TryAttachPlayerSession(session))
         {

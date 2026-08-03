@@ -24,5 +24,12 @@ public static class GameplaySessionPacketMapper
             session.Profile.AppearanceSelections.Select(value =>
                 new AppearanceSelectionPacket(
                     value.SlotDefinitionId,
-                    value.OptionDefinitionId)).ToArray());
+                    value.OptionDefinitionId)).ToArray(),
+            session.TotalExperience,
+            session.ExperienceIntoLevel,
+            session.ExperienceToNextLevel,
+            session.CurrentMana,
+            session.MaximumMana,
+            session.BaseAttack,
+            session.Defense);
 }

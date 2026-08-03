@@ -10,6 +10,7 @@ using KnightOnline.Server.Networking;
 using KnightOnline.Server.Networking.Handlers;
 using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
+using KnightOnline.Server.Progression;
 using KnightOnline.Server.Time;
 using KnightOnline.Server.World;
 using Microsoft.EntityFrameworkCore;
@@ -48,9 +49,21 @@ public static class Program
             new MonsterCollisionMovementResolver(
                 monsterService,
                 options.World);
+        var respawnDisplacementResolver =
+            new MonsterRespawnDisplacementResolver(
+                monsterService,
+                options.World);
         var connections = new ConnectionRegistry(
             options.Capacity.MaximumTransportConnections);
         var activePlayers = new ActivePlayerRegistry();
+        IExperienceCurve experienceCurve =
+            new ConfiguredExperienceCurve(options.Progression);
+        var characterStatsPipeline =
+            new CharacterStatsPipeline(options.Characters);
+        var progressionService = new CharacterProgressionService(
+            databaseOptions,
+            experienceCurve,
+            clock);
         IActiveAccountLeaseStore accountSessions =
             new InMemoryActiveAccountLeaseStore(
                 TimeSpan.FromSeconds(
@@ -144,8 +157,9 @@ public static class Program
                 activePlayers,
                 accountSessions,
                 options.Characters,
-                options.Combat,
                 options.World,
+                characterStatsPipeline,
+                experienceCurve,
                 clock),
             new EnterWorldPacketHandler(clock, movementResolver),
             new PlayerMoveInputPacketHandler(clock, movementResolver),
@@ -153,6 +167,10 @@ public static class Program
                 combatService,
                 monsterService,
                 connections,
+                progressionService,
+                characterStatsPipeline,
+                options.Progression,
+                options.Guest,
                 clock),
         ],
             accountSessions,
@@ -162,6 +180,8 @@ public static class Program
             RunMonsterRespawnLoopAsync(
                 monsterService,
                 connections,
+                activePlayers,
+                respawnDisplacementResolver,
                 clock,
                 TimeSpan.FromMilliseconds(
                     options.World.TickMilliseconds)),
@@ -261,6 +281,8 @@ public static class Program
     private static async Task RunMonsterRespawnLoopAsync(
         MonsterService monsterService,
         ConnectionRegistry connections,
+        ActivePlayerRegistry activePlayers,
+        MonsterRespawnDisplacementResolver displacementResolver,
         IServerClock clock,
         TimeSpan tickInterval)
     {
@@ -271,6 +293,48 @@ public static class Program
             IReadOnlyList<int> respawnedIds =
                 monsterService.RespawnReadyMonsters(clock.UtcNow);
 
+            if (respawnedIds.Count > 0)
+            {
+                foreach (ClientConnection connection in
+                         activePlayers.GetConnectionsSnapshot())
+                {
+                    PlayerSession? session = connection.PlayerSession;
+                    if (session == null)
+                        continue;
+
+                    bool displaced = session.TryResolveAuthoritativePosition(
+                        position => displacementResolver.Resolve(
+                            session.Profile.MapDefinitionId,
+                            session.CharacterId,
+                            position),
+                        out _);
+                    if (!displaced)
+                        continue;
+
+                    PlayerPositionState positionState =
+                        session.CapturePositionSnapshot();
+                    try
+                    {
+                        await connection.SendAsync(
+                            PacketType.PlayerPositionSnapshot,
+                            new PlayerPositionSnapshotPacket(
+                                positionState.ServerSequence,
+                                positionState.AcknowledgedClientSequence,
+                                PlayerPositionSnapshotReason.RespawnDisplacement,
+                                positionState.Position.X,
+                                positionState.Position.Y,
+                                clock.UtcNow));
+                    }
+                    catch (Exception exception)
+                    {
+                        Console.WriteLine(
+                            "[World][Warning] Respawn displacement snapshot " +
+                            $"delivery failed: {exception.GetType().Name}: " +
+                            exception.Message);
+                    }
+                }
+            }
+
             foreach (int monsterId in respawnedIds)
             {
                 MonsterSnapshot? snapshot =
@@ -279,7 +343,8 @@ public static class Program
                 if (snapshot == null)
                     continue;
 
-                await connections.BroadcastAsync(
+                await connections.BroadcastToMapAsync(
+                    snapshot.MapDefinitionId,
                     PacketType.MonsterRespawned,
                     new MonsterRespawnedPacket(ToPacket(snapshot)));
             }
@@ -292,6 +357,7 @@ public static class Program
             snapshot.DefinitionId,
             snapshot.Name,
             snapshot.Level,
+            snapshot.MapDefinitionId,
             snapshot.CurrentHealth,
             snapshot.MaximumHealth,
             snapshot.IsAlive,
@@ -345,12 +411,14 @@ public static class Program
                     definition.Name,
                     definition.Level,
                     definition.MaximumHealth,
-                    TimeSpan.FromSeconds(definition.RespawnSeconds)));
+                    TimeSpan.FromSeconds(definition.RespawnSeconds),
+                    definition.ExperienceReward));
 
         foreach (MonsterSpawnOptions spawn in spawns)
         {
             monsterService.Spawn(
                 definitions[spawn.DefinitionId],
+                spawn.MapDefinitionId,
                 new WorldPosition(spawn.PositionX, spawn.PositionY));
         }
 

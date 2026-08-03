@@ -8,6 +8,7 @@ public sealed class MonsterService
 
     public int Spawn(
         MonsterDefinition definition,
+        string mapDefinitionId,
         WorldPosition spawnPosition)
     {
         lock (_syncRoot)
@@ -15,7 +16,11 @@ public sealed class MonsterService
             int monsterId = _nextMonsterId++;
             _monsters.Add(
                 monsterId,
-                new Monster(monsterId, definition, spawnPosition));
+                new Monster(
+                    monsterId,
+                    definition,
+                    mapDefinitionId,
+                    spawnPosition));
             return monsterId;
         }
     }

@@ -5,6 +5,7 @@ public sealed class Monster
     public Monster(
         int monsterId,
         MonsterDefinition definition,
+        string mapDefinitionId,
         WorldPosition spawnPosition)
     {
         if (monsterId <= 0)
@@ -13,16 +14,24 @@ public sealed class Monster
         MonsterId = monsterId;
         Definition = definition ??
             throw new ArgumentNullException(nameof(definition));
+        if (string.IsNullOrWhiteSpace(mapDefinitionId))
+            throw new ArgumentException(
+                "Monster map definition is required.",
+                nameof(mapDefinitionId));
+        MapDefinitionId = mapDefinitionId.Trim();
         SpawnPosition = spawnPosition;
         CurrentHealth = definition.MaximumHealth;
+        LifeId = Guid.NewGuid();
     }
 
     public int MonsterId { get; }
     public MonsterDefinition Definition { get; }
+    public string MapDefinitionId { get; }
     public WorldPosition SpawnPosition { get; }
     public int CurrentHealth { get; private set; }
     public DateTime? RespawnAtUtc { get; private set; }
     public bool IsAlive => CurrentHealth > 0;
+    public Guid LifeId { get; private set; }
 
     public MonsterDamageResult ApplyDamage(int requestedDamage, DateTime utcNow)
     {
@@ -33,7 +42,8 @@ public sealed class Monster
                 MonsterId,
                 0,
                 CurrentHealth,
-                false);
+                false,
+                LifeId);
         }
 
         if (!IsAlive)
@@ -43,7 +53,8 @@ public sealed class Monster
                 MonsterId,
                 0,
                 0,
-                false);
+                false,
+                LifeId);
         }
 
         int appliedDamage = Math.Min(requestedDamage, CurrentHealth);
@@ -58,7 +69,8 @@ public sealed class Monster
             MonsterId,
             appliedDamage,
             CurrentHealth,
-            wasKilled);
+            wasKilled,
+            LifeId);
     }
 
     public bool TryRespawn(DateTime utcNow)
@@ -67,6 +79,7 @@ public sealed class Monster
             return false;
 
         CurrentHealth = Definition.MaximumHealth;
+        LifeId = Guid.NewGuid();
         RespawnAtUtc = null;
         return true;
     }
@@ -78,6 +91,9 @@ public sealed class Monster
             Definition.DefinitionId,
             Definition.Name,
             Definition.Level,
+            MapDefinitionId,
+            Definition.ExperienceReward,
+            LifeId,
             CurrentHealth,
             Definition.MaximumHealth,
             IsAlive,

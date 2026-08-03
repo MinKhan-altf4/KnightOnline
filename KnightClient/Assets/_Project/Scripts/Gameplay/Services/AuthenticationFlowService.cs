@@ -24,6 +24,7 @@ namespace KnightOnline.Client.Gameplay.Services
         private IDisposable _disconnectedSubscription;
         private IDisposable _popupDismissedSubscription;
         private IDisposable _registrationStartedSubscription;
+        private IDisposable _heartbeatResponseSubscription;
         private StoredAccountSession _session;
         private string _pendingUsername;
         private string _pendingPassword;
@@ -52,9 +53,6 @@ namespace KnightOnline.Client.Gameplay.Services
 
         public void Start()
         {
-            if (!_settings.DevelopmentBypassEnabled)
-                _session = _store.Load();
-
             _connectionSubscription =
                 _events.Subscribe<ServerConnectionResultEvent>(
                     OnConnectionResult);
@@ -73,7 +71,21 @@ namespace KnightOnline.Client.Gameplay.Services
             _registrationStartedSubscription =
                 _events.Subscribe<RegistrationStartedEvent>(
                     OnRegistrationStarted);
+            _heartbeatResponseSubscription =
+                _events.Subscribe<AccountSessionHeartbeatEvent>(
+                    OnHeartbeatResponse);
 
+            if (!_settings.DevelopmentBypassEnabled)
+            {
+                try
+                {
+                    _session = _store.Load();
+                }
+                catch (Exception exception)
+                {
+                    ReportCredentialStoreUnavailable(exception);
+                }
+            }
         }
 
         /// <summary>
@@ -108,11 +120,13 @@ namespace KnightOnline.Client.Gameplay.Services
                     return;
                 }
 
+                if (!TryGetDeviceId(out string deviceId))
+                    return;
+
                 _isCreatingGuest = true;
                 _isManualLogin = false;
                 PublishLoading("Đang chuẩn bị phiên đăng ký...");
-                _network.SendCreateGuestRequestAsync(
-                        _store.GetOrCreateDeviceId())
+                _network.SendCreateGuestRequestAsync(deviceId)
                     .Forget();
                 return;
             }
@@ -141,12 +155,15 @@ namespace KnightOnline.Client.Gameplay.Services
                 return;
             }
 
+            if (!TryGetDeviceId(out string deviceId))
+                return;
+
             _registrationVerifier = CreatePkceVerifier();
             PublishLoading("Đang tạo giao dịch đăng ký...");
             _network.SendBeginRegistrationRequestAsync(
                     Guid.NewGuid(),
                     _session.RefreshToken,
-                    _store.GetOrCreateDeviceId(),
+                    deviceId,
                     CreatePkceChallenge(_registrationVerifier))
                 .Forget();
         }
@@ -189,11 +206,13 @@ namespace KnightOnline.Client.Gameplay.Services
                 return;
             }
 
+            if (!TryGetDeviceId(out string deviceId))
+                return;
+
             _isCreatingGuest = true;
             _isManualLogin = false;
             PublishLoading("Đang tạo phiên chơi mới...");
-            _network.SendCreateGuestRequestAsync(
-                    _store.GetOrCreateDeviceId())
+            _network.SendCreateGuestRequestAsync(deviceId)
                 .Forget();
         }
 
@@ -219,6 +238,9 @@ namespace KnightOnline.Client.Gameplay.Services
 
             if (HasPendingCredentials())
             {
+                if (!TryGetDeviceId(out string deviceId))
+                    return;
+
                 _isManualLogin = true;
                 string guestToken =
                     _session != null && _session.IsGuest
@@ -227,7 +249,7 @@ namespace KnightOnline.Client.Gameplay.Services
                 _network.SendLoginRequestAsync(
                         _pendingUsername,
                         _pendingPassword,
-                        _store.GetOrCreateDeviceId(),
+                        deviceId,
                         guestToken)
                     .Forget();
                 return;
@@ -284,7 +306,11 @@ namespace KnightOnline.Client.Gameplay.Services
             switch (result.Result)
             {
                 case AuthenticationOutcome.Success:
-                    SaveReturnedSession(result);
+                    if (!SaveReturnedSession(result))
+                    {
+                        _network.Disconnect();
+                        return;
+                    }
                     if (!StartHeartbeat(result))
                         return;
                     if (_registrationPending && result.IsGuest)
@@ -427,10 +453,13 @@ namespace KnightOnline.Client.Gameplay.Services
             PublishEntry("Không thể kết nối tới máy chủ.");
         }
 
-        private void SaveReturnedSession(AuthenticationResultEvent result)
+        private bool SaveReturnedSession(AuthenticationResultEvent result)
         {
             if (string.IsNullOrWhiteSpace(result.RefreshToken))
-                return;
+                return true;
+
+            if (!TryGetDeviceId(out string deviceId))
+                return false;
 
             _session = new StoredAccountSession
             {
@@ -438,11 +467,21 @@ namespace KnightOnline.Client.Gameplay.Services
                 DisplayName = result.DisplayName,
                 IsGuest = result.IsGuest,
                 RefreshToken = result.RefreshToken,
-                DeviceId = _store.GetOrCreateDeviceId(),
+                DeviceId = deviceId,
                 ExpiresAtUtcTicks =
                     result.RefreshTokenExpiresAtUtc.ToUniversalTime().Ticks,
             };
-            _store.Save(_session);
+            try
+            {
+                _store.Save(_session);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                _session = null;
+                ReportCredentialStoreUnavailable(exception);
+                return false;
+            }
         }
 
         private bool StartHeartbeat(AuthenticationResultEvent result)
@@ -475,7 +514,13 @@ namespace KnightOnline.Client.Gameplay.Services
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    await UniTask.Delay(interval, cancellationToken: cancellationToken);
+                    // Authentication lease time is server UTC and must never
+                    // depend on gameplay timeScale (pause, death overlay or
+                    // slow-motion presentation).
+                    await UniTask.Delay(
+                        interval,
+                        DelayType.Realtime,
+                        cancellationToken: cancellationToken);
                     if (!_isAuthenticated || !_network.IsConnected)
                         return;
 
@@ -487,6 +532,25 @@ namespace KnightOnline.Client.Gameplay.Services
             {
                 // Expected when leaving the account, disconnecting or quitting.
             }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    $"[Authentication] Heartbeat loop stopped: " +
+                    $"{exception.Message}");
+                if (_network.IsConnected)
+                    _network.Disconnect();
+            }
+        }
+
+        private void OnHeartbeatResponse(
+            AccountSessionHeartbeatEvent heartbeat)
+        {
+            if (heartbeat.Renewed)
+                return;
+
+            Debug.LogWarning(
+                "[Authentication] Server rejected account heartbeat.");
+            _network.Disconnect();
         }
 
         private void StopHeartbeat()
@@ -495,6 +559,32 @@ namespace KnightOnline.Client.Gameplay.Services
             _heartbeatCancellation?.Dispose();
             _heartbeatCancellation = null;
             _sessionGeneration = Guid.Empty;
+        }
+
+        private bool TryGetDeviceId(out string deviceId)
+        {
+            try
+            {
+                deviceId = _store.GetOrCreateDeviceId();
+                return !string.IsNullOrWhiteSpace(deviceId);
+            }
+            catch (Exception exception)
+            {
+                deviceId = null;
+                ReportCredentialStoreUnavailable(exception);
+                return false;
+            }
+        }
+
+        private void ReportCredentialStoreUnavailable(Exception exception)
+        {
+            HideLoading();
+            Debug.LogError(
+                $"[Authentication] Secure credential store unavailable: " +
+                $"{exception.Message}");
+            _events.Publish(new AuthenticationPopupRequestedEvent(
+                "Secure credential storage is unavailable in this build."));
+            PublishEntry("Cannot access the stored account session.");
         }
 
         private void PublishEntry(string message)
@@ -592,6 +682,7 @@ namespace KnightOnline.Client.Gameplay.Services
             _disconnectedSubscription?.Dispose();
             _popupDismissedSubscription?.Dispose();
             _registrationStartedSubscription?.Dispose();
+            _heartbeatResponseSubscription?.Dispose();
         }
     }
 }

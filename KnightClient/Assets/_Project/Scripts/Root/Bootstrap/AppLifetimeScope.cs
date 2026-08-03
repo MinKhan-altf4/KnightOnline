@@ -70,6 +70,10 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler, MonsterRespawnedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, SelectCharacterResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, EnterWorldResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                PlayerPositionSnapshotHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler,
+                CharacterProgressionChangedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, AttackResultHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ForcedDisconnectHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, CreateGuestResponseHandler>(Lifetime.Singleton);
@@ -96,6 +100,10 @@ namespace KnightOnline.Client.Root
 
         protected override void Awake()
         {
+            // A desktop network session must keep heartbeat and socket receive
+            // loops alive when the window loses focus. Mobile OS suspension is
+            // still handled by server lease expiry and reconnect policy.
+            Application.runInBackground = true;
             base.Awake();
             DontDestroyOnLoad(gameObject);
             SceneManager.LoadScene(_bootstrapSceneName, LoadSceneMode.Additive);

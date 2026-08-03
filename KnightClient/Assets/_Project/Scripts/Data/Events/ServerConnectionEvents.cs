@@ -108,4 +108,27 @@ namespace KnightOnline.Client.Data.Events
             LeaseExpiresAtUtc = leaseExpiresAtUtc;
         }
     }
+
+    public readonly struct PlayerPositionSnapshotEvent : IGameEvent
+    {
+        public readonly long ServerSequence;
+        public readonly long AcknowledgedSequence;
+        public readonly bool InputAccepted;
+        public readonly float PositionX;
+        public readonly float PositionY;
+
+        public PlayerPositionSnapshotEvent(
+            long serverSequence,
+            long acknowledgedSequence,
+            bool inputAccepted,
+            float positionX,
+            float positionY)
+        {
+            ServerSequence = serverSequence;
+            AcknowledgedSequence = acknowledgedSequence;
+            InputAccepted = inputAccepted;
+            PositionX = positionX;
+            PositionY = positionY;
+        }
+    }
 }

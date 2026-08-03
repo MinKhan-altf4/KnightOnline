@@ -26,6 +26,7 @@ namespace KnightOnline.Client.Shared.Packets
         public string CharacterName { get; }
         public int CharacterId { get; }
         public int Level { get; }
+        public long TotalExperience { get; }
         public int SlotIndex { get; }
         public string ClassDefinitionId { get; }
         public string BodyTypeDefinitionId { get; }
@@ -46,11 +47,13 @@ namespace KnightOnline.Client.Shared.Packets
             string currentMapDefinitionId = "",
             string currentSpawnPointId = "",
             float positionX = 0,
-            float positionY = 0)
+            float positionY = 0,
+            long totalExperience = 0)
         {
             CharacterName = characterName;
             CharacterId = characterId;
             Level = level;
+            TotalExperience = totalExperience;
             SlotIndex = slotIndex;
             ClassDefinitionId = classDefinitionId ?? string.Empty;
             BodyTypeDefinitionId = bodyTypeDefinitionId ?? string.Empty;

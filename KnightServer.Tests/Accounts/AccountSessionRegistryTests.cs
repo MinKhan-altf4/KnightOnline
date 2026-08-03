@@ -77,6 +77,37 @@ public sealed class AccountSessionRegistryTests
     }
 
     [Fact]
+    public async Task Heartbeat_RemainsOwnedAcrossTenMinutesOfRenewals()
+    {
+        var store = CreateStore();
+        Guid connection = Guid.NewGuid();
+        ActiveAccountLeaseClaim claim =
+            await store.TryClaimAsync("account-1", connection, Now);
+
+        DateTime heartbeatUtc = Now;
+        for (int index = 0; index < 120; index++)
+        {
+            heartbeatUtc = heartbeatUtc.AddSeconds(5);
+            ActiveAccountLeaseRenewal renewal = await store.RenewAsync(
+                "account-1",
+                connection,
+                claim.Generation,
+                heartbeatUtc);
+
+            Assert.True(renewal.Renewed);
+            Assert.Equal(
+                heartbeatUtc.AddSeconds(20),
+                renewal.ExpiresAtUtc);
+        }
+
+        Assert.True(await store.IsOwnerAsync(
+            "account-1",
+            connection,
+            claim.Generation,
+            heartbeatUtc));
+    }
+
+    [Fact]
     public async Task DisconnectGrace_ShortensLease_ThenAllowsReplacement()
     {
         var store = CreateStore();

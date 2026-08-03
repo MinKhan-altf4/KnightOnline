@@ -28,6 +28,7 @@ namespace KnightOnline.Client.Network
         private IReadOnlyDictionary<PacketType, IClientPacketHandler> _packetHandlers;
         private IDisposable _connectionResultSubscription;
         private bool _suppressNextDisconnectEvent;
+        private long _movementSequence;
         public bool IsConnected =>
             !_isDisconnecting &&
             _tcpClient != null &&
@@ -134,7 +135,10 @@ namespace KnightOnline.Client.Network
         public UniTask SendPlayerMoveInputAsync(Vector2 direction) =>
             SendPacketAsync(
                 PacketType.PlayerMoveInput,
-                new PlayerMoveInputPacket(direction.x, direction.y));
+                new PlayerMoveInputPacket(
+                    direction.x,
+                    direction.y,
+                    Interlocked.Increment(ref _movementSequence)));
 
         public UniTask SendCreateGuestRequestAsync(string deviceId) =>
             SendPacketAsync(

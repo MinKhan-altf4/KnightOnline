@@ -15,6 +15,8 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
     public DbSet<CharacterCreationRequestEntity> CharacterCreationRequests =>
         Set<CharacterCreationRequestEntity>();
     public DbSet<RefreshSessionEntity> RefreshSessions => Set<RefreshSessionEntity>();
+    public DbSet<CharacterProgressionGrantEntity> CharacterProgressionGrants =>
+        Set<CharacterProgressionGrantEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -79,6 +81,9 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
             entity.Property(character => character.Level)
                 .HasColumnName("level")
                 .HasDefaultValue(1);
+            entity.Property(character => character.TotalExperience)
+                .HasColumnName("total_experience")
+                .HasDefaultValue(0L);
             entity.Property(character => character.CurrentClassDefinitionId)
                 .HasColumnName("current_class_definition_id")
                 .HasMaxLength(64)
@@ -119,14 +124,61 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
                     character.SlotIndex,
                 })
                 .IsUnique();
-            entity.ToTable(
-                table => table.HasCheckConstraint(
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
                     "ck_characters_slot_index",
-                    "\"slot_index\" BETWEEN 1 AND 3"));
+                    "\"slot_index\" BETWEEN 1 AND 3");
+                table.HasCheckConstraint(
+                    "ck_characters_level_positive",
+                    "\"level\" >= 1");
+                table.HasCheckConstraint(
+                    "ck_characters_total_experience_nonnegative",
+                    "\"total_experience\" >= 0");
+            });
 
             entity.HasOne(character => character.Account)
                 .WithMany(account => account.Characters)
                 .HasForeignKey(character => character.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterProgressionGrantEntity>(entity =>
+        {
+            entity.ToTable("character_progression_grants");
+            entity.HasKey(value => value.RequestId);
+            entity.Property(value => value.RequestId)
+                .HasColumnName("request_id");
+            entity.Property(value => value.CharacterId)
+                .HasColumnName("character_id");
+            entity.Property(value => value.SourceType)
+                .HasColumnName("source_type")
+                .HasMaxLength(32)
+                .IsRequired();
+            entity.Property(value => value.SourceId)
+                .HasColumnName("source_id")
+                .HasMaxLength(128)
+                .IsRequired();
+            entity.Property(value => value.RequestedExperience)
+                .HasColumnName("requested_experience");
+            entity.Property(value => value.AppliedExperience)
+                .HasColumnName("applied_experience");
+            entity.Property(value => value.LevelBefore)
+                .HasColumnName("level_before");
+            entity.Property(value => value.LevelAfter)
+                .HasColumnName("level_after");
+            entity.Property(value => value.TotalExperienceAfter)
+                .HasColumnName("total_experience_after");
+            entity.Property(value => value.CreatedAtUtc)
+                .HasColumnName("created_at_utc");
+            entity.HasIndex(value => new
+            {
+                value.CharacterId,
+                value.CreatedAtUtc,
+            });
+            entity.HasOne(value => value.Character)
+                .WithMany(value => value.ProgressionGrants)
+                .HasForeignKey(value => value.CharacterId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

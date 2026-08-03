@@ -22,4 +22,7 @@ public sealed class ActivePlayerRegistry
         if (characterId.HasValue)
             Release(characterId.Value, connection);
     }
+
+    public IReadOnlyList<ClientConnection> GetConnectionsSnapshot() =>
+        _byCharacterId.Values.ToArray();
 }

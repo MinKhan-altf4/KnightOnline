@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 15012, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: BuildAutomationSettings
   m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.Build.Profile.BuildAutomationSettings
-  m_OperatingSystemValue:
-  m_OperatingSystemFamily:
-  m_XcodeVersion:
-  m_AndroidSdkVersion:
-  m_UnityArchitecture:
-  m_MachineTypeId:
-  m_CredentialsId:
+  m_OperatingSystemValue: 
+  m_OperatingSystemFamily: 
+  m_XcodeVersion: 
+  m_AndroidSdkVersion: 
+  m_UnityArchitecture: 
+  m_MachineTypeId: 
+  m_CredentialsId: 
   m_BuildTarget: 19
 --- !u!114 &11400000
 MonoBehaviour:
@@ -38,7 +38,7 @@ MonoBehaviour:
   m_PlatformId: 4e3c793746204150860bf175a9a41a05
   m_PlatformBuildProfile:
     rid: 1532576845427376195
-  m_ActivePlatformGuid:
+  m_ActivePlatformGuid: 
   m_AdditionalPlatformBuildSettings: []
   m_OverrideGlobalSceneList: 0
   m_Scenes: []
@@ -53,7 +53,7 @@ MonoBehaviour:
     - rid: 1532576845427376195
       type: {class: WindowsPlatformSettings, ns: UnityEditor.WindowsStandalone, asm: UnityEditor.WindowsStandalone.Extensions}
       data:
-        m_Development: 0
+        m_Development: 1
         m_ConnectProfiler: 0
         m_BuildWithDeepProfilingSupport: 0
         m_BuildWithCodeCoverage: 0
@@ -72,5 +72,5 @@ MonoBehaviour:
         m_Architecture: 0
         m_CreateSolution: 0
         m_CopyPDBFiles: 0
-        m_WindowsDevicePortalAddress:
-        m_WindowsDevicePortalUsername:
+        m_WindowsDevicePortalAddress: 
+        m_WindowsDevicePortalUsername: 

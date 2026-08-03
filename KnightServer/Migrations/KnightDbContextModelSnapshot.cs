@@ -224,6 +224,12 @@ namespace KnightOnline.Server.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("slot_index");
 
+                    b.Property<long>("TotalExperience")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("total_experience");
+
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("integer")
@@ -239,8 +245,66 @@ namespace KnightOnline.Server.Migrations
 
                     b.ToTable("characters", null, t =>
                         {
+                            t.HasCheckConstraint("ck_characters_level_positive", "\"level\" >= 1");
+
                             t.HasCheckConstraint("ck_characters_slot_index", "\"slot_index\" BETWEEN 1 AND 3");
+
+                            t.HasCheckConstraint("ck_characters_total_experience_nonnegative", "\"total_experience\" >= 0");
                         });
+                });
+
+            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterProgressionGrantEntity", b =>
+                {
+                    b.Property<Guid>("RequestId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<long>("AppliedExperience")
+                        .HasColumnType("bigint")
+                        .HasColumnName("applied_experience");
+
+                    b.Property<int>("CharacterId")
+                        .HasColumnType("integer")
+                        .HasColumnName("character_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<int>("LevelAfter")
+                        .HasColumnType("integer")
+                        .HasColumnName("level_after");
+
+                    b.Property<int>("LevelBefore")
+                        .HasColumnType("integer")
+                        .HasColumnName("level_before");
+
+                    b.Property<long>("RequestedExperience")
+                        .HasColumnType("bigint")
+                        .HasColumnName("requested_experience");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("source_type");
+
+                    b.Property<long>("TotalExperienceAfter")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_experience_after");
+
+                    b.HasKey("RequestId");
+
+                    b.HasIndex("CharacterId", "CreatedAtUtc");
+
+                    b.ToTable("character_progression_grants", (string)null);
                 });
 
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterTutorialProgressEntity", b =>
@@ -385,6 +449,17 @@ namespace KnightOnline.Server.Migrations
                     b.Navigation("Account");
                 });
 
+            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterProgressionGrantEntity", b =>
+                {
+                    b.HasOne("KnightOnline.Server.Persistence.Entities.CharacterEntity", "Character")
+                        .WithMany("ProgressionGrants")
+                        .HasForeignKey("CharacterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Character");
+                });
+
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterTutorialProgressEntity", b =>
                 {
                     b.HasOne("KnightOnline.Server.Persistence.Entities.CharacterEntity", "Character")
@@ -417,6 +492,8 @@ namespace KnightOnline.Server.Migrations
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterEntity", b =>
                 {
                     b.Navigation("Appearances");
+
+                    b.Navigation("ProgressionGrants");
 
                     b.Navigation("TutorialProgress");
                 });

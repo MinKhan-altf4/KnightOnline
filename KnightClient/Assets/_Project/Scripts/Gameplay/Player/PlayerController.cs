@@ -1,4 +1,7 @@
+using System;
 using Cysharp.Threading.Tasks;
+using KnightOnline.Client.Core.Events;
+using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Input;
 using KnightOnline.Client.Network;
@@ -19,6 +22,9 @@ namespace KnightOnline.Client.Gameplay.Player
         /// <summary>Fallback khi chạy thẳng scene InGame không qua Bootstrap.</summary>
         [SerializeField] private float _defaultMoveSpeed = 4f;
         [SerializeField, Min(0.02f)] private float _movementSyncInterval = 0.1f;
+        [SerializeField, Min(0f)] private float _positionTolerance = 0.15f;
+        [SerializeField, Min(0.01f)] private float _hardCorrectionDistance = 1f;
+        [SerializeField, Min(0f)] private float _softCorrectionSpeed = 8f;
 
         private Rigidbody2D _rigidbody;
         private IMovementInputProvider _inputProvider;
@@ -29,6 +35,11 @@ namespace KnightOnline.Client.Gameplay.Player
         private Vector2 _lastSentDirection;
         private bool _hasSentMovement;
         private float _nextMovementSyncTime;
+        private IEventBus _eventBus;
+        private IDisposable _positionSnapshotSubscription;
+        private Vector2 _authoritativePosition;
+        private bool _hasAuthoritativePosition;
+        private long _lastServerSnapshotSequence;
 
         /// <summary>Ưu tiên MoveSpeed từ CharacterData; fallback về giá trị Inspector.</summary>
         private float MoveSpeed => _characterData?.MoveSpeed ?? _defaultMoveSpeed;
@@ -37,11 +48,13 @@ namespace KnightOnline.Client.Gameplay.Player
         public void Construct(
             IMovementInputProvider inputProvider,
             CharacterData characterData,
-            NetworkClient networkClient)
+            NetworkClient networkClient,
+            IEventBus eventBus)
         {
             _inputProvider = inputProvider;
             _characterData = characterData;
             _networkClient = networkClient;
+            _eventBus = eventBus;
         }
 
         private void Awake()
@@ -53,6 +66,10 @@ namespace KnightOnline.Client.Gameplay.Player
         {
             if (_characterData != null)
                 _rigidbody.position = _characterData.SpawnPosition;
+
+            _positionSnapshotSubscription =
+                _eventBus?.Subscribe<PlayerPositionSnapshotEvent>(
+                    OnPositionSnapshot);
         }
 
         private void Update()
@@ -90,6 +107,44 @@ namespace KnightOnline.Client.Gameplay.Player
             _rigidbody.linearVelocity = _movementEnabled
                 ? _currentDirection * MoveSpeed
                 : Vector2.zero;
+
+            ReconcileAuthoritativePosition();
+        }
+
+        private void OnPositionSnapshot(PlayerPositionSnapshotEvent snapshot)
+        {
+            if (snapshot.ServerSequence <= _lastServerSnapshotSequence)
+                return;
+
+            _lastServerSnapshotSequence = snapshot.ServerSequence;
+            _authoritativePosition = new Vector2(
+                snapshot.PositionX,
+                snapshot.PositionY);
+            _hasAuthoritativePosition = true;
+        }
+
+        private void ReconcileAuthoritativePosition()
+        {
+            if (!_hasAuthoritativePosition || _rigidbody == null)
+                return;
+
+            Vector2 delta = _authoritativePosition - _rigidbody.position;
+            float distance = delta.magnitude;
+            if (distance <= _positionTolerance)
+                return;
+
+            if (distance >= _hardCorrectionDistance)
+            {
+                _rigidbody.position = _authoritativePosition;
+                return;
+            }
+
+            float correction = Mathf.Clamp01(
+                _softCorrectionSpeed * Time.fixedUnscaledDeltaTime);
+            _rigidbody.position = Vector2.Lerp(
+                _rigidbody.position,
+                _authoritativePosition,
+                correction);
         }
 
         public void SetMovementEnabled(bool enabled)
@@ -105,6 +160,11 @@ namespace KnightOnline.Client.Gameplay.Player
                 _rigidbody.linearVelocity = Vector2.zero;
 
             SyncMovementInput();
+        }
+
+        private void OnDestroy()
+        {
+            _positionSnapshotSubscription?.Dispose();
         }
     }
 }

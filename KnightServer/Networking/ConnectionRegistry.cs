@@ -104,4 +104,30 @@ public sealed class ConnectionRegistry
             }
         }
     }
+
+    public async Task BroadcastToMapAsync<T>(
+        string mapDefinitionId,
+        PacketType packetType,
+        T payload)
+    {
+        foreach (ClientConnection connection in _connections.Keys)
+        {
+            if (!string.Equals(
+                    connection.PlayerSession?.Profile.MapDefinitionId,
+                    mapDefinitionId,
+                    StringComparison.Ordinal))
+                continue;
+
+            try
+            {
+                await connection.SendAsync(packetType, payload);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(
+                    $"[Network][Warning] Map broadcast delivery failed: " +
+                    $"{exception.GetType().Name}: {exception.Message}");
+            }
+        }
+    }
 }

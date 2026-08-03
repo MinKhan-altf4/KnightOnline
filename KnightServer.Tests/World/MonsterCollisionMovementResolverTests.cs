@@ -16,6 +16,7 @@ public sealed class MonsterCollisionMovementResolverTests
             CreateOptions());
 
         Vector2 resolved = resolver.Resolve(
+            "tutorial-map",
             Vector2.Zero,
             new Vector2(3f, 0f));
 
@@ -33,6 +34,7 @@ public sealed class MonsterCollisionMovementResolverTests
             CreateOptions());
 
         Vector2 resolved = resolver.Resolve(
+            "tutorial-map",
             Vector2.Zero,
             new Vector2(3f, 0f));
 
@@ -48,10 +50,27 @@ public sealed class MonsterCollisionMovementResolverTests
             CreateOptions());
 
         Vector2 resolved = resolver.Resolve(
+            "tutorial-map",
             new Vector2(2f, 0f),
             new Vector2(1f, 0f));
 
         Assert.Equal(new Vector2(1f, 0f), resolved);
+    }
+
+    [Fact]
+    public void Resolve_DoesNotCollideWithMonsterOnAnotherMap()
+    {
+        MonsterService monsters = CreateMonsterWorld(out _);
+        var resolver = new MonsterCollisionMovementResolver(
+            monsters,
+            CreateOptions());
+
+        Vector2 resolved = resolver.Resolve(
+            "another-map",
+            Vector2.Zero,
+            new Vector2(3f, 0f));
+
+        Assert.Equal(new Vector2(3f, 0f), resolved);
     }
 
     private static MonsterService CreateMonsterWorld(out int monsterId)
@@ -64,6 +83,7 @@ public sealed class MonsterCollisionMovementResolverTests
                 1,
                 50,
                 TimeSpan.FromSeconds(10)),
+            "tutorial-map",
             new WorldPosition(2f, 0f));
         return monsters;
     }

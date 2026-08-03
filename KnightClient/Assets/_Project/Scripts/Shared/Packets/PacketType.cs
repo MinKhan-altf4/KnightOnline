@@ -40,5 +40,7 @@ namespace KnightOnline.Client.Shared.Packets
         AccountSessionHeartbeatResponse = 35,
         EnterWorldRequest = 36,
         EnterWorldResponse = 37,
+        PlayerPositionSnapshot = 38,
+        CharacterProgressionChanged = 39,
     }
 }

@@ -12,7 +12,10 @@ public sealed class MonsterCollisionMovementResolver(
     private readonly float _combinedRadius =
         options.PlayerCollisionRadius + options.MonsterCollisionRadius;
 
-    public Vector2 Resolve(Vector2 start, Vector2 desiredEnd)
+    public Vector2 Resolve(
+        string mapDefinitionId,
+        Vector2 start,
+        Vector2 desiredEnd)
     {
         Vector2 movement = desiredEnd - start;
         float movementLengthSquared = movement.LengthSquared();
@@ -23,6 +26,11 @@ public sealed class MonsterCollisionMovementResolver(
         foreach (MonsterSnapshot monster in monsters.GetSnapshots())
         {
             if (!monster.IsAlive)
+                continue;
+            if (!string.Equals(
+                    monster.MapDefinitionId,
+                    mapDefinitionId,
+                    StringComparison.Ordinal))
                 continue;
 
             var center = new Vector2(

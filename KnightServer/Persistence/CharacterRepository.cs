@@ -316,7 +316,8 @@ public sealed class CharacterRepository(
             character.CurrentMapDefinitionId,
             character.CurrentSpawnPointId,
             character.PositionX,
-            character.PositionY);
+            character.PositionY,
+            character.TotalExperience);
 
     private static CreateCharacterResponsePacket Failure(
         CreateCharacterResult result,

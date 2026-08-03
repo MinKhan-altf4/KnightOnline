@@ -55,8 +55,9 @@ public sealed class PacketDispatcher
         }
 
         if (handler.RequiredAccess != PacketAccessLevel.Anonymous &&
-            !await OwnsLiveAccountLeaseAsync(
+            !await MaintainLiveAccountLeaseAsync(
                 connection,
+                envelope.Type,
                 cancellationToken))
         {
             Console.WriteLine(
@@ -74,17 +75,39 @@ public sealed class PacketDispatcher
             cancellationToken);
     }
 
-    private async ValueTask<bool> OwnsLiveAccountLeaseAsync(
+    private async ValueTask<bool> MaintainLiveAccountLeaseAsync(
         ClientConnection connection,
-        CancellationToken cancellationToken) =>
-        connection.AccountKey != null &&
-        connection.AccountSessionGeneration != Guid.Empty &&
-        await _accountSessions.IsOwnerAsync(
-            connection.AccountKey,
-            connection.ConnectionId,
-            connection.AccountSessionGeneration,
-            _clock.UtcNow,
-            cancellationToken);
+        PacketType packetType,
+        CancellationToken cancellationToken)
+    {
+        if (connection.AccountKey == null ||
+            connection.AccountSessionGeneration == Guid.Empty)
+            return false;
+
+        // Any authenticated traffic proves that this connection is alive.
+        // Renewing here prevents an actively moving/fighting player from
+        // losing the lease because a heartbeat is delayed by a frame stall.
+        // The heartbeat handler performs its own renewal so it can return the
+        // authoritative expiry timestamp to the client.
+        if (packetType == PacketType.AccountSessionHeartbeatRequest)
+        {
+            return await _accountSessions.IsOwnerAsync(
+                connection.AccountKey,
+                connection.ConnectionId,
+                connection.AccountSessionGeneration,
+                _clock.UtcNow,
+                cancellationToken);
+        }
+
+        ActiveAccountLeaseRenewal renewal =
+            await _accountSessions.RenewAsync(
+                connection.AccountKey,
+                connection.ConnectionId,
+                connection.AccountSessionGeneration,
+                _clock.UtcNow,
+                cancellationToken);
+        return renewal.Renewed;
+    }
 
     private static bool HasRequiredConnectionState(
         ClientConnection connection,

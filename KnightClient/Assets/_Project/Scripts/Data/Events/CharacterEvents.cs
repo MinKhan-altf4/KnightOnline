@@ -147,4 +147,48 @@ namespace KnightOnline.Client.Data.Events
             Message = message;
         }
     }
+
+    public readonly struct CharacterProgressionChangedEvent : IGameEvent
+    {
+        public readonly Guid RequestId;
+        public readonly long AppliedExperience;
+        public readonly long TotalExperience;
+        public readonly int Level;
+        public readonly long ExperienceIntoLevel;
+        public readonly long ExperienceToNextLevel;
+        public readonly int CurrentHealth;
+        public readonly int MaximumHealth;
+        public readonly int CurrentMana;
+        public readonly int MaximumMana;
+        public readonly int Attack;
+        public readonly int Defense;
+
+        public CharacterProgressionChangedEvent(
+            Guid requestId,
+            long appliedExperience,
+            long totalExperience,
+            int level,
+            long experienceIntoLevel,
+            long experienceToNextLevel,
+            int currentHealth,
+            int maximumHealth,
+            int currentMana,
+            int maximumMana,
+            int attack,
+            int defense)
+        {
+            RequestId = requestId;
+            AppliedExperience = appliedExperience;
+            TotalExperience = totalExperience;
+            Level = level;
+            ExperienceIntoLevel = experienceIntoLevel;
+            ExperienceToNextLevel = experienceToNextLevel;
+            CurrentHealth = currentHealth;
+            MaximumHealth = maximumHealth;
+            CurrentMana = currentMana;
+            MaximumMana = maximumMana;
+            Attack = attack;
+            Defense = defense;
+        }
+    }
 }

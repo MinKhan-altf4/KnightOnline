@@ -39,6 +39,14 @@ public sealed class MonsterCombatService(
                 AttackResultStatus.MonsterNotFound,
                 monsterId);
 
+        if (!string.Equals(
+                session.Profile.MapDefinitionId,
+                monster.MapDefinitionId,
+                StringComparison.Ordinal))
+            return new MonsterAttackResolution(
+                AttackResultStatus.WrongMap,
+                monsterId);
+
         if (!monster.IsAlive)
             return new MonsterAttackResolution(
                 AttackResultStatus.MonsterDead,

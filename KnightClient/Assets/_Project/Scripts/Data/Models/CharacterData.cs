@@ -23,8 +23,15 @@ namespace KnightOnline.Client.Data.Models
 
         // --- Stats ---
         public int Level { get; set; }
+        public long TotalExperience { get; set; }
+        public long ExperienceIntoLevel { get; set; }
+        public long ExperienceToNextLevel { get; set; }
         public int MaxHp { get; set; }
         public int CurrentHp { get; set; }
+        public int MaxMana { get; set; }
+        public int CurrentMana { get; set; }
+        public int Attack { get; set; }
+        public int Defense { get; set; }
         /// <summary>Tốc độ di chuyển (units/second). Default 4f.</summary>
         public float MoveSpeed { get; set; }
 

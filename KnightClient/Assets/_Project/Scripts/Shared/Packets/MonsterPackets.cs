@@ -58,6 +58,7 @@ namespace KnightOnline.Client.Shared.Packets
         public int DefinitionId { get; }
         public string MonsterName { get; }
         public int Level { get; }
+        public string MapDefinitionId { get; }
         public int CurrentHealth { get; }
         public int MaximumHealth { get; }
         public bool IsAlive { get; }
@@ -69,6 +70,7 @@ namespace KnightOnline.Client.Shared.Packets
             int definitionId,
             string monsterName,
             int level,
+            string mapDefinitionId,
             int currentHealth,
             int maximumHealth,
             bool isAlive,
@@ -79,6 +81,7 @@ namespace KnightOnline.Client.Shared.Packets
             DefinitionId = definitionId;
             MonsterName = monsterName;
             Level = level;
+            MapDefinitionId = mapDefinitionId ?? string.Empty;
             CurrentHealth = currentHealth;
             MaximumHealth = maximumHealth;
             IsAlive = isAlive;

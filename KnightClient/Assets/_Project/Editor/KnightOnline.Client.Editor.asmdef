@@ -1,0 +1,20 @@
+{
+    "name": "KnightOnline.Client.Editor",
+    "rootNamespace": "KnightOnline.Client.Editor",
+    "references": [
+        "KnightOnline.Client.UI",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
