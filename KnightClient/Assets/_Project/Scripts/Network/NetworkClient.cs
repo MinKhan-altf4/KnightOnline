@@ -117,6 +117,17 @@ namespace KnightOnline.Client.Network
         public UniTask SendListMonstersRequestAsync() =>
             SendPacketAsync(PacketType.ListMonstersRequest, new ListMonstersRequestPacket());
 
+        public UniTask SendListNpcsRequestAsync() => SendPacketAsync(
+            PacketType.ListNpcsRequest, new ListNpcsRequestPacket());
+        public UniTask SendInteractNpcRequestAsync(string npcDefinitionId) =>
+            SendPacketAsync(PacketType.InteractNpcRequest,
+                new InteractNpcRequestPacket(Guid.NewGuid(), npcDefinitionId));
+        public UniTask SendListPortalsRequestAsync() => SendPacketAsync(
+            PacketType.ListPortalsRequest, new ListPortalsRequestPacket());
+        public UniTask SendUsePortalRequestAsync(string portalDefinitionId) =>
+            SendPacketAsync(PacketType.UsePortalRequest,
+                new UsePortalRequestPacket(Guid.NewGuid(), portalDefinitionId));
+
         public UniTask SendAttackMonsterRequestAsync(int monsterId) =>
             SendPacketAsync(
                 PacketType.AttackMonsterRequest,

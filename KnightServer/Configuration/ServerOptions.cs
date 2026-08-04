@@ -14,6 +14,11 @@ public sealed class ServerOptions
     public CombatOptions Combat { get; set; } = new();
     public ProgressionOptions Progression { get; set; } = new();
     public WorldOptions World { get; set; } = new();
+    public List<MapDefinitionOptions> MapDefinitions { get; set; } = [];
+    public List<NpcDefinitionOptions> NpcDefinitions { get; set; } = [];
+    public List<PortalDefinitionOptions> PortalDefinitions { get; set; } = [];
+    public List<ItemDefinitionOptions> ItemDefinitions { get; set; } = [];
+    public List<TutorialDefinitionOptions> TutorialDefinitions { get; set; } = [];
     public List<MonsterDefinitionOptions> MonsterDefinitions { get; set; } = [];
     public List<MonsterSpawnOptions> MonsterSpawns { get; set; } = [];
 
@@ -150,6 +155,7 @@ public sealed class ServerOptions
         if (World.RespawnDisplacementAngularSamples < 8)
             throw new InvalidDataException(
                 "World.RespawnDisplacementAngularSamples must be at least 8.");
+        ValidateMapCatalog();
         if (MonsterDefinitions.Count == 0)
             throw new InvalidDataException("At least one MonsterDefinitions entry is required.");
         if (MonsterSpawns.Count == 0)
@@ -167,10 +173,168 @@ public sealed class ServerOptions
         if (MonsterSpawns.Any(spawn => !definitionIds.Contains(spawn.DefinitionId)))
             throw new InvalidDataException(
                 "Every monster spawn must reference an existing definition.");
+        HashSet<string> mapIds = MapDefinitions
+            .Select(map => map.DefinitionId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (MonsterSpawns.Any(spawn =>
-                string.IsNullOrWhiteSpace(spawn.MapDefinitionId)))
+                string.IsNullOrWhiteSpace(spawn.MapDefinitionId) ||
+                !mapIds.Contains(spawn.MapDefinitionId)))
             throw new InvalidDataException(
-                "Every monster spawn must reference a map definition.");
+                "Every monster spawn must reference a configured map.");
+        foreach (MonsterSpawnOptions spawn in MonsterSpawns)
+        {
+            MapDefinitionOptions map = MapDefinitions.Single(value =>
+                string.Equals(value.DefinitionId, spawn.MapDefinitionId,
+                    StringComparison.OrdinalIgnoreCase));
+            if (spawn.PositionX < map.MinimumX ||
+                spawn.PositionX > map.MaximumX ||
+                spawn.PositionY < map.MinimumY ||
+                spawn.PositionY > map.MaximumY)
+                throw new InvalidDataException(
+                    "Every monster spawn must be inside its configured map.");
+        }
+        ValidateStarterContent(mapIds, definitionIds);
+    }
+
+    private void ValidateStarterContent(
+        IReadOnlySet<string> mapIds,
+        IReadOnlySet<int> monsterDefinitionIds)
+    {
+        if (NpcDefinitions.Count == 0 ||
+            PortalDefinitions.Count == 0 ||
+            ItemDefinitions.Count == 0 ||
+            TutorialDefinitions.Count == 0)
+        {
+            throw new InvalidDataException(
+                "NPC, item and tutorial definitions are required.");
+        }
+
+        EnsureUnique(NpcDefinitions.Select(value => value.DefinitionId), "NPC");
+        EnsureUnique(PortalDefinitions.Select(value => value.DefinitionId), "portal");
+        EnsureUnique(ItemDefinitions.Select(value => value.DefinitionId), "item");
+        EnsureUnique(
+            TutorialDefinitions.Select(value => value.DefinitionId),
+            "tutorial");
+
+        foreach (NpcDefinitionOptions npc in NpcDefinitions)
+            npc.Validate(mapIds);
+        var spawnIdsByMap = MapDefinitions.ToDictionary(
+            map => map.DefinitionId,
+            map => (IReadOnlySet<string>)map.SpawnPoints
+                .Select(spawn => spawn.SpawnPointId)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (PortalDefinitionOptions portal in PortalDefinitions)
+        {
+            portal.Validate(mapIds, spawnIdsByMap);
+            MapDefinitionOptions sourceMap = MapDefinitions.Single(value =>
+                string.Equals(value.DefinitionId,
+                    portal.SourceMapDefinitionId,
+                    StringComparison.OrdinalIgnoreCase));
+            if (portal.PositionX < sourceMap.MinimumX ||
+                portal.PositionX > sourceMap.MaximumX ||
+                portal.PositionY < sourceMap.MinimumY ||
+                portal.PositionY > sourceMap.MaximumY)
+                throw new InvalidDataException(
+                    $"Portal '{portal.DefinitionId}' is outside its source map.");
+        }
+        foreach (ItemDefinitionOptions item in ItemDefinitions)
+            item.Validate();
+
+        HashSet<string> npcIds = NpcDefinitions
+            .Select(value => value.DefinitionId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> itemIds = ItemDefinitions
+            .Select(value => value.DefinitionId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (TutorialDefinitionOptions tutorial in TutorialDefinitions)
+        {
+            tutorial.Validate(
+                mapIds,
+                npcIds,
+                itemIds,
+                monsterDefinitionIds);
+
+            ValidateTutorialSpawn(
+                tutorial.QuestMapDefinitionId,
+                tutorial.QuestSpawnPointId,
+                tutorial.DefinitionId,
+                "quest");
+            ValidateTutorialSpawn(
+                tutorial.ReturnMapDefinitionId,
+                tutorial.ReturnSpawnPointId,
+                tutorial.DefinitionId,
+                "return");
+            ValidateTutorialSpawn(
+                tutorial.CompletionMapDefinitionId,
+                tutorial.CompletionSpawnPointId,
+                tutorial.DefinitionId,
+                "completion");
+        }
+
+        TutorialDefinitionOptions? startingTutorial =
+            TutorialDefinitions.FirstOrDefault(value => string.Equals(
+                value.DefinitionId,
+                Characters.StartingTutorialDefinitionId,
+                StringComparison.OrdinalIgnoreCase));
+        if (startingTutorial == null || !string.Equals(
+                startingTutorial.InitialStepDefinitionId,
+                Characters.StartingTutorialStepDefinitionId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                "The starting tutorial definition/step does not exist.");
+        }
+    }
+
+    private void ValidateTutorialSpawn(
+        string mapDefinitionId,
+        string spawnPointId,
+        string tutorialDefinitionId,
+        string role)
+    {
+        MapDefinitionOptions? map = MapDefinitions.FirstOrDefault(value =>
+            string.Equals(
+                value.DefinitionId,
+                mapDefinitionId,
+                StringComparison.OrdinalIgnoreCase));
+        if (map == null || !map.SpawnPoints.Any(value => string.Equals(
+                value.SpawnPointId,
+                spawnPointId,
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidDataException(
+                $"Tutorial '{tutorialDefinitionId}' has an invalid " +
+                $"{role} spawn point.");
+        }
+    }
+
+    private void ValidateMapCatalog()
+    {
+        if (MapDefinitions.Count == 0)
+            throw new InvalidDataException(
+                "At least one map definition is required.");
+
+        EnsureUnique(
+            MapDefinitions.Select(map => map.DefinitionId),
+            "map");
+        foreach (MapDefinitionOptions map in MapDefinitions)
+            map.Validate();
+
+        MapDefinitionOptions? startingMap = MapDefinitions.FirstOrDefault(
+            map => string.Equals(
+                map.DefinitionId,
+                Characters.StartingMapDefinitionId,
+                StringComparison.OrdinalIgnoreCase));
+        if (startingMap == null || !startingMap.SpawnPoints.Any(spawn =>
+                string.Equals(
+                    spawn.SpawnPointId,
+                    Characters.StartingSpawnPointId,
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidDataException(
+                "The configured starter map/spawn point does not exist.");
+        }
     }
 
     private static void ValidateCharacterCatalog(CharacterOptions characters)
@@ -301,8 +465,6 @@ public sealed class CharacterOptions
     public int InitialLevel { get; set; }
     public int InitialMaximumHealth { get; set; }
     public float MoveSpeed { get; set; }
-    public float SpawnPositionX { get; set; }
-    public float SpawnPositionY { get; set; }
     public int CatalogVersion { get; set; } = 1;
     public string StartingMapDefinitionId { get; set; } = "tutorial_map_01";
     public string StartingSpawnPointId { get; set; } =
@@ -390,6 +552,186 @@ public sealed class WorldOptions
     public int RespawnDisplacementAngularSamples { get; set; } = 32;
 }
 
+public sealed class MapDefinitionOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public float MinimumX { get; set; }
+    public float MaximumX { get; set; }
+    public float MinimumY { get; set; }
+    public float MaximumY { get; set; }
+    public List<MapSpawnPointOptions> SpawnPoints { get; set; } = [];
+
+    internal void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(DefinitionId) ||
+            string.IsNullOrWhiteSpace(DisplayName) ||
+            MinimumX >= MaximumX ||
+            MinimumY >= MaximumY ||
+            SpawnPoints.Count == 0)
+        {
+            throw new InvalidDataException(
+                $"Invalid map definition '{DefinitionId}'.");
+        }
+
+        string[] spawnIds = SpawnPoints
+            .Select(spawn => spawn.SpawnPointId)
+            .ToArray();
+        if (spawnIds.Any(string.IsNullOrWhiteSpace) ||
+            spawnIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+            spawnIds.Length ||
+            SpawnPoints.Any(spawn =>
+                spawn.PositionX < MinimumX ||
+                spawn.PositionX > MaximumX ||
+                spawn.PositionY < MinimumY ||
+                spawn.PositionY > MaximumY))
+        {
+            throw new InvalidDataException(
+                $"Map '{DefinitionId}' has invalid spawn points.");
+        }
+    }
+}
+
+public sealed class MapSpawnPointOptions
+{
+    public string SpawnPointId { get; set; } = string.Empty;
+    public float PositionX { get; set; }
+    public float PositionY { get; set; }
+    public bool IsSafeZone { get; set; }
+}
+
+public sealed class NpcDefinitionOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string MapDefinitionId { get; set; } = string.Empty;
+    public float PositionX { get; set; }
+    public float PositionY { get; set; }
+    public float InteractionRange { get; set; } = 3f;
+    public string InitialDialogue { get; set; } = string.Empty;
+    public string ProgressDialogue { get; set; } = string.Empty;
+    public string CompletionDialogue { get; set; } = string.Empty;
+    public string FarewellDialogue { get; set; } = string.Empty;
+
+    internal void Validate(IReadOnlySet<string> mapIds)
+    {
+        if (string.IsNullOrWhiteSpace(DefinitionId) ||
+            string.IsNullOrWhiteSpace(DisplayName) ||
+            !mapIds.Contains(MapDefinitionId) ||
+            InteractionRange <= 0 ||
+            string.IsNullOrWhiteSpace(InitialDialogue) ||
+            string.IsNullOrWhiteSpace(ProgressDialogue) ||
+            string.IsNullOrWhiteSpace(CompletionDialogue) ||
+            string.IsNullOrWhiteSpace(FarewellDialogue))
+        {
+            throw new InvalidDataException(
+                $"Invalid NPC definition '{DefinitionId}'.");
+        }
+    }
+}
+
+public sealed class ItemDefinitionOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string EquipmentSlot { get; set; } = string.Empty;
+
+    internal void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(DefinitionId) ||
+            string.IsNullOrWhiteSpace(DisplayName) ||
+            string.IsNullOrWhiteSpace(EquipmentSlot))
+        {
+            throw new InvalidDataException(
+                $"Invalid item definition '{DefinitionId}'.");
+        }
+    }
+}
+
+public sealed class PortalDefinitionOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string SourceMapDefinitionId { get; set; } = string.Empty;
+    public float PositionX { get; set; }
+    public float PositionY { get; set; }
+    public float InteractionRange { get; set; } = 2f;
+    public string DestinationMapDefinitionId { get; set; } = string.Empty;
+    public string DestinationSpawnPointId { get; set; } = string.Empty;
+    public string RequiredTutorialStepDefinitionId { get; set; } = string.Empty;
+    public int MinimumLevel { get; set; } = 1;
+
+    internal void Validate(IReadOnlySet<string> mapIds,
+        IReadOnlyDictionary<string, IReadOnlySet<string>> spawnIdsByMap)
+    {
+        if (string.IsNullOrWhiteSpace(DefinitionId) ||
+            string.IsNullOrWhiteSpace(DisplayName) ||
+            !mapIds.Contains(SourceMapDefinitionId) ||
+            !mapIds.Contains(DestinationMapDefinitionId) ||
+            InteractionRange <= 0 ||
+            MinimumLevel <= 0 ||
+            !spawnIdsByMap.TryGetValue(DestinationMapDefinitionId,
+                out IReadOnlySet<string>? spawnIds) ||
+            !spawnIds.Contains(DestinationSpawnPointId))
+        {
+            throw new InvalidDataException(
+                $"Invalid portal definition '{DefinitionId}'.");
+        }
+    }
+}
+
+public sealed class TutorialDefinitionOptions
+{
+    public string DefinitionId { get; set; } = string.Empty;
+    public string InitialStepDefinitionId { get; set; } = string.Empty;
+    public string KillStepDefinitionId { get; set; } = string.Empty;
+    public string ReturnStepDefinitionId { get; set; } = string.Empty;
+    public string CompletedStepDefinitionId { get; set; } = string.Empty;
+    public string QuestNpcDefinitionId { get; set; } = string.Empty;
+    public int RequiredMonsterDefinitionId { get; set; }
+    public int RequiredKillCount { get; set; }
+    public string QuestMapDefinitionId { get; set; } = string.Empty;
+    public string QuestSpawnPointId { get; set; } = string.Empty;
+    public string ReturnMapDefinitionId { get; set; } = string.Empty;
+    public string ReturnSpawnPointId { get; set; } = string.Empty;
+    public string CompletionMapDefinitionId { get; set; } = string.Empty;
+    public string CompletionSpawnPointId { get; set; } = string.Empty;
+    public int ExperienceReward { get; set; }
+    public List<string> RewardItemDefinitionIds { get; set; } = [];
+
+    internal void Validate(
+        IReadOnlySet<string> mapIds,
+        IReadOnlySet<string> npcIds,
+        IReadOnlySet<string> itemIds,
+        IReadOnlySet<int> monsterDefinitionIds)
+    {
+        if (string.IsNullOrWhiteSpace(DefinitionId) ||
+            string.IsNullOrWhiteSpace(InitialStepDefinitionId) ||
+            string.IsNullOrWhiteSpace(KillStepDefinitionId) ||
+            string.IsNullOrWhiteSpace(ReturnStepDefinitionId) ||
+            string.IsNullOrWhiteSpace(CompletedStepDefinitionId) ||
+            !npcIds.Contains(QuestNpcDefinitionId) ||
+            !monsterDefinitionIds.Contains(RequiredMonsterDefinitionId) ||
+            RequiredKillCount <= 0 ||
+            !mapIds.Contains(QuestMapDefinitionId) ||
+            !mapIds.Contains(ReturnMapDefinitionId) ||
+            !mapIds.Contains(CompletionMapDefinitionId) ||
+            string.IsNullOrWhiteSpace(QuestSpawnPointId) ||
+            string.IsNullOrWhiteSpace(ReturnSpawnPointId) ||
+            string.IsNullOrWhiteSpace(CompletionSpawnPointId) ||
+            ExperienceReward <= 0 ||
+            RewardItemDefinitionIds.Count == 0 ||
+            RewardItemDefinitionIds.Any(id => !itemIds.Contains(id)) ||
+            RewardItemDefinitionIds
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+            RewardItemDefinitionIds.Count)
+        {
+            throw new InvalidDataException(
+                $"Invalid tutorial definition '{DefinitionId}'.");
+        }
+    }
+}
+
 public sealed class MonsterDefinitionOptions
 {
     public int DefinitionId { get; set; }
@@ -402,7 +744,7 @@ public sealed class MonsterDefinitionOptions
     internal void Validate()
     {
         if (DefinitionId <= 0 || Level <= 0 || MaximumHealth <= 0 ||
-            ExperienceReward <= 0)
+            ExperienceReward < 0)
             throw new InvalidDataException(
                 "Monster definition id, level and maximum health must be positive.");
         if (string.IsNullOrWhiteSpace(Name))

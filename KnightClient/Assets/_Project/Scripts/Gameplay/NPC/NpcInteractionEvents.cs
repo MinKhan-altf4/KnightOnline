@@ -32,6 +32,7 @@ namespace KnightOnline.Client.Gameplay.NPC
             Source = source;
             NpcEntityId = source != null ? source.GetEntityId() : default;
             NpcName = npcName;
+            NpcDefinitionId = source != null ? source.DefinitionId : string.Empty;
             GreetingText = greetingText;
             Options = options ?? Array.Empty<NpcOptionData>();
         }
@@ -39,6 +40,7 @@ namespace KnightOnline.Client.Gameplay.NPC
         public InteractableNPC Source { get; }
         public EntityId NpcEntityId { get; }
         public string NpcName { get; }
+        public string NpcDefinitionId { get; }
         public string GreetingText { get; }
         public IReadOnlyList<NpcOptionData> Options { get; }
     }
@@ -49,15 +51,18 @@ namespace KnightOnline.Client.Gameplay.NPC
     /// </summary>
     public sealed class NpcActionRequestedEvent : IGameEvent
     {
-        public NpcActionRequestedEvent(EntityId npcEntityId, string npcName, NpcActionType action)
+        public NpcActionRequestedEvent(EntityId npcEntityId, string npcName,
+            string npcDefinitionId, NpcActionType action)
         {
             NpcEntityId = npcEntityId;
             NpcName = npcName;
+            NpcDefinitionId = npcDefinitionId;
             Action = action;
         }
 
         public EntityId NpcEntityId { get; }
         public string NpcName { get; }
+        public string NpcDefinitionId { get; }
         public NpcActionType Action { get; }
     }
 }

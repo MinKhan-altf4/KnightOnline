@@ -3,6 +3,7 @@ using System;
 using KnightOnline.Server.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KnightOnline.Server.Migrations
 {
     [DbContext(typeof(KnightDbContext))]
-    partial class KnightDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260804083518_TutorialQuestInventoryAndKillCredits")]
+    partial class TutorialQuestInventoryAndKillCredits
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -409,108 +412,6 @@ namespace KnightOnline.Server.Migrations
                         {
                             t.HasCheckConstraint("ck_character_tutorial_progress_objective_nonnegative", "\"objective_progress\" >= 0");
                         });
-                });
-
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.DomainOutboxMessageEntity", b =>
-                {
-                    b.Property<Guid>("EventId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_id");
-
-                    b.Property<string>("AggregateId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("aggregate_id");
-
-                    b.Property<string>("AggregateType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("aggregate_type");
-
-                    b.Property<Guid>("CausationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("causation_id");
-
-                    b.Property<Guid>("CorrelationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("correlation_id");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("event_type");
-
-                    b.Property<int>("EventVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("event_version");
-
-                    b.Property<DateTime>("OccurredAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at_utc");
-
-                    b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("payload_json");
-
-                    b.Property<DateTime?>("PublishedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("published_at_utc");
-
-                    b.HasKey("EventId");
-
-                    b.HasIndex("PublishedAtUtc", "OccurredAtUtc");
-
-                    b.ToTable("domain_outbox_messages", (string)null);
-                });
-
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.GameplayAuditRecordEntity", b =>
-                {
-                    b.Property<Guid>("EventId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_id");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("action");
-
-                    b.Property<int>("CharacterId")
-                        .HasColumnType("integer")
-                        .HasColumnName("character_id");
-
-                    b.Property<DateTime>("OccurredAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at_utc");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("reason");
-
-                    b.Property<Guid>("RequestId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("request_id");
-
-                    b.Property<string>("ResultJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("result_json");
-
-                    b.HasKey("EventId");
-
-                    b.HasIndex("RequestId");
-
-                    b.HasIndex("CharacterId", "OccurredAtUtc");
-
-                    b.ToTable("gameplay_audit_records", (string)null);
                 });
 
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.RefreshSessionEntity", b =>

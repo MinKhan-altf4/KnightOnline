@@ -38,7 +38,24 @@ public sealed class MonsterCombatMapTests
         };
         var movementResolver = new MonsterCollisionMovementResolver(
             monsters,
-            worldOptions);
+            worldOptions,
+            new ConfiguredMapCatalog(
+            [
+                new MapDefinitionOptions
+                {
+                    DefinitionId = "map-a", DisplayName = "A",
+                    MinimumX = -10, MaximumX = 10,
+                    MinimumY = -10, MaximumY = 10,
+                    SpawnPoints = [new MapSpawnPointOptions { SpawnPointId = "spawn-a" }],
+                },
+                new MapDefinitionOptions
+                {
+                    DefinitionId = "map-b", DisplayName = "B",
+                    MinimumX = -10, MaximumX = 10,
+                    MinimumY = -10, MaximumY = 10,
+                    SpawnPoints = [new MapSpawnPointOptions { SpawnPointId = "spawn-b" }],
+                },
+            ]));
         var combat = new MonsterCombatService(
             monsters,
             new ConfiguredCombatStatsProvider(10),

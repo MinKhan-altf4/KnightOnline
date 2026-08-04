@@ -6,7 +6,8 @@ namespace KnightOnline.Server.World;
 
 public sealed class MonsterCollisionMovementResolver(
     MonsterService monsters,
-    WorldOptions options) : IWorldMovementResolver
+    WorldOptions options,
+    IMapCatalog maps) : IWorldMovementResolver
 {
     private const float ContactEpsilon = 0.001f;
     private readonly float _combinedRadius =
@@ -62,12 +63,19 @@ public sealed class MonsterCollisionMovementResolver(
         }
 
         if (earliestContact >= 1f)
-            return desiredEnd;
+            return Clamp(mapDefinitionId, desiredEnd);
 
         float movementLength = MathF.Sqrt(movementLengthSquared);
         float safeContact = MathF.Max(
             0f,
             earliestContact - ContactEpsilon / movementLength);
-        return start + movement * safeContact;
+        return Clamp(mapDefinitionId, start + movement * safeContact);
+    }
+
+    private Vector2 Clamp(string mapDefinitionId, Vector2 position)
+    {
+        WorldPosition clamped = maps.ClampPosition(mapDefinitionId,
+            new WorldPosition(position.X, position.Y));
+        return new Vector2(clamped.X, clamped.Y);
     }
 }

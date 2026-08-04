@@ -9,6 +9,100 @@ using UnityEngine;
 
 namespace KnightOnline.Client.Network.Handlers
 {
+    public sealed class ListNpcsResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public ListNpcsResponseHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.ListNpcsResponse;
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<ListNpcsResponsePacket>(payload);
+            if (packet == null) return;
+            _events.Publish(new NpcListReceivedEvent(packet.Npcs.Select(value =>
+                new NpcSnapshotData(value.DefinitionId, value.DisplayName,
+                    value.PositionX, value.PositionY)).ToArray()));
+        }
+    }
+    public sealed class InteractNpcResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public InteractNpcResponseHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.InteractNpcResponse;
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<InteractNpcResponsePacket>(payload);
+            if (packet != null) _events.Publish(new NpcInteractionResultEvent(
+                packet.RequestId, (byte)packet.Result, packet.Dialogue));
+        }
+    }
+    public sealed class TutorialProgressSnapshotHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public TutorialProgressSnapshotHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.TutorialProgressSnapshot;
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<TutorialProgressSnapshotPacket>(payload);
+            if (packet != null) _events.Publish(new TutorialProgressChangedEvent(
+                packet.TutorialDefinitionId, packet.StepDefinitionId,
+                packet.State, packet.Progress, packet.RequiredProgress));
+        }
+    }
+    public sealed class MapTransitionSnapshotHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public MapTransitionSnapshotHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.MapTransitionSnapshot;
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<MapTransitionSnapshotPacket>(payload);
+            if (packet == null) return;
+            _events.Publish(new MapTransitionedEvent(packet.MapDefinitionId,
+                packet.SpawnPointId, packet.PositionX, packet.PositionY));
+            _events.Publish(new PlayerPositionSnapshotEvent(0, 0, true,
+                packet.PositionX, packet.PositionY));
+        }
+    }
+    public sealed class ListPortalsResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public ListPortalsResponseHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.ListPortalsResponse;
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<ListPortalsResponsePacket>(payload);
+            if (packet != null) _events.Publish(new PortalListReceivedEvent(
+                packet.Portals.Select(value => new PortalSnapshotData(
+                    value.DefinitionId, value.DisplayName, value.PositionX,
+                    value.PositionY)).ToArray(), packet.MinimumX,
+                packet.MaximumX, packet.MinimumY, packet.MaximumY));
+        }
+    }
+    public sealed class InventorySnapshotHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public InventorySnapshotHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.InventorySnapshot;
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<InventorySnapshotPacket>(payload);
+            if (packet != null) _events.Publish(new InventoryChangedEvent(
+                packet.Items.Select(value => value.ItemDefinitionId).ToArray()));
+        }
+    }
+    public sealed class UsePortalResponseHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public UsePortalResponseHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.UsePortalResponse;
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<UsePortalResponsePacket>(payload);
+            if (packet != null)
+                _events.Publish(new PortalUseResultEvent((byte)packet.Result));
+        }
+    }
+
     public sealed class ConnectResponseHandler : IClientPacketHandler
     {
         private readonly IEventBus _events;

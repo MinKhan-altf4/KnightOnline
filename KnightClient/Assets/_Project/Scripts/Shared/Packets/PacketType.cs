@@ -43,5 +43,16 @@ namespace KnightOnline.Client.Shared.Packets
         PlayerPositionSnapshot = 38,
         CharacterProgressionChanged = 39,
         CharacterVitalsSnapshot = 40,
+        ListNpcsRequest = 41,
+        ListNpcsResponse = 42,
+        InteractNpcRequest = 43,
+        InteractNpcResponse = 44,
+        TutorialProgressSnapshot = 45,
+        ListPortalsRequest = 46,
+        ListPortalsResponse = 47,
+        UsePortalRequest = 48,
+        UsePortalResponse = 49,
+        MapTransitionSnapshot = 50,
+        InventorySnapshot = 51,
     }
 }

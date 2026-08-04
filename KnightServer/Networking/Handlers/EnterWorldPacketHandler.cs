@@ -2,12 +2,16 @@ using System.Text.Json;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Time;
 using KnightOnline.Server.World;
+using KnightOnline.Server.Tutorials;
+using KnightOnline.Server.Configuration;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
 public sealed class EnterWorldPacketHandler(
     IServerClock clock,
-    IWorldMovementResolver movementResolver) : IPacketHandler
+    IWorldMovementResolver movementResolver,
+    StarterTutorialService tutorialService,
+    TutorialDefinitionOptions tutorialDefinition) : IPacketHandler
 {
     public PacketType PacketType => PacketType.EnterWorldRequest;
     public PacketAccessLevel RequiredAccess =>
@@ -74,6 +78,14 @@ public sealed class EnterWorldPacketHandler(
                 "World snapshot created.",
                 snapshot),
             cancellationToken);
+        TutorialCommandResult tutorial = await tutorialService.GetCurrentAsync(
+            session.CharacterId, cancellationToken);
+        await InteractNpcPacketHandler.SendProgressAsync(connection,
+            tutorialDefinition, tutorial.Progress, cancellationToken);
+        await connection.SendAsync(PacketType.InventorySnapshot,
+            new InventorySnapshotPacket(tutorial.Inventory.Select(value =>
+                new InventoryItemPacket(value.Id, value.ItemDefinitionId,
+                    value.Quantity)).ToArray()), cancellationToken);
     }
 
     private static Task SendFailure(

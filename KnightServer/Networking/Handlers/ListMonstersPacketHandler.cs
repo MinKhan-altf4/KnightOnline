@@ -14,7 +14,7 @@ public sealed class ListMonstersPacketHandler(
         CancellationToken cancellationToken)
     {
         string mapDefinitionId =
-            connection.PlayerSession?.Profile.MapDefinitionId ?? string.Empty;
+            connection.PlayerSession?.MapDefinitionId ?? string.Empty;
         MonsterSnapshotPacket[] monsters = monsterService.GetSnapshots()
             .Where(snapshot =>
                 snapshot.MapDefinitionId == mapDefinitionId)

@@ -3,6 +3,7 @@ using System;
 using KnightOnline.Server.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KnightOnline.Server.Migrations
 {
     [DbContext(typeof(KnightDbContext))]
-    partial class KnightDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260804081708_StarterTutorialVerticalSlice")]
+    partial class StarterTutorialVerticalSlice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -253,54 +256,6 @@ namespace KnightOnline.Server.Migrations
                         });
                 });
 
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterInventoryItemEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("CharacterId")
-                        .HasColumnType("integer")
-                        .HasColumnName("character_id");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<string>("ItemDefinitionId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("item_definition_id");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity");
-
-                    b.Property<string>("SourceId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("source_id");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("source_type");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CharacterId", "SourceType", "SourceId", "ItemDefinitionId")
-                        .IsUnique();
-
-                    b.ToTable("character_inventory_items", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_character_inventory_quantity_positive", "\"quantity\" > 0");
-                        });
-                });
-
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterProgressionGrantEntity", b =>
                 {
                     b.Property<Guid>("RequestId")
@@ -411,108 +366,6 @@ namespace KnightOnline.Server.Migrations
                         });
                 });
 
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.DomainOutboxMessageEntity", b =>
-                {
-                    b.Property<Guid>("EventId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_id");
-
-                    b.Property<string>("AggregateId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("aggregate_id");
-
-                    b.Property<string>("AggregateType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("aggregate_type");
-
-                    b.Property<Guid>("CausationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("causation_id");
-
-                    b.Property<Guid>("CorrelationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("correlation_id");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("event_type");
-
-                    b.Property<int>("EventVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("event_version");
-
-                    b.Property<DateTime>("OccurredAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at_utc");
-
-                    b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("payload_json");
-
-                    b.Property<DateTime?>("PublishedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("published_at_utc");
-
-                    b.HasKey("EventId");
-
-                    b.HasIndex("PublishedAtUtc", "OccurredAtUtc");
-
-                    b.ToTable("domain_outbox_messages", (string)null);
-                });
-
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.GameplayAuditRecordEntity", b =>
-                {
-                    b.Property<Guid>("EventId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_id");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("action");
-
-                    b.Property<int>("CharacterId")
-                        .HasColumnType("integer")
-                        .HasColumnName("character_id");
-
-                    b.Property<DateTime>("OccurredAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at_utc");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("reason");
-
-                    b.Property<Guid>("RequestId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("request_id");
-
-                    b.Property<string>("ResultJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("result_json");
-
-                    b.HasKey("EventId");
-
-                    b.HasIndex("RequestId");
-
-                    b.HasIndex("CharacterId", "OccurredAtUtc");
-
-                    b.ToTable("gameplay_audit_records", (string)null);
-                });
-
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.RefreshSessionEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -568,68 +421,6 @@ namespace KnightOnline.Server.Migrations
                     b.ToTable("refresh_sessions", (string)null);
                 });
 
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.TutorialCommandEntity", b =>
-                {
-                    b.Property<Guid>("RequestId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("request_id");
-
-                    b.Property<int>("CharacterId")
-                        .HasColumnType("integer")
-                        .HasColumnName("character_id");
-
-                    b.Property<string>("CommandType")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("command_type");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<string>("ResultCode")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("result_code");
-
-                    b.HasKey("RequestId");
-
-                    b.HasIndex("CharacterId");
-
-                    b.ToTable("tutorial_commands", (string)null);
-                });
-
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.TutorialKillCreditEntity", b =>
-                {
-                    b.Property<int>("CharacterId")
-                        .HasColumnType("integer")
-                        .HasColumnName("character_id");
-
-                    b.Property<string>("TutorialDefinitionId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("tutorial_definition_id");
-
-                    b.Property<Guid>("MonsterLifeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("monster_life_id");
-
-                    b.Property<DateTime>("CreditedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("credited_at_utc");
-
-                    b.Property<int>("MonsterDefinitionId")
-                        .HasColumnType("integer")
-                        .HasColumnName("monster_definition_id");
-
-                    b.HasKey("CharacterId", "TutorialDefinitionId", "MonsterLifeId");
-
-                    b.ToTable("tutorial_kill_credits", (string)null);
-                });
-
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterAppearanceEntity", b =>
                 {
                     b.HasOne("KnightOnline.Server.Persistence.Entities.CharacterEntity", "Character")
@@ -670,17 +461,6 @@ namespace KnightOnline.Server.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterInventoryItemEntity", b =>
-                {
-                    b.HasOne("KnightOnline.Server.Persistence.Entities.CharacterEntity", "Character")
-                        .WithMany("InventoryItems")
-                        .HasForeignKey("CharacterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Character");
-                });
-
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterProgressionGrantEntity", b =>
                 {
                     b.HasOne("KnightOnline.Server.Persistence.Entities.CharacterEntity", "Character")
@@ -714,28 +494,6 @@ namespace KnightOnline.Server.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.TutorialCommandEntity", b =>
-                {
-                    b.HasOne("KnightOnline.Server.Persistence.Entities.CharacterEntity", "Character")
-                        .WithMany()
-                        .HasForeignKey("CharacterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Character");
-                });
-
-            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.TutorialKillCreditEntity", b =>
-                {
-                    b.HasOne("KnightOnline.Server.Persistence.Entities.CharacterEntity", "Character")
-                        .WithMany()
-                        .HasForeignKey("CharacterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Character");
-                });
-
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.AccountEntity", b =>
                 {
                     b.Navigation("Characters");
@@ -746,8 +504,6 @@ namespace KnightOnline.Server.Migrations
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterEntity", b =>
                 {
                     b.Navigation("Appearances");
-
-                    b.Navigation("InventoryItems");
 
                     b.Navigation("ProgressionGrants");
 

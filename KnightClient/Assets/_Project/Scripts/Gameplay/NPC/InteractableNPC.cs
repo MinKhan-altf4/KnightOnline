@@ -16,6 +16,7 @@ namespace KnightOnline.Client.Gameplay.NPC
     public class InteractableNPC : MonoBehaviour, ITargetable
     {
         [Header("NPC Info")]
+        [SerializeField] private string _definitionId = "mother_tutorial";
         [SerializeField] private string _npcName = "NPC Name";
         [TextArea(3, 5)] [SerializeField] private string _greetingText = "Xin chào!";
         [SerializeField] private float _interactionRange = 3f;
@@ -26,6 +27,7 @@ namespace KnightOnline.Client.Gameplay.NPC
         [SerializeField] private List<NpcOption> _options = new List<NpcOption>();
 
         public string NpcName => _npcName;
+        public string DefinitionId => _definitionId;
         public float InteractionRange => _interactionRange;
         public string GreetingText => _greetingText;
         public List<NpcOption> Options => _options;

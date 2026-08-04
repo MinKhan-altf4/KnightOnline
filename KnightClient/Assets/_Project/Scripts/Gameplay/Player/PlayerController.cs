@@ -37,6 +37,7 @@ namespace KnightOnline.Client.Gameplay.Player
         private float _nextMovementSyncTime;
         private IEventBus _eventBus;
         private IDisposable _positionSnapshotSubscription;
+        private IDisposable _mapTransitionSubscription;
         private Vector2 _authoritativePosition;
         private bool _hasAuthoritativePosition;
         private long _lastServerSnapshotSequence;
@@ -70,6 +71,8 @@ namespace KnightOnline.Client.Gameplay.Player
             _positionSnapshotSubscription =
                 _eventBus?.Subscribe<PlayerPositionSnapshotEvent>(
                     OnPositionSnapshot);
+            _mapTransitionSubscription = _eventBus?.Subscribe<MapTransitionedEvent>(
+                OnMapTransitioned);
         }
 
         private void Update()
@@ -147,6 +150,16 @@ namespace KnightOnline.Client.Gameplay.Player
                 correction);
         }
 
+        private void OnMapTransitioned(MapTransitionedEvent value)
+        {
+            Vector2 position = new(value.X, value.Y);
+            _rigidbody.position = position;
+            _rigidbody.linearVelocity = Vector2.zero;
+            _authoritativePosition = position;
+            _hasAuthoritativePosition = true;
+            _hasSentMovement = false;
+        }
+
         public void SetMovementEnabled(bool enabled)
         {
             _movementEnabled = enabled;
@@ -165,6 +178,7 @@ namespace KnightOnline.Client.Gameplay.Player
         private void OnDestroy()
         {
             _positionSnapshotSubscription?.Dispose();
+            _mapTransitionSubscription?.Dispose();
         }
     }
 }

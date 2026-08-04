@@ -17,6 +17,16 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
     public DbSet<RefreshSessionEntity> RefreshSessions => Set<RefreshSessionEntity>();
     public DbSet<CharacterProgressionGrantEntity> CharacterProgressionGrants =>
         Set<CharacterProgressionGrantEntity>();
+    public DbSet<CharacterInventoryItemEntity> CharacterInventoryItems =>
+        Set<CharacterInventoryItemEntity>();
+    public DbSet<TutorialKillCreditEntity> TutorialKillCredits =>
+        Set<TutorialKillCreditEntity>();
+    public DbSet<TutorialCommandEntity> TutorialCommands =>
+        Set<TutorialCommandEntity>();
+    public DbSet<GameplayAuditRecordEntity> GameplayAuditRecords =>
+        Set<GameplayAuditRecordEntity>();
+    public DbSet<DomainOutboxMessageEntity> DomainOutboxMessages =>
+        Set<DomainOutboxMessageEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -182,6 +192,76 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<CharacterInventoryItemEntity>(entity =>
+        {
+            entity.ToTable("character_inventory_items");
+            entity.HasKey(value => value.Id);
+            entity.Property(value => value.Id).HasColumnName("id");
+            entity.Property(value => value.CharacterId).HasColumnName("character_id");
+            entity.Property(value => value.ItemDefinitionId).HasColumnName("item_definition_id").HasMaxLength(64).IsRequired();
+            entity.Property(value => value.Quantity).HasColumnName("quantity");
+            entity.Property(value => value.SourceType).HasColumnName("source_type").HasMaxLength(32).IsRequired();
+            entity.Property(value => value.SourceId).HasColumnName("source_id").HasMaxLength(128).IsRequired();
+            entity.Property(value => value.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(value => new { value.CharacterId, value.SourceType, value.SourceId, value.ItemDefinitionId }).IsUnique();
+            entity.HasOne(value => value.Character).WithMany(value => value.InventoryItems).HasForeignKey(value => value.CharacterId).OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table => table.HasCheckConstraint("ck_character_inventory_quantity_positive", "\"quantity\" > 0"));
+        });
+
+        modelBuilder.Entity<TutorialKillCreditEntity>(entity =>
+        {
+            entity.ToTable("tutorial_kill_credits");
+            entity.HasKey(value => new { value.CharacterId, value.TutorialDefinitionId, value.MonsterLifeId });
+            entity.Property(value => value.CharacterId).HasColumnName("character_id");
+            entity.Property(value => value.TutorialDefinitionId).HasColumnName("tutorial_definition_id").HasMaxLength(64);
+            entity.Property(value => value.MonsterLifeId).HasColumnName("monster_life_id");
+            entity.Property(value => value.MonsterDefinitionId).HasColumnName("monster_definition_id");
+            entity.Property(value => value.CreditedAtUtc).HasColumnName("credited_at_utc");
+            entity.HasOne(value => value.Character).WithMany().HasForeignKey(value => value.CharacterId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TutorialCommandEntity>(entity =>
+        {
+            entity.ToTable("tutorial_commands");
+            entity.HasKey(value => value.RequestId);
+            entity.Property(value => value.RequestId).HasColumnName("request_id");
+            entity.Property(value => value.CharacterId).HasColumnName("character_id");
+            entity.Property(value => value.CommandType).HasColumnName("command_type").HasMaxLength(32).IsRequired();
+            entity.Property(value => value.ResultCode).HasColumnName("result_code").HasMaxLength(32).IsRequired();
+            entity.Property(value => value.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasOne(value => value.Character).WithMany().HasForeignKey(value => value.CharacterId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<GameplayAuditRecordEntity>(entity =>
+        {
+            entity.ToTable("gameplay_audit_records");
+            entity.HasKey(value => value.EventId);
+            entity.Property(value => value.EventId).HasColumnName("event_id");
+            entity.Property(value => value.RequestId).HasColumnName("request_id");
+            entity.Property(value => value.CharacterId).HasColumnName("character_id");
+            entity.Property(value => value.Action).HasColumnName("action").HasMaxLength(64).IsRequired();
+            entity.Property(value => value.Reason).HasColumnName("reason").HasMaxLength(128).IsRequired();
+            entity.Property(value => value.ResultJson).HasColumnName("result_json").HasColumnType("jsonb").IsRequired();
+            entity.Property(value => value.OccurredAtUtc).HasColumnName("occurred_at_utc");
+            entity.HasIndex(value => new { value.CharacterId, value.OccurredAtUtc });
+            entity.HasIndex(value => value.RequestId);
+        });
+        modelBuilder.Entity<DomainOutboxMessageEntity>(entity =>
+        {
+            entity.ToTable("domain_outbox_messages");
+            entity.HasKey(value => value.EventId);
+            entity.Property(value => value.EventId).HasColumnName("event_id");
+            entity.Property(value => value.CorrelationId).HasColumnName("correlation_id");
+            entity.Property(value => value.CausationId).HasColumnName("causation_id");
+            entity.Property(value => value.EventType).HasColumnName("event_type").HasMaxLength(128).IsRequired();
+            entity.Property(value => value.EventVersion).HasColumnName("event_version");
+            entity.Property(value => value.AggregateType).HasColumnName("aggregate_type").HasMaxLength(64).IsRequired();
+            entity.Property(value => value.AggregateId).HasColumnName("aggregate_id").HasMaxLength(64).IsRequired();
+            entity.Property(value => value.PayloadJson).HasColumnName("payload_json").HasColumnType("jsonb").IsRequired();
+            entity.Property(value => value.OccurredAtUtc).HasColumnName("occurred_at_utc");
+            entity.Property(value => value.PublishedAtUtc).HasColumnName("published_at_utc");
+            entity.HasIndex(value => new { value.PublishedAtUtc, value.OccurredAtUtc });
+        });
+
         modelBuilder.Entity<CharacterAppearanceEntity>(entity =>
         {
             entity.ToTable("character_appearances");
@@ -229,6 +309,9 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
             entity.Property(value => value.State)
                 .HasColumnName("state")
                 .HasConversion<byte>();
+            entity.Property(value => value.ObjectiveProgress)
+                .HasColumnName("objective_progress")
+                .HasDefaultValue(0);
             entity.Property(value => value.ContinueChoice)
                 .HasColumnName("continue_choice");
             entity.Property(value => value.StartedAtUtc)
@@ -240,6 +323,9 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
             entity.Property(value => value.Version)
                 .HasColumnName("version")
                 .IsConcurrencyToken();
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_character_tutorial_progress_objective_nonnegative",
+                "\"objective_progress\" >= 0"));
             entity.HasOne(value => value.Character)
                 .WithMany(character => character.TutorialProgress)
                 .HasForeignKey(value => value.CharacterId)

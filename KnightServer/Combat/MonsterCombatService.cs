@@ -40,7 +40,7 @@ public sealed class MonsterCombatService(
                 monsterId);
 
         if (!string.Equals(
-                session.Profile.MapDefinitionId,
+                session.MapDefinitionId,
                 monster.MapDefinitionId,
                 StringComparison.Ordinal))
             return new MonsterAttackResolution(

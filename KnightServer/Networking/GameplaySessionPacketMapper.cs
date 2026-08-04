@@ -19,8 +19,8 @@ public static class GameplaySessionPacketMapper
             session.Profile.SlotIndex,
             session.Profile.ClassDefinitionId,
             session.Profile.BodyTypeDefinitionId,
-            session.Profile.MapDefinitionId,
-            session.Profile.SpawnPointId,
+            session.MapDefinitionId,
+            session.SpawnPointId,
             session.Profile.AppearanceSelections.Select(value =>
                 new AppearanceSelectionPacket(
                     value.SlotDefinitionId,

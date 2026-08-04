@@ -23,4 +23,5 @@ public sealed class CharacterEntity
     public ICollection<CharacterTutorialProgressEntity> TutorialProgress { get; set; } = [];
     public ICollection<CharacterProgressionGrantEntity> ProgressionGrants
         { get; set; } = [];
+    public ICollection<CharacterInventoryItemEntity> InventoryItems { get; set; } = [];
 }

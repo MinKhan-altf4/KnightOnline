@@ -4,6 +4,8 @@ using KnightOnline.Server.Characters;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Persistence.Entities;
 using KnightOnline.Server.Time;
+using KnightOnline.Server.World;
+using KnightOnline.Server.Tutorials;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -14,7 +16,8 @@ public sealed class CharacterRepository(
     CharacterOptions characterOptions,
     ICharacterCreationCatalog catalog,
     CharacterNamePolicy namePolicy,
-    IServerClock clock)
+    IServerClock clock,
+    IMapCatalog mapCatalog)
 {
     public async Task EnsureAccountExistsAsync(string accountKey)
     {
@@ -166,6 +169,14 @@ public sealed class CharacterRepository(
         }
 
         DateTime utcNow = clock.UtcNow;
+        if (!mapCatalog.TryResolveSpawn(
+                characterOptions.StartingMapDefinitionId,
+                characterOptions.StartingSpawnPointId,
+                out MapSpawnPoint starterSpawn))
+        {
+            throw new InvalidOperationException(
+                "The configured starter spawn point is unavailable.");
+        }
         var character = new CharacterEntity
         {
             AccountId = account.Id,
@@ -179,8 +190,8 @@ public sealed class CharacterRepository(
             CurrentMapDefinitionId =
                 characterOptions.StartingMapDefinitionId,
             CurrentSpawnPointId = characterOptions.StartingSpawnPointId,
-            PositionX = characterOptions.SpawnPositionX,
-            PositionY = characterOptions.SpawnPositionY,
+            PositionX = starterSpawn.Position.X,
+            PositionY = starterSpawn.Position.Y,
             CreatedAtUtc = utcNow,
         };
 
@@ -202,7 +213,8 @@ public sealed class CharacterRepository(
                     characterOptions.StartingTutorialDefinitionId,
                 CurrentStepDefinitionId =
                     characterOptions.StartingTutorialStepDefinitionId,
-                State = TutorialProgressState.NotStarted,
+                State = TutorialState.NotStarted,
+                ObjectiveProgress = 0,
                 UpdatedAtUtc = utcNow,
             });
         db.Characters.Add(character);

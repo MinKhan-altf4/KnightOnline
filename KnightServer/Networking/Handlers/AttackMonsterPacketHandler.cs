@@ -6,6 +6,7 @@ using KnightOnline.Server.Players;
 using KnightOnline.Server.Progression;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Time;
+using KnightOnline.Server.Tutorials;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
@@ -17,6 +18,8 @@ public sealed class AttackMonsterPacketHandler(
     CharacterStatsPipeline statsPipeline,
     ProgressionOptions progressionOptions,
     GuestOptions guestOptions,
+    StarterTutorialService tutorialService,
+    TutorialDefinitionOptions tutorialDefinition,
     IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType => PacketType.AttackMonsterRequest;
@@ -76,6 +79,25 @@ public sealed class AttackMonsterPacketHandler(
                 new MonsterDiedPacket(result.MonsterId));
 
             PlayerSession session = connection.PlayerSession!;
+            TutorialCommandResult tutorialResult =
+                await tutorialService.RecordKillAsync(
+                    session.CharacterId,
+                    result.MonsterLifeId,
+                    snapshot.DefinitionId,
+                    snapshot.MapDefinitionId,
+                    cancellationToken);
+            if (tutorialResult.Status is TutorialCommandStatus.Applied or
+                TutorialCommandStatus.AlreadyApplied)
+            {
+                await InteractNpcPacketHandler.SendProgressAsync(
+                    connection,
+                    tutorialDefinition,
+                    tutorialResult.Progress,
+                    cancellationToken);
+            }
+
+            if (snapshot.ExperienceReward <= 0)
+                return;
             int maximumLevel = connection.IsGuest
                 ? Math.Min(
                     guestOptions.MaximumLevel,

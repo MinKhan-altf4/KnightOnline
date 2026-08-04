@@ -113,7 +113,7 @@ public sealed class ConnectionRegistry
         foreach (ClientConnection connection in _connections.Keys)
         {
             if (!string.Equals(
-                    connection.PlayerSession?.Profile.MapDefinitionId,
+                    connection.PlayerSession?.MapDefinitionId,
                     mapDefinitionId,
                     StringComparison.Ordinal))
                 continue;

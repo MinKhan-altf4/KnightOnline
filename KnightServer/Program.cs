@@ -12,6 +12,7 @@ using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Players;
 using KnightOnline.Server.Progression;
 using KnightOnline.Server.Time;
+using KnightOnline.Server.Tutorials;
 using KnightOnline.Server.World;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,18 +20,36 @@ namespace KnightOnline.Server;
 
 public static class Program
 {
+    private const string ResetDevelopmentAccountsArgument =
+        "--reset-development-accounts";
+    private const string ResetConfirmationArgument =
+        "--confirm-reset=DELETE-ALL-DEVELOPMENT-ACCOUNTS";
+
     public static async Task Main(string[] args)
     {
-        string settingsPath = args.FirstOrDefault()
+        string settingsPath = args.FirstOrDefault(value =>
+                !value.StartsWith("--", StringComparison.Ordinal))
             ?? Environment.GetEnvironmentVariable("KNIGHTONLINE_SETTINGS")
             ?? Path.Combine(AppContext.BaseDirectory, "serverSettings.json");
         ServerOptions options = ServerOptions.Load(settingsPath);
 
         DbContextOptions<KnightDbContext> databaseOptions =
             await ConfigureDatabaseAsync();
+        if (args.Contains(
+                ResetDevelopmentAccountsArgument,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            await ResetDevelopmentAccountsAsync(
+                args,
+                options,
+                databaseOptions);
+            return;
+        }
         IServerClock clock = new SystemServerClock();
         ICharacterCreationCatalog characterCatalog =
             CreateCharacterCatalog(options.Characters);
+        IMapCatalog mapCatalog =
+            new ConfiguredMapCatalog(options.MapDefinitions);
         var characterNamePolicy = new CharacterNamePolicy();
 
         var characterRepository = new CharacterRepository(
@@ -38,7 +57,8 @@ public static class Program
             options.Characters,
             characterCatalog,
             characterNamePolicy,
-            clock);
+            clock,
+            mapCatalog);
         await characterRepository.EnsureAccountExistsAsync(
             options.Characters.DevelopmentAccountKey);
 
@@ -48,7 +68,8 @@ public static class Program
         IWorldMovementResolver movementResolver =
             new MonsterCollisionMovementResolver(
                 monsterService,
-                options.World);
+                options.World,
+                mapCatalog);
         var respawnDisplacementResolver =
             new MonsterRespawnDisplacementResolver(
                 monsterService,
@@ -64,6 +85,12 @@ public static class Program
             databaseOptions,
             experienceCurve,
             clock);
+        TutorialDefinitionOptions starterTutorial = options.TutorialDefinitions
+            .Single(value => string.Equals(value.DefinitionId,
+                options.Characters.StartingTutorialDefinitionId,
+                StringComparison.OrdinalIgnoreCase));
+        var starterTutorialService = new StarterTutorialService(
+            databaseOptions, starterTutorial, experienceCurve, mapCatalog, clock);
         IActiveAccountLeaseStore accountSessions =
             new InMemoryActiveAccountLeaseStore(
                 TimeSpan.FromSeconds(
@@ -155,6 +182,14 @@ public static class Program
                 characterRepository,
                 options.Characters),
             new ListMonstersPacketHandler(monsterService),
+            new ListNpcsPacketHandler(options.NpcDefinitions),
+            new InteractNpcPacketHandler(options.NpcDefinitions,
+                starterTutorial, starterTutorialService,
+                experienceCurve, characterStatsPipeline, clock),
+            new ListPortalsPacketHandler(options.PortalDefinitions,
+                options.MapDefinitions),
+            new UsePortalPacketHandler(options.PortalDefinitions,
+                starterTutorialService, mapCatalog, clock),
             new SelectCharacterPacketHandler(
                 characterRepository,
                 activePlayers,
@@ -164,7 +199,8 @@ public static class Program
                 characterStatsPipeline,
                 experienceCurve,
                 clock),
-            new EnterWorldPacketHandler(clock, movementResolver),
+            new EnterWorldPacketHandler(clock, movementResolver,
+                starterTutorialService, starterTutorial),
             new PlayerMoveInputPacketHandler(clock, movementResolver),
             new AttackMonsterPacketHandler(
                 combatService,
@@ -174,6 +210,8 @@ public static class Program
                 characterStatsPipeline,
                 options.Progression,
                 options.Guest,
+                starterTutorialService,
+                starterTutorial,
                 clock),
         ],
             accountSessions,
@@ -307,7 +345,7 @@ public static class Program
 
                     bool displaced = session.TryResolveAuthoritativePosition(
                         position => displacementResolver.Resolve(
-                            session.Profile.MapDefinitionId,
+                            session.MapDefinitionId,
                             session.CharacterId,
                             position),
                         out _);
@@ -399,6 +437,40 @@ public static class Program
         await db.Database.MigrateAsync();
 
         return databaseOptions;
+    }
+
+    private static async Task ResetDevelopmentAccountsAsync(
+        IReadOnlyCollection<string> args,
+        ServerOptions options,
+        DbContextOptions<KnightDbContext> databaseOptions)
+    {
+        if (!string.Equals(
+                options.Environment,
+                "Development",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Account reset is only available in Development.");
+        }
+
+        if (!args.Contains(
+                ResetConfirmationArgument,
+                StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Account reset requires the exact confirmation argument: " +
+                ResetConfirmationArgument);
+        }
+
+        var reset = new DevelopmentAccountDataReset(databaseOptions);
+        DevelopmentAccountResetResult result = await reset.ExecuteAsync();
+        Console.WriteLine(
+            "[DevelopmentDataReset] Completed. " +
+            $"accounts={result.AccountsBefore}->{result.AccountsAfter}, " +
+            $"characters={result.CharactersBefore}->{result.CharactersAfter}, " +
+            $"refreshSessions={result.RefreshSessionsBefore}->" +
+            $"{result.RefreshSessionsAfter}, " +
+            $"deletedAccountRoots={result.DeletedAccounts}.");
     }
 
     private static MonsterService CreateMonsterWorld(

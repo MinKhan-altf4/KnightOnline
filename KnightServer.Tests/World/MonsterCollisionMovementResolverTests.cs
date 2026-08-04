@@ -13,7 +13,7 @@ public sealed class MonsterCollisionMovementResolverTests
         MonsterService monsters = CreateMonsterWorld(out _);
         var resolver = new MonsterCollisionMovementResolver(
             monsters,
-            CreateOptions());
+            CreateOptions(), CreateMaps());
 
         Vector2 resolved = resolver.Resolve(
             "tutorial-map",
@@ -31,7 +31,7 @@ public sealed class MonsterCollisionMovementResolverTests
         monsters.ApplyDamage(monsterId, 100, DateTime.UtcNow);
         var resolver = new MonsterCollisionMovementResolver(
             monsters,
-            CreateOptions());
+            CreateOptions(), CreateMaps());
 
         Vector2 resolved = resolver.Resolve(
             "tutorial-map",
@@ -47,7 +47,7 @@ public sealed class MonsterCollisionMovementResolverTests
         MonsterService monsters = CreateMonsterWorld(out _);
         var resolver = new MonsterCollisionMovementResolver(
             monsters,
-            CreateOptions());
+            CreateOptions(), CreateMaps());
 
         Vector2 resolved = resolver.Resolve(
             "tutorial-map",
@@ -63,7 +63,7 @@ public sealed class MonsterCollisionMovementResolverTests
         MonsterService monsters = CreateMonsterWorld(out _);
         var resolver = new MonsterCollisionMovementResolver(
             monsters,
-            CreateOptions());
+            CreateOptions(), CreateMaps());
 
         Vector2 resolved = resolver.Resolve(
             "another-map",
@@ -71,6 +71,22 @@ public sealed class MonsterCollisionMovementResolverTests
             new Vector2(3f, 0f));
 
         Assert.Equal(new Vector2(3f, 0f), resolved);
+    }
+
+    [Fact]
+    public void Resolve_ClampsMovementInsideAllFourMapBoundaries()
+    {
+        var resolver = new MonsterCollisionMovementResolver(
+            new MonsterService(), CreateOptions(), CreateMaps());
+
+        Assert.Equal(new Vector2(10f, 0f), resolver.Resolve(
+            "tutorial-map", Vector2.Zero, new Vector2(99f, 0f)));
+        Assert.Equal(new Vector2(-10f, 0f), resolver.Resolve(
+            "tutorial-map", Vector2.Zero, new Vector2(-99f, 0f)));
+        Assert.Equal(new Vector2(0f, 10f), resolver.Resolve(
+            "tutorial-map", Vector2.Zero, new Vector2(0f, 99f)));
+        Assert.Equal(new Vector2(0f, -10f), resolver.Resolve(
+            "tutorial-map", Vector2.Zero, new Vector2(0f, -99f)));
     }
 
     private static MonsterService CreateMonsterWorld(out int monsterId)
@@ -94,4 +110,20 @@ public sealed class MonsterCollisionMovementResolverTests
             PlayerCollisionRadius = 0.35f,
             MonsterCollisionRadius = 0.5f,
         };
+
+    private static IMapCatalog CreateMaps() => new ConfiguredMapCatalog(
+    [
+        new MapDefinitionOptions
+        {
+            DefinitionId = "tutorial-map", DisplayName = "Tutorial",
+            MinimumX = -10, MaximumX = 10, MinimumY = -10, MaximumY = 10,
+            SpawnPoints = [new MapSpawnPointOptions { SpawnPointId = "spawn" }],
+        },
+        new MapDefinitionOptions
+        {
+            DefinitionId = "another-map", DisplayName = "Other",
+            MinimumX = -10, MaximumX = 10, MinimumY = -10, MaximumY = 10,
+            SpawnPoints = [new MapSpawnPointOptions { SpawnPointId = "spawn" }],
+        },
+    ]);
 }

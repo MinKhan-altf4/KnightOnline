@@ -14,6 +14,7 @@ using KnightOnline.Server.Players;
 using KnightOnline.Server.Progression;
 using KnightOnline.Server.World;
 using KnightOnline.Server.Time;
+using KnightOnline.Server.Tutorials;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -23,6 +24,257 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
 {
     private static readonly DateTime InitialUtc =
         new(2026, 8, 2, 9, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task StarterTutorial_DeduplicatesKills_AndRewardsExactlyOnce()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        TestContext context = await CreateContextAsync(database);
+        CreateCharacterResponsePacket created = await context.Repository.CreateAsync(
+            context.AccountKey,
+            CreateRequest(context.Options, $"Quest{context.Suffix}", 1),
+            CancellationToken.None);
+        int characterId = created.Character!.CharacterId;
+        ServerOptions options = LoadServerOptions();
+        TutorialDefinitionOptions definition = options.TutorialDefinitions.Single();
+        var service = new StarterTutorialService(database.Options, definition,
+            new ConfiguredExperienceCurve(options.Progression),
+            new ConfiguredMapCatalog(options.MapDefinitions),
+            new FixedClock(InitialUtc));
+
+        TutorialCommandResult accepted = await service.InteractWithQuestNpcAsync(
+            Guid.NewGuid(), characterId, CancellationToken.None);
+        Assert.Equal(StarterTutorialOutcome.QuestAccepted, accepted.Outcome);
+        Assert.Equal(definition.ReturnMapDefinitionId, accepted.MapDefinitionId);
+        await service.PersistPortalTransitionAsync(characterId,
+            definition.QuestMapDefinitionId, definition.QuestSpawnPointId,
+            -7f, 0f, CancellationToken.None);
+
+        Guid firstLife = Guid.NewGuid();
+        TutorialCommandResult firstKill = await service.RecordKillAsync(characterId,
+            firstLife, definition.RequiredMonsterDefinitionId,
+            definition.QuestMapDefinitionId, CancellationToken.None);
+        TutorialCommandResult duplicate = await service.RecordKillAsync(characterId,
+            firstLife, definition.RequiredMonsterDefinitionId,
+            definition.QuestMapDefinitionId, CancellationToken.None);
+        Assert.Equal(1, firstKill.Progress.ObjectiveProgress);
+        Assert.Equal(TutorialCommandStatus.AlreadyApplied, duplicate.Status);
+        Assert.Equal(1, duplicate.Progress.ObjectiveProgress);
+
+        TutorialCommandResult progress = firstKill;
+        for (int index = 1; index < definition.RequiredKillCount; index++)
+        {
+            progress = await service.RecordKillAsync(characterId, Guid.NewGuid(),
+                definition.RequiredMonsterDefinitionId,
+                definition.QuestMapDefinitionId, CancellationToken.None);
+        }
+        Assert.Equal(StarterTutorialOutcome.ReadyToTurnIn, progress.Outcome);
+        await service.PersistPortalTransitionAsync(characterId,
+            definition.ReturnMapDefinitionId, definition.ReturnSpawnPointId,
+            0f, 0f, CancellationToken.None);
+
+        Guid rewardRequest = Guid.NewGuid();
+        TutorialCommandResult completed = await service.InteractWithQuestNpcAsync(
+            rewardRequest, characterId, CancellationToken.None);
+        TutorialCommandResult retried = await service.InteractWithQuestNpcAsync(
+            rewardRequest, characterId, CancellationToken.None);
+        Assert.Equal(StarterTutorialOutcome.QuestCompleted, completed.Outcome);
+        Assert.Equal(TutorialCommandStatus.AlreadyApplied, retried.Status);
+        Assert.Equal(2, completed.Level);
+        Assert.Equal(3, completed.Inventory.Count);
+        Assert.Equal(definition.ReturnMapDefinitionId,
+            completed.MapDefinitionId);
+
+        await using var verification = new KnightDbContext(database.Options);
+        Assert.Equal(definition.RequiredKillCount,
+            await verification.TutorialKillCredits.CountAsync(value =>
+                value.CharacterId == characterId));
+        Assert.Equal(3, await verification.CharacterInventoryItems.CountAsync(
+            value => value.CharacterId == characterId));
+        Assert.Equal(1, await verification.CharacterProgressionGrants.CountAsync(
+            value => value.CharacterId == characterId &&
+                     value.SourceType == "tutorial_reward"));
+        Assert.Equal(1, await verification.GameplayAuditRecords.CountAsync(
+            value => value.CharacterId == characterId &&
+                     value.RequestId == rewardRequest));
+        Assert.Equal(1, await verification.DomainOutboxMessages.CountAsync(
+            value => value.CorrelationId == rewardRequest &&
+                     value.EventType == "TutorialCompleted"));
+    }
+
+    [Fact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task StarterTutorial_NpcAndPortalTravelAcrossTcp_AndReloadsState()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        TestContext context = await CreateContextAsync(database);
+        CreateCharacterResponsePacket created = await context.Repository.CreateAsync(
+            context.AccountKey,
+            CreateRequest(context.Options, $"WireQuest{context.Suffix}", 1),
+            CancellationToken.None);
+        ServerOptions options = LoadServerOptions();
+        TutorialDefinitionOptions definition = options.TutorialDefinitions.Single();
+        var clock = new MutableClock(InitialUtc);
+        var leases = CreateLeaseStore();
+        await using NetworkTestConnection connection =
+            await NetworkTestConnection.CreateAsync(context, leases, clock);
+        await connection.AttachAccountAsync(context.AccountKey, leases,
+            clock.UtcNow);
+        await connection.SendAsync(PacketType.SelectCharacterRequest,
+            new SelectCharacterRequestPacket(created.Character!.CharacterId));
+        await connection.ReadPayloadAsync<SelectCharacterResponsePacket>(
+            PacketType.SelectCharacterResponse);
+
+        await connection.SendAsync(PacketType.InteractNpcRequest,
+            new InteractNpcRequestPacket(Guid.NewGuid(),
+                definition.QuestNpcDefinitionId));
+        InteractNpcResponsePacket accepted =
+            await connection.ReadPayloadAsync<InteractNpcResponsePacket>(
+                PacketType.InteractNpcResponse);
+        await connection.ReadPayloadAsync<TutorialProgressSnapshotPacket>(
+            PacketType.TutorialProgressSnapshot);
+        Assert.Equal(NpcInteractionResult.Success, accepted.Result);
+
+        PortalDefinitionOptions toWolf = options.PortalDefinitions.Single(value =>
+            value.DefinitionId == "village_to_wolf_field");
+        connection.TeleportPlayer(toWolf.SourceMapDefinitionId,
+            toWolf.PositionX, toWolf.PositionY, clock.UtcNow);
+        await connection.SendAsync(PacketType.UsePortalRequest,
+            new UsePortalRequestPacket(Guid.NewGuid(), toWolf.DefinitionId));
+        Assert.Equal(PortalUseResult.Success,
+            (await connection.ReadPayloadAsync<UsePortalResponsePacket>(
+                PacketType.UsePortalResponse)).Result);
+        MapTransitionSnapshotPacket wolfField = await connection
+            .ReadPayloadAsync<MapTransitionSnapshotPacket>(
+                PacketType.MapTransitionSnapshot);
+        Assert.Equal(definition.QuestMapDefinitionId, wolfField.MapDefinitionId);
+
+        var service = new StarterTutorialService(database.Options, definition,
+            new ConfiguredExperienceCurve(options.Progression),
+            new ConfiguredMapCatalog(options.MapDefinitions), clock);
+        for (int index = 0; index < definition.RequiredKillCount; index++)
+            await service.RecordKillAsync(created.Character.CharacterId,
+                Guid.NewGuid(), definition.RequiredMonsterDefinitionId,
+                definition.QuestMapDefinitionId, CancellationToken.None);
+
+        PortalDefinitionOptions portal = options.PortalDefinitions.Single(value =>
+            value.DefinitionId == "wolf_field_return_to_village");
+        connection.TeleportPlayer(portal.SourceMapDefinitionId,
+            portal.PositionX, portal.PositionY, clock.UtcNow);
+        await connection.SendAsync(PacketType.UsePortalRequest,
+            new UsePortalRequestPacket(Guid.NewGuid(), portal.DefinitionId));
+        UsePortalResponsePacket portalResponse =
+            await connection.ReadPayloadAsync<UsePortalResponsePacket>(
+                PacketType.UsePortalResponse);
+        MapTransitionSnapshotPacket village =
+            await connection.ReadPayloadAsync<MapTransitionSnapshotPacket>(
+                PacketType.MapTransitionSnapshot);
+        Assert.Equal(PortalUseResult.Success, portalResponse.Result);
+        Assert.Equal(definition.ReturnMapDefinitionId, village.MapDefinitionId);
+
+        await connection.SendAsync(PacketType.InteractNpcRequest,
+            new InteractNpcRequestPacket(Guid.NewGuid(),
+                definition.QuestNpcDefinitionId));
+        await connection.ReadPayloadAsync<InteractNpcResponsePacket>(
+            PacketType.InteractNpcResponse);
+        TutorialProgressSnapshotPacket completed =
+            await connection.ReadPayloadAsync<TutorialProgressSnapshotPacket>(
+                PacketType.TutorialProgressSnapshot);
+        await connection.ReadPayloadAsync<CharacterProgressionChangedPacket>(
+            PacketType.CharacterProgressionChanged);
+        await connection.ReadPayloadAsync<CharacterVitalsSnapshotPacket>(
+            PacketType.CharacterVitalsSnapshot);
+        InventorySnapshotPacket inventory =
+            await connection.ReadPayloadAsync<InventorySnapshotPacket>(
+                PacketType.InventorySnapshot);
+        Assert.Equal(definition.CompletedStepDefinitionId,
+            completed.StepDefinitionId);
+        Assert.Equal(3, inventory.Items.Count);
+
+        PortalDefinitionOptions toSafe = options.PortalDefinitions.Single(value =>
+            value.DefinitionId == "village_to_safe_zone_01");
+        connection.TeleportPlayer(toSafe.SourceMapDefinitionId,
+            toSafe.PositionX, toSafe.PositionY, clock.UtcNow);
+        await connection.SendAsync(PacketType.UsePortalRequest,
+            new UsePortalRequestPacket(Guid.NewGuid(), toSafe.DefinitionId));
+        Assert.Equal(PortalUseResult.Success,
+            (await connection.ReadPayloadAsync<UsePortalResponsePacket>(
+                PacketType.UsePortalResponse)).Result);
+        MapTransitionSnapshotPacket safeZone = await connection
+            .ReadPayloadAsync<MapTransitionSnapshotPacket>(
+                PacketType.MapTransitionSnapshot);
+        Assert.Equal(definition.CompletionMapDefinitionId,
+            safeZone.MapDefinitionId);
+
+        TutorialCommandResult reloaded = await service.GetCurrentAsync(
+            created.Character.CharacterId, CancellationToken.None);
+        Assert.Equal(TutorialState.Completed, reloaded.Progress.State);
+        Assert.Equal(3, reloaded.Inventory.Count);
+        Assert.Equal(definition.CompletionMapDefinitionId,
+            reloaded.MapDefinitionId);
+    }
+
+    [Fact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task ThreeSlots_HaveIndependentProgressionAndTutorialState()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        TestContext context = await CreateContextAsync(database);
+        CreateCharacterResponsePacket[] created = new CreateCharacterResponsePacket[3];
+        for (int slot = 1; slot <= 3; slot++)
+        {
+            created[slot - 1] = await context.Repository.CreateAsync(
+                context.AccountKey,
+                CreateRequest(
+                    context.Options,
+                    $"Slot{slot}{context.Suffix}",
+                    slot),
+                CancellationToken.None);
+            Assert.Equal(CreateCharacterResult.Success, created[slot - 1].Result);
+        }
+
+        int firstCharacterId = created[0].Character!.CharacterId;
+        await using (var mutation = new KnightDbContext(database.Options))
+        {
+            await mutation.Characters
+                .Where(value => value.Id == firstCharacterId)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(value => value.Level, 7)
+                    .SetProperty(value => value.TotalExperience, 900));
+            await mutation.CharacterTutorialProgress
+                .Where(value => value.CharacterId == firstCharacterId)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(value => value.ObjectiveProgress, 13));
+        }
+
+        await using var verification = new KnightDbContext(database.Options);
+        var states = await verification.Characters
+            .AsNoTracking()
+            .Where(value => value.Account.AccountKey == context.AccountKey)
+            .OrderBy(value => value.SlotIndex)
+            .Select(value => new
+            {
+                value.SlotIndex,
+                value.Level,
+                value.TotalExperience,
+                ObjectiveProgress = value.TutorialProgress
+                    .Select(progress => progress.ObjectiveProgress)
+                    .Single(),
+            })
+            .ToArrayAsync();
+
+        Assert.Equal(3, states.Length);
+        Assert.Equal((7, 900L, 13),
+            (states[0].Level, states[0].TotalExperience,
+                states[0].ObjectiveProgress));
+        Assert.Equal((1, 0L, 0),
+            (states[1].Level, states[1].TotalExperience,
+                states[1].ObjectiveProgress));
+        Assert.Equal((1, 0L, 0),
+            (states[2].Level, states[2].TotalExperience,
+                states[2].ObjectiveProgress));
+    }
 
     [Fact]
     [Trait("Category", "PostgreSQLIntegration")]
@@ -444,12 +696,20 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
         EnterWorldResponsePacket entered =
             await connection.ReadPayloadAsync<EnterWorldResponsePacket>(
                 PacketType.EnterWorldResponse);
+        await connection.ReadPayloadAsync<TutorialProgressSnapshotPacket>(
+            PacketType.TutorialProgressSnapshot);
+        await connection.ReadPayloadAsync<InventorySnapshotPacket>(
+            PacketType.InventorySnapshot);
         await connection.SendAsync(
             PacketType.EnterWorldRequest,
             new EnterWorldRequestPacket(selected.GameplaySessionId));
         EnterWorldResponsePacket retriedEntry =
             await connection.ReadPayloadAsync<EnterWorldResponsePacket>(
                 PacketType.EnterWorldResponse);
+        await connection.ReadPayloadAsync<TutorialProgressSnapshotPacket>(
+            PacketType.TutorialProgressSnapshot);
+        await connection.ReadPayloadAsync<InventorySnapshotPacket>(
+            PacketType.InventorySnapshot);
         // A malformed movement payload must not terminate the authenticated
         // transport; the next valid sequenced input still receives a snapshot.
         await connection.SendRawPayloadAsync(
@@ -608,18 +868,23 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
             repository,
             options,
             accountKey,
-            suffix);
+            suffix,
+            database.Options);
     }
 
     private static CharacterRepository CreateRepository(
         DbContextOptions<KnightDbContext> databaseOptions,
-        CharacterOptions options) =>
-        new(
+        CharacterOptions options)
+    {
+        ServerOptions serverOptions = LoadServerOptions();
+        return new(
             databaseOptions,
             options,
             CreateCatalog(options),
             new CharacterNamePolicy(),
-            new FixedClock(new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc)));
+            new FixedClock(new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc)),
+            new ConfiguredMapCatalog(serverOptions.MapDefinitions));
+    }
 
     private static InMemoryActiveAccountLeaseStore CreateLeaseStore() =>
         new(
@@ -687,7 +952,8 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
         CharacterRepository Repository,
         CharacterOptions Options,
         string AccountKey,
-        string Suffix);
+        string Suffix,
+        DbContextOptions<KnightDbContext> DatabaseOptions);
 
     private sealed class FixedClock(DateTime utcNow) : IServerClock
     {
@@ -736,10 +1002,20 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
                 PlayerCollisionRadius = 0.35f,
                 MonsterCollisionRadius = 0.5f,
             };
+            ServerOptions serverOptions = LoadServerOptions();
             IWorldMovementResolver movementResolver =
                 new MonsterCollisionMovementResolver(
                     new MonsterService(),
-                    worldOptions);
+                    worldOptions,
+                    new ConfiguredMapCatalog(serverOptions.MapDefinitions));
+            TutorialDefinitionOptions tutorial =
+                serverOptions.TutorialDefinitions.Single();
+            var tutorialService = new StarterTutorialService(
+                context.DatabaseOptions,
+                tutorial,
+                new ConfiguredExperienceCurve(serverOptions.Progression),
+                new ConfiguredMapCatalog(serverOptions.MapDefinitions),
+                clock);
             var dispatcher = new PacketDispatcher(
                 [
                     new CreateCharacterPacketHandler(context.Repository),
@@ -756,10 +1032,23 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
                         new ConfiguredExperienceCurve(
                             new ProgressionOptions()),
                         clock),
-                    new EnterWorldPacketHandler(clock, movementResolver),
+                    new EnterWorldPacketHandler(clock, movementResolver,
+                        tutorialService, tutorial),
                     new PlayerMoveInputPacketHandler(
                         clock,
                         movementResolver),
+                    new ListNpcsPacketHandler(serverOptions.NpcDefinitions),
+                    new InteractNpcPacketHandler(serverOptions.NpcDefinitions,
+                        tutorial, tutorialService,
+                        new ConfiguredExperienceCurve(serverOptions.Progression),
+                        new CharacterStatsPipeline(serverOptions.Characters),
+                        clock),
+                    new ListPortalsPacketHandler(serverOptions.PortalDefinitions,
+                        serverOptions.MapDefinitions),
+                    new UsePortalPacketHandler(serverOptions.PortalDefinitions,
+                        tutorialService,
+                        new ConfiguredMapCatalog(serverOptions.MapDefinitions),
+                        clock),
                 ],
                 leases,
                 clock);
@@ -789,6 +1078,11 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
 
         public Task SendAsync<T>(PacketType type, T payload) =>
             SendRawPayloadAsync(type, JsonSerializer.Serialize(payload));
+
+        public void TeleportPlayer(string mapId, float x, float y,
+            DateTime utcNow) => _server.PlayerSession!.Teleport(
+                mapId, "integration-test", new System.Numerics.Vector2(x, y),
+                utcNow);
 
         public async Task SendRawPayloadAsync(
             PacketType type,

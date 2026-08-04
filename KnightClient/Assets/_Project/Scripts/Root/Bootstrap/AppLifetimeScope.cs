@@ -65,6 +65,13 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler,
                 CharacterNameAvailabilityResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, ListMonstersResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, ListNpcsResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, InteractNpcResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, TutorialProgressSnapshotHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, ListPortalsResponseHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, MapTransitionSnapshotHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, InventorySnapshotHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, UsePortalResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterHealthChangedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterDiedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterRespawnedHandler>(Lifetime.Singleton);

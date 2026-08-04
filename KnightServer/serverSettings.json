@@ -33,13 +33,11 @@
     "initialLevel": 1,
     "initialMaximumHealth": 100,
     "moveSpeed": 4.0,
-    "spawnPositionX": 0.0,
-    "spawnPositionY": 0.0,
     "catalogVersion": 1,
     "startingMapDefinitionId": "tutorial_map_01",
     "startingSpawnPointId": "tutorial_spawn_default",
     "startingTutorialDefinitionId": "starter_tutorial_v1",
-    "startingTutorialStepDefinitionId": "welcome",
+    "startingTutorialStepDefinitionId": "talk_to_mother",
     "requiredStarterAppearanceSlotIds": [
       "base_body",
       "hair",
@@ -154,22 +152,227 @@
     "monsterCollisionRadius": 0.5,
     "respawnDisplacementAngularSamples": 32
   },
+  "mapDefinitions": [
+    {
+      "definitionId": "tutorial_map_01",
+      "displayName": "Làng tân thủ",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "tutorial_spawn_default",
+          "positionX": 0.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "tutorial_wolf_gate",
+          "positionX": 6.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "wolf_field_01",
+      "displayName": "Bãi Sói",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "wolf_field_entry",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "wolf_field_return_gate",
+          "positionX": -8.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "safe_zone_01",
+      "displayName": "Safe Zone 1",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "safe_zone_01_entry",
+          "positionX": 0.0,
+          "positionY": -4.0,
+          "isSafeZone": true
+        }
+      ]
+    }
+  ],
+  "npcDefinitions": [
+    {
+      "definitionId": "mother_tutorial",
+      "displayName": "Mẹ",
+      "mapDefinitionId": "tutorial_map_01",
+      "positionX": 3.0,
+      "positionY": 0.0,
+      "interactionRange": 3.0,
+      "initialDialogue": "Con đã lớn rồi... Mẹ biết sẽ có ngày con rời ngôi làng này để đi con đường của một hiệp sĩ. Trước khi lên đường, hãy giúp dân làng tiêu diệt 20 con Sói ngoài bãi.",
+      "progressDialogue": "Mẹ vẫn chờ con ở đây. Hãy cẩn thận với bầy Sói và trở về bình an nhé.",
+      "completionDialogue": "Con đã trở về rồi... Mẹ tự hào về con. Đây là bộ giáp sắt Mẹ đã gìn giữ cho ngày con bắt đầu cuộc hành trình.",
+      "farewellDialogue": "Hãy tiến về Safe Zone 1, gặp những người buôn bán và các hiệp sĩ khác. Dù con đi đâu, nơi này vẫn luôn là nhà. Tạm biệt con."
+    }
+  ],
+  "portalDefinitions": [
+    {
+      "definitionId": "village_to_wolf_field",
+      "displayName": "Bãi Sói",
+      "sourceMapDefinitionId": "tutorial_map_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "wolf_field_01",
+      "destinationSpawnPointId": "wolf_field_entry",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "wolf_field_return_to_village",
+      "displayName": "Làng tân thủ",
+      "sourceMapDefinitionId": "wolf_field_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "tutorial_map_01",
+      "destinationSpawnPointId": "tutorial_wolf_gate",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "village_to_safe_zone_01",
+      "displayName": "Safe Zone 1",
+      "sourceMapDefinitionId": "tutorial_map_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "safe_zone_01",
+      "destinationSpawnPointId": "safe_zone_01_entry",
+      "minimumLevel": 2
+    },
+    {
+      "definitionId": "safe_zone_01_to_village",
+      "displayName": "Làng tân thủ",
+      "sourceMapDefinitionId": "safe_zone_01",
+      "positionX": 0.0,
+      "positionY": -5.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "tutorial_map_01",
+      "destinationSpawnPointId": "tutorial_spawn_default",
+      "minimumLevel": 1
+    }
+  ],
+  "itemDefinitions": [
+    {
+      "definitionId": "starter_iron_weapon",
+      "displayName": "Vũ khí sắt tân thủ",
+      "equipmentSlot": "weapon"
+    },
+    {
+      "definitionId": "starter_iron_armor",
+      "displayName": "Áo giáp sắt tân thủ",
+      "equipmentSlot": "body"
+    },
+    {
+      "definitionId": "starter_iron_pants",
+      "displayName": "Quần sắt tân thủ",
+      "equipmentSlot": "legs"
+    }
+  ],
+  "tutorialDefinitions": [
+    {
+      "definitionId": "starter_tutorial_v1",
+      "initialStepDefinitionId": "talk_to_mother",
+      "killStepDefinitionId": "hunt_20_wolves",
+      "returnStepDefinitionId": "return_to_mother",
+      "completedStepDefinitionId": "depart_for_safe_zone_01",
+      "questNpcDefinitionId": "mother_tutorial",
+      "requiredMonsterDefinitionId": 1,
+      "requiredKillCount": 20,
+      "questMapDefinitionId": "wolf_field_01",
+      "questSpawnPointId": "wolf_field_entry",
+      "returnMapDefinitionId": "tutorial_map_01",
+      "returnSpawnPointId": "tutorial_spawn_default",
+      "completionMapDefinitionId": "safe_zone_01",
+      "completionSpawnPointId": "safe_zone_01_entry",
+      "experienceReward": 100,
+      "rewardItemDefinitionIds": [
+        "starter_iron_weapon",
+        "starter_iron_armor",
+        "starter_iron_pants"
+      ]
+    }
+  ],
   "monsterDefinitions": [
     {
       "definitionId": 1,
-      "name": "Training Wolf",
+      "name": "Wolf",
       "level": 1,
       "maximumHealth": 50,
-      "experienceReward": 25,
+      "experienceReward": 0,
       "respawnSeconds": 10
     }
   ],
   "monsterSpawns": [
     {
       "definitionId": 1,
-      "mapDefinitionId": "tutorial_map_01",
-      "positionX": 2.0,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": -5.0,
       "positionY": 2.0
+    },
+    {
+      "definitionId": 1,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": -2.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 1,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": 1.0,
+      "positionY": 5.0
+    },
+    {
+      "definitionId": 1,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": 4.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 1,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": 7.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 1,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": -4.0,
+      "positionY": 5.0
+    },
+    {
+      "definitionId": 1,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": 2.0,
+      "positionY": 5.0
+    },
+    {
+      "definitionId": 1,
+      "mapDefinitionId": "wolf_field_01",
+      "positionX": 6.0,
+      "positionY": -5.0
     }
   ]
 }

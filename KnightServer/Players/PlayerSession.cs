@@ -17,6 +17,8 @@ public sealed class PlayerSession
     private long _experienceIntoLevel;
     private long _experienceToNextLevel;
     private long _vitalsSequence;
+    private string _mapDefinitionId;
+    private string _spawnPointId;
 
     public PlayerSession(
         PlayerSessionProfile profile,
@@ -39,6 +41,8 @@ public sealed class PlayerSession
         MaximumHealth = maximumHealth;
         MoveSpeed = moveSpeed;
         _position = spawnPosition;
+        _mapDefinitionId = profile.MapDefinitionId;
+        _spawnPointId = profile.SpawnPointId;
         BaseAttack = baseAttack;
         Defense = defense;
         MaximumMana = maximumMana;
@@ -79,6 +83,14 @@ public sealed class PlayerSession
     }
     public DateTime NextAttackAtUtc { get; private set; }
     public bool IsAlive => CurrentHealth > 0;
+    public string MapDefinitionId
+    {
+        get { lock (_syncRoot) return _mapDefinitionId; }
+    }
+    public string SpawnPointId
+    {
+        get { lock (_syncRoot) return _spawnPointId; }
+    }
     public long LastProcessedMovementSequence
     {
         get
@@ -129,6 +141,28 @@ public sealed class PlayerSession
 
             _position = resolvedPosition;
             return true;
+        }
+    }
+
+    public PlayerPositionState Teleport(
+        string mapDefinitionId,
+        string spawnPointId,
+        Vector2 position,
+        DateTime utcNow)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(mapDefinitionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(spawnPointId);
+        lock (_syncRoot)
+        {
+            _mapDefinitionId = mapDefinitionId;
+            _spawnPointId = spawnPointId;
+            _position = position;
+            _movementDirection = Vector2.Zero;
+            _lastMovementUpdateUtc = utcNow;
+            return new PlayerPositionState(
+                ++_positionSnapshotSequence,
+                _lastProcessedMovementSequence,
+                _position);
         }
     }
 
@@ -283,7 +317,7 @@ public sealed class PlayerSession
         Vector2 desiredPosition = _position +
             _movementDirection * MoveSpeed * (float)elapsedSeconds;
         _position = movementResolver.Resolve(
-            Profile.MapDefinitionId,
+            _mapDefinitionId,
             _position,
             desiredPosition);
         _lastMovementUpdateUtc = utcNow;

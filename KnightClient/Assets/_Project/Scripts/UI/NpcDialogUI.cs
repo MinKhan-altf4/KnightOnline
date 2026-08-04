@@ -8,9 +8,11 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using VContainer;
+using KnightOnline.Client.Data.Events;
 
 namespace KnightOnline.Client.UI
 {
+    // Presentation-only: network requests are forwarded through the event bus.
     public class NpcDialogUI : MonoBehaviour
     {
         [Header("UI References")]
@@ -38,7 +40,10 @@ namespace KnightOnline.Client.UI
         private InteractableNPC _activeNpc;
         private EntityId _activeNpcEntityId;
         private string _activeNpcName;
+        private string _activeNpcDefinitionId;
+        private IDisposable _serverInteractionSubscription;
         private int _openedFrame = -1;
+        private bool _serverDrivenDialog;
 
         private bool IsDialogOpen => _dialogPanel != null && _dialogPanel.activeSelf;
 
@@ -56,14 +61,64 @@ namespace KnightOnline.Client.UI
         private void Awake()
         {
             _dialogRect = _dialogPanel.GetComponent<RectTransform>();
+            ApplyVerticalSliceTheme();
             _dialogPanel.SetActive(false);
             ConfigureButtonContainer();
+        }
+
+        private void ApplyVerticalSliceTheme()
+        {
+            if (_dialogRect != null)
+            {
+                _dialogRect.anchorMin = new Vector2(0.5f, 0.5f);
+                _dialogRect.anchorMax = new Vector2(0.5f, 0.5f);
+                _dialogRect.pivot = new Vector2(0.5f, 0.5f);
+                _dialogRect.anchoredPosition = Vector2.zero;
+                _dialogRect.sizeDelta = new Vector2(760f, 400f);
+            }
+            Image panelImage = _dialogPanel.GetComponent<Image>();
+            if (panelImage != null)
+                panelImage.color = new Color(0.035f, 0.05f, 0.075f, 0.98f);
+            if (_npcNameText != null)
+            {
+                RectTransform nameRect = _npcNameText.rectTransform;
+                nameRect.anchorMin = new Vector2(0f, 1f);
+                nameRect.anchorMax = new Vector2(1f, 1f);
+                nameRect.pivot = new Vector2(0.5f, 1f);
+                nameRect.offsetMin = new Vector2(32f, -66f);
+                nameRect.offsetMax = new Vector2(-32f, -18f);
+                _npcNameText.text = "Mẹ";
+                _npcNameText.fontSize = 34f;
+                _npcNameText.fontStyle = FontStyles.Bold;
+                _npcNameText.color = new Color(1f, 0.72f, 0.18f);
+            }
+            if (_greetingText != null)
+            {
+                RectTransform greetingRect = _greetingText.rectTransform;
+                greetingRect.anchorMin = new Vector2(0f, 0f);
+                greetingRect.anchorMax = new Vector2(1f, 1f);
+                greetingRect.offsetMin = new Vector2(42f, 112f);
+                greetingRect.offsetMax = new Vector2(-42f, -82f);
+                _greetingText.fontSize = 24f;
+                _greetingText.color = Color.white;
+                _greetingText.textWrappingMode = TextWrappingModes.Normal;
+            }
+            if (_buttonContainer != null)
+            {
+                _buttonContainer.anchorMin = new Vector2(0f, 0f);
+                _buttonContainer.anchorMax = new Vector2(1f, 0f);
+                _buttonContainer.pivot = new Vector2(0.5f, 0f);
+                _buttonContainer.offsetMin = new Vector2(32f, 22f);
+                _buttonContainer.offsetMax = new Vector2(-32f, 102f);
+            }
         }
 
         private void Start()
         {
             _interactionSubscription =
                 _eventBus.Subscribe<NpcInteractionRequestedEvent>(ShowDialog);
+            _serverInteractionSubscription =
+                _eventBus.Subscribe<NpcInteractionResultEvent>(OnServerInteraction);
         }
 
         private void OnDisable()
@@ -74,6 +129,7 @@ namespace KnightOnline.Client.UI
         private void OnDestroy()
         {
             _interactionSubscription?.Dispose();
+            _serverInteractionSubscription?.Dispose();
             _interactionSubscription = null;
             CloseDialog();
         }
@@ -84,7 +140,7 @@ namespace KnightOnline.Client.UI
                 return;
 
             // Unity object đã bị Destroy sẽ so sánh bằng null.
-            if (_activeNpc == null)
+            if (_activeNpc == null && !_serverDrivenDialog)
             {
                 CloseDialog();
                 return;
@@ -121,6 +177,7 @@ namespace KnightOnline.Client.UI
             _activeNpc = interaction.Source;
             _activeNpcEntityId = interaction.NpcEntityId;
             _activeNpcName = interaction.NpcName;
+            _activeNpcDefinitionId = interaction.NpcDefinitionId;
             _openedFrame = Time.frameCount;
 
             _dialogPanel.SetActive(true);
@@ -238,7 +295,28 @@ namespace KnightOnline.Client.UI
             _eventBus.Publish(new NpcActionRequestedEvent(
                 _activeNpcEntityId,
                 _activeNpcName,
+                _activeNpcDefinitionId,
                 action));
+        }
+
+        private void OnServerInteraction(NpcInteractionResultEvent result)
+        {
+            if (string.IsNullOrWhiteSpace(result.Dialogue))
+                return;
+            if (!IsDialogOpen)
+            {
+                _serverDrivenDialog = true;
+                _openedFrame = Time.frameCount;
+                _dialogPanel.SetActive(true);
+                SetPlayerControlsEnabled(false);
+                _npcNameText.text = "Mẹ";
+                for (int index = _buttonContainer.childCount - 1; index >= 0; index--)
+                    Destroy(_buttonContainer.GetChild(index).gameObject);
+                RectTransform closeRow = CreateRow();
+                CreateOptionButton(new NpcOptionData(_defaultCloseLabel,
+                    NpcActionType.Close), closeRow);
+            }
+            _greetingText.text = result.Dialogue;
         }
 
         public void CloseDialog()
@@ -249,7 +327,9 @@ namespace KnightOnline.Client.UI
             _activeNpc = null;
             _activeNpcEntityId = default;
             _activeNpcName = null;
+            _activeNpcDefinitionId = null;
             _openedFrame = -1;
+            _serverDrivenDialog = false;
             SetPlayerControlsEnabled(true);
         }
 

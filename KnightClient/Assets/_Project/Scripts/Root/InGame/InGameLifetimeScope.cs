@@ -29,6 +29,7 @@ namespace KnightOnline.Client.Core.Bootstrap
         {
             builder.Register<IMovementInputProvider, KeyboardMovementInput>(Lifetime.Singleton);
             builder.Register<TargetSelectionService>(Lifetime.Singleton);
+            builder.RegisterEntryPoint<AuthoritativeNpcRequestPresenter>();
             builder.RegisterComponentInHierarchy<PlayerController>();
             builder.RegisterComponentInHierarchy<PlayerInteraction>();
             builder.RegisterComponentInHierarchy<MonsterSpawner>();
