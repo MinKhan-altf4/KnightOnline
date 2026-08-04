@@ -50,7 +50,10 @@ Documentation/
 
 Báo cáo baseline mới nhất:
 
-- `Audits/2026-08-02-unity-server-baseline-and-session-lease.md`
+- `Audits/2026-08-04-project-development-checkpoint.md`
+
+Checkpoint này tổng hợp toàn bộ tiến trình từ nền móng repository đến Vertical
+Slice nhiệm vụ tân thủ, đồng thời cung cấp checklist rà soát code định kỳ.
 
 ## Khoảng trống tài liệu đã xác nhận
 
