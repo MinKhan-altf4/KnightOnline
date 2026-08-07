@@ -39,6 +39,7 @@ Documentation/
 | Phạm vi | File |
 |---|---|
 | Quy tắc kỹ thuật bắt buộc | `KNIGHT_PROJECT_CORE_RULES.md` |
+| Cấu trúc repository và trách nhiệm module | `Architecture/Repository_Structure.md` |
 | Luồng Unity hiện tại, nhiều thiết bị và Alpha 500 online | `Architecture/Current_Unity_Runtime_And_Alpha_500_Online.md` |
 | Luồng hệ thống và HUD | `Design/System_And_HUD_Flow_v2.md` |
 | Character Flow | `Design/Character_Flow_Architecture_Plan.md` |
