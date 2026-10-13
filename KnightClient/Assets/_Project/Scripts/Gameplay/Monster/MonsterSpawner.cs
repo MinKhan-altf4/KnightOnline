@@ -36,6 +36,7 @@ namespace KnightOnline.Client.Gameplay.Monster
         private IDisposable _diedSubscription;
         private IDisposable _respawnedSubscription;
         private IDisposable _attackResultSubscription;
+        private IDisposable _mapTransitionSubscription;
         private IEventBus _eventBus;
         private TargetSelectionService _targetSelection;
         private NetworkClient _networkClient;
@@ -54,6 +55,8 @@ namespace KnightOnline.Client.Gameplay.Monster
             _diedSubscription = eventBus.Subscribe<MonsterDiedEvent>(OnMonsterDied);
             _respawnedSubscription = eventBus.Subscribe<MonsterRespawnedEvent>(OnMonsterRespawned);
             _attackResultSubscription = eventBus.Subscribe<AttackResultEvent>(OnAttackResult);
+            _mapTransitionSubscription = eventBus.Subscribe<MapTransitionedEvent>(
+                _ => _targetSelection.Clear());
         }
 
         private void Awake()
@@ -192,6 +195,7 @@ namespace KnightOnline.Client.Gameplay.Monster
             _diedSubscription?.Dispose();
             _respawnedSubscription?.Dispose();
             _attackResultSubscription?.Dispose();
+            _mapTransitionSubscription?.Dispose();
             _subscription = null;
 
             foreach (var view in _views.Values)

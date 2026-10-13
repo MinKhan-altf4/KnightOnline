@@ -74,7 +74,7 @@ namespace KnightOnline.Client.Network.Handlers
             if (packet != null) _events.Publish(new PortalListReceivedEvent(
                 packet.Portals.Select(value => new PortalSnapshotData(
                     value.DefinitionId, value.DisplayName, value.PositionX,
-                    value.PositionY)).ToArray(), packet.MinimumX,
+                    value.PositionY, value.InteractionRange)).ToArray(), packet.MinimumX,
                 packet.MaximumX, packet.MinimumY, packet.MaximumY));
         }
     }

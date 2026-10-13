@@ -164,12 +164,12 @@
         {
           "spawnPointId": "tutorial_spawn_default",
           "positionX": 0.0,
-          "positionY": 0.0,
+          "positionY": -3.0,
           "isSafeZone": true
         },
         {
           "spawnPointId": "tutorial_wolf_gate",
-          "positionX": 6.0,
+          "positionX": 4.0,
           "positionY": 0.0,
           "isSafeZone": true
         }
@@ -191,7 +191,7 @@
         },
         {
           "spawnPointId": "wolf_field_return_gate",
-          "positionX": -8.0,
+          "positionX": -6.5,
           "positionY": 0.0,
           "isSafeZone": true
         }
@@ -208,7 +208,7 @@
         {
           "spawnPointId": "safe_zone_01_entry",
           "positionX": 0.0,
-          "positionY": -4.0,
+          "positionY": -2.5,
           "isSafeZone": true
         }
       ]

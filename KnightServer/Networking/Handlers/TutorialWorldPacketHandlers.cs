@@ -156,7 +156,8 @@ public sealed class ListPortalsPacketHandler(
                 value.SourceMapDefinitionId, session.MapDefinitionId,
                 StringComparison.OrdinalIgnoreCase)).Select(value =>
                     new PortalSnapshotPacket(value.DefinitionId,
-                        value.DisplayName, value.PositionX, value.PositionY))
+                        value.DisplayName, value.PositionX, value.PositionY,
+                        value.InteractionRange))
                 .ToArray(), map.MinimumX, map.MaximumX,
                 map.MinimumY, map.MaximumY), cancellationToken);
     }

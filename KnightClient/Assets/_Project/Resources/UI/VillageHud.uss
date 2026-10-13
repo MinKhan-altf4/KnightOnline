@@ -1,0 +1,229 @@
+.hud-root {
+    position: absolute;
+    left: 28px;
+    bottom: 28px;
+    width: 420px;
+    max-width: 42%;
+}
+
+.quest-card {
+    padding: 18px 20px 14px 20px;
+    background-color: rgba(9, 17, 29, 0.94);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 3px;
+    border-top-color: rgba(255, 255, 255, 0.14);
+    border-right-color: rgba(255, 255, 255, 0.14);
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+    border-left-color: rgb(232, 171, 69);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+.card-top-row,
+.quest-heading-row,
+.progress-row,
+.card-footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.map-name {
+    color: rgb(255, 220, 151);
+    font-size: 22px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.eyebrow,
+.section-label,
+.progress-caption {
+    color: rgb(139, 158, 180);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    -unity-font-style: bold;
+}
+
+.collapse-button {
+    width: 34px;
+    height: 32px;
+    min-width: 34px;
+    padding-left: 0;
+    padding-right: 0;
+    color: rgb(255, 226, 177);
+    background-color: rgba(255, 255, 255, 0.08);
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+    border-bottom-right-radius: 7px;
+    border-bottom-left-radius: 7px;
+}
+
+.quest-details {
+    margin-top: 18px;
+}
+
+.status-pill {
+    padding: 4px 8px;
+    color: rgb(255, 220, 151);
+    background-color: rgba(232, 171, 69, 0.16);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.quest-title {
+    margin-top: 10px;
+    color: rgb(245, 247, 250);
+    font-size: 19px;
+    -unity-font-style: bold;
+}
+
+.quest-description {
+    margin-top: 5px;
+    color: rgb(180, 192, 207);
+    font-size: 13px;
+    white-space: normal;
+}
+
+.progress-row {
+    margin-top: 18px;
+}
+
+.progress-text {
+    color: rgb(235, 240, 246);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.progress-track {
+    height: 7px;
+    margin-top: 7px;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background-color: rgb(232, 171, 69);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.card-footer {
+    justify-content: flex-start;
+    margin-top: 15px;
+    padding-top: 11px;
+    border-top-width: 1px;
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.footer-dot {
+    width: 6px;
+    height: 6px;
+    margin-right: 8px;
+    background-color: rgb(110, 205, 157);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+.footer-text {
+    color: rgb(139, 158, 180);
+    font-size: 11px;
+}
+
+.function-menu-anchor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.function-menu-panel {
+    display: none;
+    width: 100%;
+    flex-shrink: 0;
+    padding: 8px 12px 10px 12px;
+    background-color: rgba(9, 17, 29, 0.97);
+    border-top-width: 1px;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    border-top-color: rgba(255, 255, 255, 0.18);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.function-menu-title {
+    margin-bottom: 5px;
+    color: rgb(255, 220, 151);
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    -unity-font-style: bold;
+}
+
+.function-menu-items {
+    flex-direction: row;
+    align-items: center;
+}
+
+.function-menu-item {
+    flex-grow: 1;
+    height: 38px;
+    margin: 0 4px 0 0;
+    color: rgb(235, 240, 246);
+    background-color: rgba(255, 255, 255, 0.07);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    -unity-text-align: middle-center;
+}
+
+.logout-item {
+    margin-right: 0;
+    color: rgb(255, 210, 200);
+    background-color: rgba(170, 54, 44, 0.32);
+}
+
+.function-menu-toggle {
+    width: 58px;
+    height: 32px;
+    min-width: 58px;
+    flex-shrink: 0;
+    padding-left: 0;
+    padding-right: 0;
+    color: rgb(30, 25, 17);
+    background-color: rgb(232, 171, 69);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+    font-size: 20px;
+    -unity-font-style: bold;
+}
+
+@media (max-width: 700px) {
+    .function-menu-item {
+        height: 34px;
+        font-size: 11px;
+    }
+}

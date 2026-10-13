@@ -20,7 +20,7 @@ namespace KnightOnline.Client.Data.Events
     public readonly struct MapTransitionedEvent : IGameEvent
     { public readonly string MapId, SpawnId; public readonly float X, Y; public MapTransitionedEvent(string mapId, string spawnId, float x, float y) { MapId = mapId; SpawnId = spawnId; X = x; Y = y; } }
     public readonly struct PortalSnapshotData
-    { public readonly string DefinitionId, DisplayName; public readonly float X, Y; public PortalSnapshotData(string id, string name, float x, float y) { DefinitionId = id; DisplayName = name; X = x; Y = y; } }
+    { public readonly string DefinitionId, DisplayName; public readonly float X, Y, InteractionRange; public PortalSnapshotData(string id, string name, float x, float y, float interactionRange) { DefinitionId = id; DisplayName = name; X = x; Y = y; InteractionRange = interactionRange; } }
     public readonly struct PortalListReceivedEvent : IGameEvent
     { public readonly IReadOnlyList<PortalSnapshotData> Portals; public readonly float MinimumX, MaximumX, MinimumY, MaximumY; public PortalListReceivedEvent(IReadOnlyList<PortalSnapshotData> portals, float minimumX, float maximumX, float minimumY, float maximumY) { Portals = portals; MinimumX = minimumX; MaximumX = maximumX; MinimumY = minimumY; MaximumY = maximumY; } }
     public readonly struct PortalUseResultEvent : IGameEvent

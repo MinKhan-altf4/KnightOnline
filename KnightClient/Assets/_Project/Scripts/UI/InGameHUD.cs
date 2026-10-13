@@ -66,6 +66,13 @@ namespace KnightOnline.Client.UI
             RefreshPlayerStatus();
         }
 
+        public void SetQuestCardVisible(bool visible)
+        {
+            EnsureQuestLabel();
+            if (_questText != null && _questText.transform.parent != null)
+                _questText.transform.parent.gameObject.SetActive(visible);
+        }
+
         private void EnsureQuestLabel()
         {
             if (_questText != null) return;

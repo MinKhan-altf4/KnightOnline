@@ -28,7 +28,7 @@ namespace KnightOnline.Client.UI
             _clearedSubscription = eventBus.Subscribe<TargetClearedEvent>(_ => Hide());
         }
 
-        private void Start()
+        private void Awake()
         {
             Hide();
         }

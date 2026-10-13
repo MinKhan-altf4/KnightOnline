@@ -11,10 +11,24 @@ namespace KnightOnline.Client.Gameplay.World
 {
     public sealed class AuthoritativeWorldPresentation : MonoBehaviour
     {
-        private readonly List<GameObject> _objects = new();
+        private readonly List<GameObject> _npcObjects = new();
+        private readonly List<GameObject> _portalObjects = new();
+        private readonly List<GameObject> _boundaryObjects = new();
         private IEventBus _events;
         private NetworkClient _network;
         private IDisposable _npcSubscription, _portalSubscription;
+        private IDisposable _transitionSubscription;
+        private IDisposable _portalResultSubscription;
+        private bool _transitionPending;
+        private bool _awaitingPortalRefresh;
+        private Sprite _portalDiscSprite;
+        private Sprite _portalRingSprite;
+
+        private void Awake()
+        {
+            _portalDiscSprite = CreateCircleSprite(false);
+            _portalRingSprite = CreateCircleSprite(true);
+        }
 
         public void Initialize(IEventBus events, NetworkClient network)
         {
@@ -22,19 +36,25 @@ namespace KnightOnline.Client.Gameplay.World
             _network = network;
             _npcSubscription = events.Subscribe<NpcListReceivedEvent>(OnNpcs);
             _portalSubscription = events.Subscribe<PortalListReceivedEvent>(OnPortals);
+            _transitionSubscription = events.Subscribe<MapTransitionedEvent>(OnMapTransitioned);
+            _portalResultSubscription = events.Subscribe<PortalUseResultEvent>(OnPortalUseResult);
         }
 
         private void OnNpcs(NpcListReceivedEvent value)
         {
-            Clear();
+            ClearObjects(_npcObjects);
             foreach (NpcSnapshotData npc in value.Npcs)
                 CreateLabel($"NPC: {npc.DisplayName}", npc.PositionX,
                     npc.PositionY, new Color(0.9f, 0.45f, 0.8f), () =>
-                        _network.SendInteractNpcRequestAsync(npc.DefinitionId).Forget());
+                        _network.SendInteractNpcRequestAsync(npc.DefinitionId).Forget(),
+                    _npcObjects);
         }
 
         private void OnPortals(PortalListReceivedEvent value)
         {
+            ClearObjects(_portalObjects);
+            ClearObjects(_boundaryObjects);
+            _awaitingPortalRefresh = false;
             CreateMapBoundary(value.MinimumX, value.MaximumX,
                 value.MinimumY, value.MaximumY);
             foreach (PortalSnapshotData portal in value.Portals)
@@ -56,24 +76,104 @@ namespace KnightOnline.Client.Gameplay.World
                 new Vector2(minimumX, maximumY),
                 new Vector2(minimumX, minimumY),
             };
-            _objects.Add(boundary);
+            _boundaryObjects.Add(boundary);
         }
 
         private void CreatePortal(PortalSnapshotData portal)
         {
-            GameObject entity = CreateLabel(portal.DisplayName, portal.X,
-                portal.Y, new Color(0.2f, 0.8f, 1f), null);
-            BoxCollider2D collider = entity.GetComponent<BoxCollider2D>();
+            var root = new GameObject($"Portal_{portal.DefinitionId}");
+            root.transform.SetParent(transform, false);
+            root.transform.position = new Vector3(portal.X, portal.Y, 0);
+
+            var glow = new GameObject("Glow");
+            glow.transform.SetParent(root.transform, false);
+            glow.transform.localScale = new Vector3(1.5f, 1.5f, 1f);
+            var glowRenderer = glow.AddComponent<SpriteRenderer>();
+            glowRenderer.sprite = _portalDiscSprite;
+            glowRenderer.color = new Color(0.1f, 0.75f, 1f, 0.25f);
+            glowRenderer.sortingOrder = 5;
+
+            var ring = new GameObject("PortalRing");
+            ring.transform.SetParent(root.transform, false);
+            var ringRenderer = ring.AddComponent<SpriteRenderer>();
+            ringRenderer.sprite = _portalRingSprite;
+            ringRenderer.color = new Color(0.25f, 0.9f, 1f, 0.95f);
+            ringRenderer.sortingOrder = 6;
+
+            var labelObject = new GameObject("Label");
+            labelObject.transform.SetParent(root.transform, false);
+            labelObject.transform.localPosition = new Vector3(0, 1.25f, 0);
+            var label = labelObject.AddComponent<TextMesh>();
+            label.text = $"▶ {portal.DisplayName}";
+            label.color = Color.white;
+            label.fontSize = 40;
+            label.characterSize = 0.09f;
+            label.anchor = TextAnchor.MiddleCenter;
+            MeshRenderer labelRenderer = label.GetComponent<MeshRenderer>();
+            if (labelRenderer != null)
+                labelRenderer.sortingOrder = 7;
+            if (labelObject.GetComponent<Collider2D>() == null)
+            {
+                BoxCollider2D clickCollider =
+                    labelObject.AddComponent<BoxCollider2D>();
+                clickCollider.size = new Vector2(3f, 1.2f);
+                clickCollider.isTrigger = true;
+            }
+
+            var entity = root;
+            var collider = entity.AddComponent<CircleCollider2D>();
+            collider.radius = Mathf.Max(0.35f,
+                portal.InteractionRange > 0 ? portal.InteractionRange : 1.5f);
             collider.isTrigger = true;
-            WorldClickRelay click = entity.GetComponent<WorldClickRelay>();
-            if (click != null) Destroy(click);
-            entity.AddComponent<PortalTriggerRelay>().Initialize(() =>
-                _network.SendUsePortalRequestAsync(
-                    portal.DefinitionId).Forget());
+            var relay = entity.AddComponent<PortalTriggerRelay>();
+            relay.Initialize(() =>
+            {
+                if (_transitionPending || _awaitingPortalRefresh) return;
+                _transitionPending = true;
+                _network.SendUsePortalRequestAsync(portal.DefinitionId).Forget();
+            });
+            relay.SetEnabled(!_awaitingPortalRefresh);
+            _portalObjects.Add(root);
+        }
+
+        private static Sprite CreateCircleSprite(bool ring)
+        {
+            const int size = 64;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+            float center = (size - 1) * 0.5f;
+            for (var y = 0; y < size; y++)
+            for (var x = 0; x < size; x++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y),
+                    new Vector2(center, center)) / center;
+                float alpha = ring
+                    ? Mathf.Clamp01((0.92f - distance) * 18f) *
+                      Mathf.Clamp01((distance - 0.72f) * 18f)
+                    : Mathf.Clamp01((1f - distance) * 12f);
+                texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+            }
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size),
+                new Vector2(0.5f, 0.5f), 64f);
+        }
+
+        private void OnMapTransitioned(MapTransitionedEvent value)
+        {
+            ClearObjects(_portalObjects);
+            ClearObjects(_boundaryObjects);
+            _awaitingPortalRefresh = true;
+            _transitionPending = false;
+        }
+
+        private void OnPortalUseResult(PortalUseResultEvent value)
+        {
+            if (value.Result != 0)
+                _transitionPending = false;
         }
 
         private GameObject CreateLabel(string label, float x, float y, Color color,
-            Action clicked)
+            Action clicked, List<GameObject> owner)
         {
             var entity = new GameObject(label);
             entity.transform.SetParent(transform, false);
@@ -84,32 +184,64 @@ namespace KnightOnline.Client.Gameplay.World
             text.fontSize = 32;
             text.characterSize = 0.08f;
             text.anchor = TextAnchor.MiddleCenter;
-            var collider = entity.AddComponent<BoxCollider2D>();
-            collider.size = new Vector2(3f, 1.2f);
             if (clicked != null)
+            {
+                var clickCollider = entity.AddComponent<BoxCollider2D>();
+                clickCollider.size = new Vector2(3f, 1.2f);
+                clickCollider.isTrigger = true;
                 entity.AddComponent<WorldClickRelay>().Initialize(clicked);
-            _objects.Add(entity);
+            }
+            owner.Add(entity);
             return entity;
         }
 
-        private void Clear()
+        private static void ClearObjects(List<GameObject> objects)
         {
-            foreach (GameObject value in _objects)
+            foreach (GameObject value in objects)
                 if (value != null) Destroy(value);
-            _objects.Clear();
+            objects.Clear();
         }
         private void OnDestroy()
-        { _npcSubscription?.Dispose(); _portalSubscription?.Dispose(); }
+        {
+            _npcSubscription?.Dispose();
+            _portalSubscription?.Dispose();
+            _transitionSubscription?.Dispose();
+            _portalResultSubscription?.Dispose();
+            ClearObjects(_npcObjects);
+            ClearObjects(_portalObjects);
+            ClearObjects(_boundaryObjects);
+            if (_portalDiscSprite != null)
+            {
+                Destroy(_portalDiscSprite.texture);
+                Destroy(_portalDiscSprite);
+            }
+            if (_portalRingSprite != null)
+            {
+                Destroy(_portalRingSprite.texture);
+                Destroy(_portalRingSprite);
+            }
+        }
     }
 
     public sealed class PortalTriggerRelay : MonoBehaviour
     {
         private Action _entered;
+        private bool _fired;
+        private bool _enabled = true;
         public void Initialize(Action entered) => _entered = entered;
+        public void SetEnabled(bool enabled)
+        {
+            _enabled = enabled;
+            _fired = !enabled;
+        }
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (other.GetComponentInParent<PlayerController>() != null)
+            if (_enabled && !_fired &&
+                other.GetComponentInParent<PlayerController>() != null)
+            {
+                _fired = true;
                 _entered?.Invoke();
+            }
         }
     }
 

@@ -2024,7 +2024,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &524946219
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2180,7 +2180,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &528552752
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6119,10 +6119,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 47fb8c8489cb4bfd9a90517439e334d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: KnightOnline.Client.UI::KnightOnline.Client.UI.InGameMenuView
-  _toggleButton: {fileID: 528552755}
-  _toggleLabel: {fileID: 112487528}
-  _menuPanel: {fileID: 216702905}
-  _logoutButton: {fileID: 1714140244}
   _hudToHide:
   - {fileID: 1313011119}
   - {fileID: 1553550767}

@@ -88,13 +88,15 @@ namespace KnightOnline.Client.Shared.Packets
         public string DisplayName { get; }
         public float PositionX { get; }
         public float PositionY { get; }
+        public float InteractionRange { get; private set; } = 1f;
         public PortalSnapshotPacket(string definitionId, string displayName,
-            float positionX, float positionY)
+            float positionX, float positionY, float interactionRange = 1f)
         {
             DefinitionId = definitionId ?? string.Empty;
             DisplayName = displayName ?? string.Empty;
             PositionX = positionX;
             PositionY = positionY;
+            InteractionRange = interactionRange;
         }
     }
     public sealed class ListPortalsResponsePacket

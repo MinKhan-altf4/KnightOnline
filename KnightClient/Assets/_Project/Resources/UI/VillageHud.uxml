@@ -1,0 +1,45 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="VillageHud.uss" />
+    <ui:VisualElement class="hud-root">
+        <ui:VisualElement name="quest-card" class="quest-card">
+            <ui:VisualElement class="card-top-row">
+                <ui:VisualElement>
+                    <ui:Label name="map-name" text="LÀNG TÂN THỦ" class="map-name" />
+                    <ui:Label text="NHẬT KÝ HÀNH TRÌNH" class="eyebrow" />
+                </ui:VisualElement>
+                <ui:Button name="collapse-button" text="−" class="collapse-button" />
+            </ui:VisualElement>
+            <ui:VisualElement name="quest-details" class="quest-details">
+                <ui:VisualElement class="quest-heading-row">
+                    <ui:Label text="NHIỆM VỤ TÂN THỦ" class="section-label" />
+                    <ui:Label name="status-label" text="MỚI" class="status-pill" />
+                </ui:VisualElement>
+                <ui:Label name="quest-title" text="LỜI NHẮN CỦA MẸ" class="quest-title" />
+                <ui:Label name="quest-description" text="Tìm Mẹ trong làng và nhận nhiệm vụ đầu tiên." class="quest-description" />
+                <ui:VisualElement class="progress-row">
+                    <ui:Label text="TIẾN ĐỘ" class="progress-caption" />
+                    <ui:Label name="progress-text" text="00 / 20" class="progress-text" />
+                </ui:VisualElement>
+                <ui:VisualElement class="progress-track">
+                    <ui:VisualElement name="progress-fill" class="progress-fill" />
+                </ui:VisualElement>
+                <ui:VisualElement class="card-footer">
+                    <ui:VisualElement class="footer-dot" />
+                    <ui:Label text="Hãy khám phá làng để bắt đầu" class="footer-text" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement class="function-menu-anchor">
+        <ui:VisualElement name="function-menu-panel" class="function-menu-panel">
+            <ui:Label text="CHỨC NĂNG" class="function-menu-title" />
+            <ui:VisualElement class="function-menu-items">
+                <ui:Button name="equipment-menu-item" text="Trang bị" class="function-menu-item disabled-item" />
+                <ui:Button name="mount-menu-item" text="Thú cưỡi" class="function-menu-item disabled-item" />
+                <ui:Button name="friends-menu-item" text="Bạn bè" class="function-menu-item disabled-item" />
+                <ui:Button name="logout-button" text="Đăng xuất" class="function-menu-item logout-item" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Button name="function-menu-toggle" text="⌃" class="function-menu-toggle" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -9,6 +9,7 @@ using KnightOnline.Client.Gameplay.World;
 using System;
 using KnightOnline.Client.Gameplay.NPC;
 using KnightOnline.Client.Gameplay.Player;
+using KnightOnline.Client.UI;
 
 namespace KnightOnline.Client.Core.Bootstrap
 {
@@ -19,16 +20,19 @@ namespace KnightOnline.Client.Core.Bootstrap
         private IEventBus _events;
         private CharacterData _character;
         private PlayerController _player;
+        private InGameMenuView _menuView;
         private IDisposable _mapSubscription;
 
         [Inject]
         public void Construct(NetworkClient networkClient, IEventBus events,
-            CharacterData character, PlayerController player)
+            CharacterData character, PlayerController player,
+            InGameMenuView menuView)
         {
             _networkClient = networkClient;
             _events = events;
             _character = character;
             _player = player;
+            _menuView = menuView;
         }
 
         private void Awake()
@@ -53,6 +57,10 @@ namespace KnightOnline.Client.Core.Bootstrap
             var presentation = new GameObject("AuthoritativeWorldPresentation")
                 .AddComponent<AuthoritativeWorldPresentation>();
             presentation.Initialize(_events, _networkClient);
+            var villageHud = new GameObject("VillageUIToolkitHud")
+                .AddComponent<VillageUIToolkitHud>();
+            villageHud.Initialize(_events, _character, _menuView);
+            FindAnyObjectByType<InGameHUD>()?.SetQuestCardVisible(false);
             ApplyMapPresentation(_character.CurrentMapDefinitionId);
             RequestMapPresentation();
         }
@@ -86,11 +94,14 @@ namespace KnightOnline.Client.Core.Bootstrap
 
         private void OnMapTransitioned(MapTransitionedEvent value)
         {
+            bool mapChanged = !string.Equals(_character.CurrentMapDefinitionId,
+                value.MapId, StringComparison.OrdinalIgnoreCase);
             _character.CurrentMapDefinitionId = value.MapId;
             _character.CurrentSpawnPointId = value.SpawnId;
             _character.SpawnPosition = new Vector2(value.X, value.Y);
             ApplyMapPresentation(value.MapId);
-            RequestMapPresentation();
+            if (mapChanged)
+                RequestMapPresentation();
         }
 
         private static void ApplyMapPresentation(string mapId)
