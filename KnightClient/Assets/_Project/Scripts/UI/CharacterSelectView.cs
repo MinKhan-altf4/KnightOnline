@@ -24,11 +24,6 @@ namespace KnightOnline.Client.UI
         [SerializeField] private Button _characterButtonTemplate;
         [SerializeField] private TextMeshProUGUI _emptyStateText;
         [SerializeField] private Button _backButton;
-        [Header("Placeholder presentation")]
-        [SerializeField] private Color _occupiedSlotColor =
-            new Color(0.23f, 0.42f, 0.68f, 1f);
-        [SerializeField] private Color _emptySlotColor =
-            new Color(0.18f, 0.22f, 0.30f, 1f);
         [SerializeField] private float _slotHeight = 190f;
         [SerializeField] private float _slotWidth = 290f;
         [SerializeField] private KnightUiTheme _theme;
@@ -183,7 +178,12 @@ namespace KnightOnline.Client.UI
                 layout.minHeight = _slotHeight;
                 layout.minWidth = _slotWidth;
                 layout.preferredWidth = _slotWidth;
-                _theme?.ApplyButton(button, _slotHeight);
+                _theme?.ApplyCleanButton(
+                    button,
+                    _slotHeight,
+                    bySlot.ContainsKey(slotIndex)
+                        ? new Color(0.15f, 0.27f, 0.40f, 1f)
+                        : new Color(0.20f, 0.28f, 0.32f, 1f));
                 PlaceSlot(button, slotIndex);
 
                 if (bySlot.TryGetValue(slotIndex, out CharacterData character))
@@ -199,14 +199,7 @@ namespace KnightOnline.Client.UI
                             $"{character.CharacterName}\n" +
                             $"Cấp {character.Level}  •  {className}  •  " +
                             ResolveBodyName(character.BodyTypeDefinitionId);
-                    }
-                    if (image != null)
-                    {
-                        image.color = Color.Lerp(
-                            _occupiedSlotColor,
-                            ColorForDefinition(
-                                character.ClassDefinitionId),
-                            0.35f);
+                        StyleSlotLabel(label);
                     }
                     button.onClick.AddListener(
                         () => SelectCharacter(capturedCharacter));
@@ -214,10 +207,11 @@ namespace KnightOnline.Client.UI
                 else
                 {
                     if (label != null)
+                    {
                         label.text =
                             $"Ô {slotIndex}\n+ Tạo nhân vật";
-                    if (image != null)
-                        image.color = _emptySlotColor;
+                        StyleSlotLabel(label);
+                    }
                     button.onClick.AddListener(
                         () => OpenCreation(capturedSlot));
                 }
@@ -228,9 +222,28 @@ namespace KnightOnline.Client.UI
 
             if (_emptyStateText != null)
             {
-                _emptyStateText.gameObject.SetActive(characters.Count == 0);
-                _emptyStateText.text =
-                    "Bạn chưa có nhân vật.\nHãy chọn một trong ba ô để tạo.";
+                _emptyStateText.gameObject.SetActive(true);
+                _emptyStateText.text = characters.Count == 0
+                    ? "Bạn chưa có nhân vật. Chọn một ô để tạo nhân vật mới."
+                    : "Chọn nhân vật để vào game, hoặc chọn ô trống để tạo thêm.";
+            }
+        }
+
+        private void StyleSlotLabel(TextMeshProUGUI label)
+        {
+            label.color = new Color(1f, 0.94f, 0.72f, 1f);
+            label.fontStyle = FontStyles.Bold;
+            label.fontSize = 24f;
+            label.fontSizeMin = 17f;
+            label.fontSizeMax = 24f;
+            label.enableAutoSizing = true;
+            label.alignment = TextAlignmentOptions.Center;
+            if (label.rectTransform != null)
+            {
+                label.rectTransform.anchorMin = Vector2.zero;
+                label.rectTransform.anchorMax = Vector2.one;
+                label.rectTransform.offsetMin = new Vector2(14f, 12f);
+                label.rectTransform.offsetMax = new Vector2(-14f, -12f);
             }
         }
 
@@ -285,22 +298,6 @@ namespace KnightOnline.Client.UI
                 _ => definitionId ?? string.Empty,
             };
 
-        private static Color ColorForDefinition(string definitionId)
-        {
-            if (string.IsNullOrWhiteSpace(definitionId))
-                return Color.gray;
-
-            uint hash = 2166136261;
-            foreach (char value in definitionId)
-            {
-                hash ^= value;
-                hash *= 16777619;
-            }
-
-            float hue = (hash % 360) / 360f;
-            return Color.HSVToRGB(hue, 0.55f, 0.85f);
-        }
-
         private void SetSelectionPending(bool pending)
         {
             _selectionPending = pending;
@@ -323,8 +320,26 @@ namespace KnightOnline.Client.UI
 
         private void ApplyPanelPresentation()
         {
-            _theme?.ApplyPanel(GetComponent<Image>(), true);
-            _theme?.ApplyButton(_backButton, 54f);
+            Transform panelTransform = _characterListRoot != null &&
+                _characterListRoot.parent != null
+                    ? _characterListRoot.parent
+                    : transform;
+            Image panelImage = panelTransform.GetComponent<Image>();
+            _theme?.ApplyPanel(panelImage, true);
+            if (panelImage != null)
+                panelImage.color = new Color(0.035f, 0.055f, 0.09f, 0.34f);
+            CreateBackdrop(
+                panelTransform,
+                "CharacterSelectBackdrop",
+                new Vector2(1080f, 550f),
+                new Color(0.055f, 0.075f, 0.12f, 0.88f));
+            CreateHeading(
+                panelTransform,
+                "CharacterSelectHeading",
+                "CHỌN NHÂN VẬT",
+                38f,
+                265f);
+            _theme?.ApplyCleanButton(_backButton, 54f);
             _theme?.ApplyBodyText(_emptyStateText, 22f);
 
             if (_characterListRoot is RectTransform rect)
@@ -336,6 +351,15 @@ namespace KnightOnline.Client.UI
                 rect.sizeDelta = new Vector2(980f, 230f);
             }
 
+            if (_backButton?.transform is RectTransform backRect)
+            {
+                backRect.anchorMin = Vector2.zero;
+                backRect.anchorMax = Vector2.zero;
+                backRect.pivot = Vector2.zero;
+                backRect.anchoredPosition = new Vector2(58f, 42f);
+                backRect.sizeDelta = new Vector2(220f, 58f);
+            }
+
             if (_emptyStateText?.transform is RectTransform messageRect)
             {
                 messageRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -344,6 +368,62 @@ namespace KnightOnline.Client.UI
                 messageRect.anchoredPosition = new Vector2(0f, -165f);
                 messageRect.sizeDelta = new Vector2(760f, 60f);
             }
+        }
+
+        private static GameObject CreateBackdrop(
+            Transform parent,
+            string objectName,
+            Vector2 size,
+            Color color)
+        {
+            var backdrop = new GameObject(
+                objectName,
+                typeof(RectTransform),
+                typeof(Image));
+            backdrop.transform.SetParent(parent, false);
+            backdrop.transform.SetAsFirstSibling();
+            RectTransform rect = (RectTransform)backdrop.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = size;
+            Image image = backdrop.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return backdrop;
+        }
+
+        private TextMeshProUGUI CreateHeading(
+            Transform parent,
+            string objectName,
+            string text,
+            float fontSize,
+            float y)
+        {
+            var headingObject = new GameObject(
+                objectName,
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI));
+            headingObject.transform.SetParent(parent, false);
+            RectTransform rect = (RectTransform)headingObject.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, y);
+            rect.sizeDelta = new Vector2(900f, 58f);
+            TextMeshProUGUI heading =
+                headingObject.GetComponent<TextMeshProUGUI>();
+            heading.font = _emptyStateText != null
+                ? _emptyStateText.font
+                : TMP_Settings.defaultFontAsset;
+            heading.text = text;
+            heading.fontSize = fontSize;
+            heading.color = new Color(1f, 0.96f, 0.84f, 1f);
+            heading.fontStyle = FontStyles.Bold;
+            heading.alignment = TextAlignmentOptions.Center;
+            heading.raycastTarget = false;
+            return heading;
         }
 
         private void ClearButtons()

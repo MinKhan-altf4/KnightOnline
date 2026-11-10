@@ -285,14 +285,14 @@ namespace KnightOnline.Client.Gameplay.Services
         public void ShowEntryKeepingSession()
         {
             HideLoading();
-            PublishEntry("Choose Continue or another account.");
+            PublishEntry(string.Empty);
         }
 
         public void LogoutToAuthenticationEntry()
         {
             if (!_isAuthenticated)
             {
-                PublishEntry("Choose Play New or sign in.");
+                PublishEntry(string.Empty);
                 return;
             }
 
@@ -316,7 +316,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
             // A stored refresh token only changes Entry presentation. It is
             // never sent until the player explicitly chooses Continue.
-            PublishEntry("Choose Play New or sign in.");
+            PublishEntry(string.Empty);
         }
 
         private void OnAuthenticationResult(AuthenticationResultEvent result)
@@ -437,7 +437,7 @@ namespace KnightOnline.Client.Gameplay.Services
             HideLoading();
             PublishEntry(
                 string.IsNullOrWhiteSpace(result.Message)
-                    ? "Choose Play New or sign in."
+                    ? string.Empty
                     : result.Message);
         }
 

@@ -46,6 +46,7 @@ namespace KnightOnline.Client.UI
         private IDisposable _slotSubscription;
         private IDisposable _creationSubscription;
         private IDisposable _nameSubscription;
+        private bool _nameCheckPending;
         private bool _isBound;
 
         [Inject]
@@ -88,7 +89,7 @@ namespace KnightOnline.Client.UI
                     OnCharacterCreationResult);
             _nameSubscription =
                 _eventBus.Subscribe<CharacterNameAvailabilityReceivedEvent>(
-                    message => SetResult(message.Message));
+                    OnNameAvailabilityReceived);
 
             _classDropdown?.onValueChanged.AddListener(OnClassChanged);
             _bodyTypeDropdown?.onValueChanged.AddListener(OnBodyTypeChanged);
@@ -299,12 +300,58 @@ namespace KnightOnline.Client.UI
         private void OnCheckNameClicked()
         {
             if (_catalog == null)
+            {
+                SetResult("Đang tải dữ liệu máy chủ. Vui lòng thử lại sau.");
                 return;
+            }
+
+            if (_nameCheckPending)
+                return;
+
             string name = _nameInput?.text?.Trim() ?? string.Empty;
+            if (name.Length < 3 || name.Length > 20)
+            {
+                SetResult("Tên nhân vật phải dài từ 3 đến 20 ký tự.");
+                _nameInput?.ActivateInputField();
+                return;
+            }
+
+            _nameCheckPending = true;
+            if (_checkNameButton != null)
+                _checkNameButton.interactable = false;
+            SetResult($"Đang kiểm tra tên “{name}”…");
             _eventBus.Publish(
                 new CharacterNameCheckRequestedEvent(
                     _catalog.ServerId,
                     name));
+        }
+
+        private void OnNameAvailabilityReceived(
+            CharacterNameAvailabilityReceivedEvent message)
+        {
+            if (!_nameCheckPending)
+                return;
+
+            _nameCheckPending = false;
+            if (_checkNameButton != null && _catalog != null)
+                _checkNameButton.interactable = true;
+
+            string serverMessage = message.Message ?? string.Empty;
+            string normalizedMessage = serverMessage.ToLowerInvariant();
+            string displayMessage = message.IsAvailable
+                ? "Tên này có thể sử dụng."
+                : normalizedMessage.Contains("already exists")
+                    ? "Tên này đã được sử dụng. Hãy chọn tên khác."
+                    : normalizedMessage.Contains("3 to 20")
+                        ? "Tên nhân vật phải dài từ 3 đến 20 ký tự."
+                        : normalizedMessage.Contains("only contain")
+                            ? "Tên chỉ được gồm chữ cái, chữ số và dấu cách đơn."
+                            : normalizedMessage.Contains("selected server")
+                                ? "Máy chủ đã chọn hiện không khả dụng."
+                                : string.IsNullOrWhiteSpace(serverMessage)
+                                    ? "Không nhận được kết quả kiểm tra tên."
+                                    : serverMessage;
+            SetResult(displayMessage);
         }
 
         public void OnCreateCharacterClicked()
@@ -514,42 +561,104 @@ namespace KnightOnline.Client.UI
             _theme?.ApplyPanel(
                 panelTransform.GetComponent<Image>(),
                 true);
+            Image panelImage = panelTransform.GetComponent<Image>();
+            if (panelImage != null)
+                panelImage.color = new Color(0.035f, 0.055f, 0.09f, 0.34f);
+            CreatePresentationBackdrop(
+                panelTransform,
+                new Vector2(1040f, 640f),
+                new Color(0.055f, 0.075f, 0.12f, 0.88f));
+            CreateHeading(panelTransform);
             _theme?.ApplyDropdown(_classDropdown);
             _theme?.ApplyDropdown(_bodyTypeDropdown);
             _theme?.ApplyInput(_nameInput);
-            _theme?.ApplyButton(_checkNameButton, 54f);
-            _theme?.ApplyButton(_createButton, 54f);
-            _theme?.ApplyButton(_backButton, 54f);
+            _theme?.ApplyCleanButton(_checkNameButton, 54f);
+            _theme?.ApplyCleanButton(_createButton, 54f);
+            _theme?.ApplyCleanButton(_backButton, 54f);
             _theme?.ApplyBodyText(_resultText, 20f);
 
             SetRect(
                 _classDropdown?.transform as RectTransform,
                 new Vector2(-210f, 120f),
-                new Vector2(320f, 54f));
+                new Vector2(360f, 54f));
             SetRect(
                 _bodyTypeDropdown?.transform as RectTransform,
                 new Vector2(-210f, 52f),
-                new Vector2(320f, 54f));
+                new Vector2(360f, 54f));
             SetRect(
                 _nameInput?.transform as RectTransform,
                 new Vector2(-210f, -16f),
-                new Vector2(320f, 54f));
+                new Vector2(360f, 54f));
             SetRect(
                 _checkNameButton?.transform as RectTransform,
-                new Vector2(-290f, -88f),
-                new Vector2(155f, 54f));
+                new Vector2(-300f, -88f),
+                new Vector2(170f, 54f));
             SetRect(
                 _createButton?.transform as RectTransform,
-                new Vector2(-125f, -88f),
-                new Vector2(155f, 54f));
+                new Vector2(-120f, -88f),
+                new Vector2(170f, 54f));
             SetRect(
                 _backButton?.transform as RectTransform,
-                new Vector2(-210f, -156f),
-                new Vector2(320f, 54f));
+                new Vector2(-210f, -160f),
+                new Vector2(360f, 54f));
             SetRect(
                 _resultText?.transform as RectTransform,
-                new Vector2(0f, 275f),
-                new Vector2(760f, 60f));
+                new Vector2(0f, 230f),
+                new Vector2(900f, 64f));
+            if (_resultText != null)
+            {
+                _resultText.alignment = TextAlignmentOptions.Center;
+                _resultText.fontStyle = FontStyles.Bold;
+            _resultText.color = new Color(1f, 0.96f, 0.84f, 1f);
+            }
+        }
+
+        private static void CreatePresentationBackdrop(
+            Transform parent,
+            Vector2 size,
+            Color color)
+        {
+            var card = new GameObject(
+                "CharacterCreationBackdrop",
+                typeof(RectTransform),
+                typeof(Image));
+            card.transform.SetParent(parent, false);
+            card.transform.SetAsFirstSibling();
+            RectTransform rect = (RectTransform)card.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = size;
+            Image image = card.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+        }
+
+        private void CreateHeading(Transform parent)
+        {
+            var headingObject = new GameObject(
+                "CharacterCreationHeading",
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI));
+            headingObject.transform.SetParent(parent, false);
+            RectTransform rect = (RectTransform)headingObject.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, 315f);
+            rect.sizeDelta = new Vector2(900f, 58f);
+            TextMeshProUGUI heading =
+                headingObject.GetComponent<TextMeshProUGUI>();
+            heading.font = _resultText != null
+                ? _resultText.font
+                : TMP_Settings.defaultFontAsset;
+            heading.text = "TẠO NHÂN VẬT";
+            heading.fontSize = 38f;
+            heading.fontStyle = FontStyles.Bold;
+            heading.color = new Color(1f, 0.96f, 0.84f, 1f);
+            heading.alignment = TextAlignmentOptions.Center;
+            heading.raycastTarget = false;
         }
 
         private static void SetRect(

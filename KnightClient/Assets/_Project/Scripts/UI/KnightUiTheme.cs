@@ -24,15 +24,15 @@ namespace KnightOnline.Client.UI
         [Header("Surfaces")]
         [SerializeField] private Sprite _panelFrameSprite;
         [SerializeField] private Color _screenOverlay =
-            new Color(0.04f, 0.07f, 0.13f, 0.88f);
+            new Color(0.035f, 0.055f, 0.09f, 0.34f);
         [SerializeField] private Color _panelColor =
-            new Color(0.12f, 0.10f, 0.16f, 0.96f);
+            new Color(0.10f, 0.15f, 0.23f, 0.94f);
         [SerializeField] private Color _inputColor =
             new Color(0.96f, 0.91f, 0.78f, 0.96f);
 
         [Header("Typography")]
         [SerializeField] private Color _primaryText =
-            new Color(1f, 0.91f, 0.58f, 1f);
+            new Color(1f, 0.96f, 0.84f, 1f);
         [SerializeField] private Color _bodyText =
             new Color(0.96f, 0.95f, 0.90f, 1f);
         [SerializeField] private Color _inputText =
@@ -70,17 +70,57 @@ namespace KnightOnline.Client.UI
             layout.minHeight = height;
             layout.preferredHeight = height;
 
-            TMP_Text label =
-                button.GetComponentInChildren<TMP_Text>(true);
-            if (label != null)
+            StyleButtonLabel(button);
+        }
+
+        public void ApplyCleanButton(
+            Button button,
+            float height = 60f,
+            Color? baseColor = null)
+        {
+            if (button == null)
+                return;
+
+            Image image = button.targetGraphic as Image ??
+                button.GetComponent<Image>();
+            if (image != null)
             {
-                label.color = _primaryText;
-                label.fontStyle = FontStyles.Bold;
-                label.fontSizeMin = 18f;
-                label.fontSizeMax = 28f;
-                label.enableAutoSizing = true;
-                label.alignment = TextAlignmentOptions.Center;
+                image.sprite = null;
+                image.type = Image.Type.Simple;
+                image.color = baseColor ?? new Color(0.48f, 0.13f, 0.15f, 1f);
+                button.targetGraphic = image;
             }
+
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.16f, 1.16f, 1.16f, 1f);
+            colors.pressedColor = new Color(0.78f, 0.78f, 0.78f, 1f);
+            colors.selectedColor = colors.highlightedColor;
+            colors.disabledColor = new Color(0.65f, 0.65f, 0.65f, 0.55f);
+            colors.colorMultiplier = 1f;
+            colors.fadeDuration = 0.12f;
+            button.colors = colors;
+            button.transition = Selectable.Transition.ColorTint;
+
+            var layout = button.GetComponent<LayoutElement>() ??
+                button.gameObject.AddComponent<LayoutElement>();
+            layout.minHeight = height;
+            layout.preferredHeight = height;
+            StyleButtonLabel(button);
+        }
+
+        private void StyleButtonLabel(Button button)
+        {
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label == null)
+                return;
+
+            label.color = _primaryText;
+            label.fontStyle = FontStyles.Bold;
+            label.fontSizeMin = 18f;
+            label.fontSizeMax = 28f;
+            label.enableAutoSizing = true;
+            label.alignment = TextAlignmentOptions.Center;
         }
 
         public void ApplyInput(TMP_InputField input, float height = 54f)
@@ -142,6 +182,17 @@ namespace KnightOnline.Client.UI
             image.sprite = fullScreen ? null : _panelFrameSprite;
             image.type = Image.Type.Simple;
             image.color = fullScreen ? _screenOverlay : _panelColor;
+        }
+
+        public void ApplyCard(Image image)
+        {
+            if (image == null)
+                return;
+
+            image.sprite = null;
+            image.type = Image.Type.Simple;
+            image.color = _panelColor;
+            image.raycastTarget = false;
         }
 
         public void ApplyBodyText(TMP_Text text, float size = 22f)

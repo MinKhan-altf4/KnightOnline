@@ -206,19 +206,77 @@ namespace KnightOnline.Client.UI
             if (_theme == null)
                 return;
 
-            _theme.ApplyPanel(GetComponent<Image>(), true);
-            ConfigureContent(_entryContent, new Vector2(380f, 245f));
-            ConfigureContent(_loginContent, new Vector2(420f, 390f));
+            Image overlay = GetComponent<Image>();
+            _theme.ApplyPanel(overlay, true);
+            ConfigureContent(_entryContent, new Vector2(460f, 370f));
+            ConfigureContent(_loginContent, new Vector2(500f, 470f));
+            AddContentHeading(
+                _entryContent,
+                "KNIGHT ONLINE",
+                "Chọn cách bắt đầu hành trình");
+            AddContentHeading(
+                _loginContent,
+                "ĐĂNG NHẬP",
+                "Kết nối lại tài khoản của bạn");
 
-            _theme.ApplyButton(_playNewButton);
-            _theme.ApplyButton(_showLoginButton);
-            _theme.ApplyButton(_serverButton);
-            _theme.ApplyButton(_loginButton);
-            _theme.ApplyButton(_showRegistrationButton);
-            _theme.ApplyButton(_backButton);
+            _theme.ApplyCleanButton(_playNewButton, 60f);
+            _theme.ApplyCleanButton(_showLoginButton, 60f);
+            _theme.ApplyCleanButton(_serverButton, 60f);
+            _theme.ApplyCleanButton(_loginButton, 60f);
+            _theme.ApplyCleanButton(_showRegistrationButton, 60f);
+            _theme.ApplyCleanButton(_backButton, 60f);
             _theme.ApplyInput(_usernameInput);
             _theme.ApplyInput(_passwordInput);
             _theme.ApplyBodyText(_messageText, 22f);
+            if (_messageText != null)
+            {
+                _messageText.alignment = TextAlignmentOptions.Center;
+                _messageText.fontStyle = FontStyles.Bold;
+                _messageText.color = new Color(1f, 0.91f, 0.65f, 1f);
+                SetRect(
+                    _messageText.transform as RectTransform,
+                    new Vector2(0f, 300f),
+                    new Vector2(900f, 58f));
+            }
+        }
+
+        private void AddContentHeading(
+            GameObject content,
+            string title,
+            string subtitle)
+        {
+            if (content == null)
+                return;
+
+            Image card = content.GetComponent<Image>() ??
+                content.AddComponent<Image>();
+            _theme.ApplyCard(card);
+
+            var headingObject = new GameObject(
+                $"{content.name}Heading",
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI),
+                typeof(LayoutElement));
+            headingObject.transform.SetParent(content.transform, false);
+            headingObject.transform.SetAsFirstSibling();
+            TextMeshProUGUI heading =
+                headingObject.GetComponent<TextMeshProUGUI>();
+            heading.font = _messageText != null
+                ? _messageText.font
+                : TMP_Settings.defaultFontAsset;
+            heading.text = $"{title}\n<size=60%>{subtitle}</size>";
+            heading.fontSize = 27f;
+            heading.fontSizeMin = 16f;
+            heading.fontSizeMax = 27f;
+            heading.enableAutoSizing = true;
+            heading.fontStyle = FontStyles.Bold;
+            heading.color = new Color(1f, 0.96f, 0.84f, 1f);
+            heading.alignment = TextAlignmentOptions.Center;
+            heading.raycastTarget = false;
+
+            LayoutElement layout = headingObject.GetComponent<LayoutElement>();
+            layout.minHeight = 68f;
+            layout.preferredHeight = 68f;
         }
 
         private static void ConfigureContent(
@@ -239,13 +297,28 @@ namespace KnightOnline.Client.UI
 
             var layout = content.GetComponent<VerticalLayoutGroup>() ??
                 content.AddComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(10, 10, 10, 10);
-            layout.spacing = 12f;
+            layout.padding = new RectOffset(24, 24, 18, 18);
+            layout.spacing = 11f;
             layout.childAlignment = TextAnchor.MiddleCenter;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
+        }
+
+        private static void SetRect(
+            RectTransform rect,
+            Vector2 position,
+            Vector2 size)
+        {
+            if (rect == null)
+                return;
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
         }
 
 #if UNITY_EDITOR

@@ -13,7 +13,8 @@ namespace KnightOnline.Client.UI
         private IEventBus _eventBus;
         private System.IDisposable _connectionSubscription;
         private System.IDisposable _disconnectionSubscription;
-        private bool _forcedDisconnectReceived;
+        private System.IDisposable _accountReadySubscription;
+        private System.IDisposable _characterListSubscription;
 
         [Inject]
         public void Construct(IEventBus eventBus)
@@ -34,48 +35,38 @@ namespace KnightOnline.Client.UI
 
             _connectionSubscription = _eventBus.Subscribe<ServerConnectionResultEvent>(OnConnectionResult);
             _disconnectionSubscription = _eventBus.Subscribe<ServerDisconnectedEvent>(OnDisconnected);
-
-            SetStatus("[Success] Chào mừng đến với KnightOnline!");
+            _accountReadySubscription =
+                _eventBus.Subscribe<AccountReadyEvent>(_ => HideStatus());
+            _characterListSubscription =
+                _eventBus.Subscribe<CharacterListReceivedEvent>(
+                    _ => HideStatus());
+            HideStatus();
         }
 
-        private void OnConnectionResult(ServerConnectionResultEvent e)
+        private void OnConnectionResult(ServerConnectionResultEvent _)
         {
-            if (e.Result == ConnectionOutcome.Success)
-            {
-                SetStatus("[Success] Chào mừng đến với KnightOnline!");
-                return;
-            }
-
-            SetStatus($"[{e.Result}] {e.Message}");
+            // AuthenticationEntryPanel owns connection feedback in Bootstrap.
+            // Keeping a second floating status label here causes overlapping UI.
+            HideStatus();
         }
 
-        private void OnDisconnected(ServerDisconnectedEvent e)
-        {
-            if (e.IsForced)
-            {
-                _forcedDisconnectReceived = true;
-                SetStatus($"Mất kết nối: {e.Message}");
-                return;
-            }
+        private void OnDisconnected(ServerDisconnectedEvent _) => HideStatus();
 
-            if (!_forcedDisconnectReceived)
-                SetStatus("Mất kết nối với Server.");
-        }
-
-        private void SetStatus(string message)
+        private void HideStatus()
         {
             if (_statusText != null)
             {
-                _statusText.text = message;
+                _statusText.text = string.Empty;
+                _statusText.gameObject.SetActive(false);
             }
-
-            Debug.Log($"<color=magenta>[UI]</color> Trạng thái: {message}");
         }
 
         private void OnDestroy()
         {
             _connectionSubscription?.Dispose();
             _disconnectionSubscription?.Dispose();
+            _accountReadySubscription?.Dispose();
+            _characterListSubscription?.Dispose();
         }
     }
 }

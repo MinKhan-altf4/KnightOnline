@@ -16,9 +16,9 @@ MonoBehaviour:
   _highlightedButtonSprite: {fileID: 324115321, guid: 9682de5fe7f4c6b40bd7d7b418372706, type: 3}
   _pressedButtonSprite: {fileID: -1732005096, guid: 9682de5fe7f4c6b40bd7d7b418372706, type: 3}
   _panelFrameSprite: {fileID: 7501387830980884940, guid: 2d0f27e1c36c87546bbfbb677df361b7, type: 3}
-  _screenOverlay: {r: 0.04, g: 0.07, b: 0.13, a: 0.88}
-  _panelColor: {r: 0.12, g: 0.1, b: 0.16, a: 0.96}
+  _screenOverlay: {r: 0.035, g: 0.055, b: 0.09, a: 0.34}
+  _panelColor: {r: 0.1, g: 0.15, b: 0.23, a: 0.94}
   _inputColor: {r: 0.96, g: 0.91, b: 0.78, a: 0.96}
-  _primaryText: {r: 1, g: 0.91, b: 0.58, a: 1}
+  _primaryText: {r: 1, g: 0.96, b: 0.84, a: 1}
   _bodyText: {r: 0.96, g: 0.95, b: 0.9, a: 1}
   _inputText: {r: 0.16, g: 0.1, b: 0.08, a: 1}

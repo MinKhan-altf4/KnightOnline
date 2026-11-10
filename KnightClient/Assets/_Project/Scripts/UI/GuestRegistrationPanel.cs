@@ -114,17 +114,25 @@ namespace KnightOnline.Client.UI
             if (_theme == null)
                 return;
 
-            _theme.ApplyPanel(GetComponent<Image>());
+            Image overlay = GetComponent<Image>();
+            _theme.ApplyPanel(overlay, true);
             _theme.ApplyInput(_usernameInput);
             _theme.ApplyInput(_passwordInput);
             _theme.ApplyInput(_confirmPasswordInput);
-            _theme.ApplyButton(_registerButton);
-            _theme.ApplyButton(_cancelButton);
+            _theme.ApplyCleanButton(_registerButton, 58f);
+            _theme.ApplyCleanButton(_cancelButton, 58f);
             _theme.ApplyBodyText(_messageText, 20f);
 
             RectTransform window = _usernameInput != null
                 ? _usernameInput.transform.parent as RectTransform
                 : null;
+            if (window != null)
+            {
+                Image card = window.GetComponent<Image>() ??
+                    window.gameObject.AddComponent<Image>();
+                _theme.ApplyCard(card);
+                AddHeading(window);
+            }
             SetRect(
                 window,
                 Vector2.zero,
@@ -153,6 +161,36 @@ namespace KnightOnline.Client.UI
                 _messageText?.transform as RectTransform,
                 new Vector2(0f, -195f),
                 new Vector2(460f, 52f));
+        }
+
+        private void AddHeading(RectTransform parent)
+        {
+            var headingObject = new GameObject(
+                "RegistrationHeading",
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI));
+            headingObject.transform.SetParent(parent, false);
+            RectTransform rect = (RectTransform)headingObject.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, 205f);
+            rect.sizeDelta = new Vector2(460f, 56f);
+
+            TextMeshProUGUI heading =
+                headingObject.GetComponent<TextMeshProUGUI>();
+            heading.font = _messageText != null
+                ? _messageText.font
+                : TMP_Settings.defaultFontAsset;
+            heading.text = "TẠO TÀI KHOẢN\n<size=60%>Đăng ký tài khoản mới</size>";
+            heading.fontSize = 26f;
+            heading.fontSizeMin = 16f;
+            heading.fontSizeMax = 26f;
+            heading.enableAutoSizing = true;
+            heading.fontStyle = FontStyles.Bold;
+            heading.color = new Color(1f, 0.96f, 0.84f, 1f);
+            heading.alignment = TextAlignmentOptions.Center;
+            heading.raycastTarget = false;
         }
 
         private static void SetRect(
