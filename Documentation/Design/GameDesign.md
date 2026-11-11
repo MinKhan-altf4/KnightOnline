@@ -1,91 +1,38 @@
-# The World of Knights & Demons
+# Thiết kế trò chơi: Thế giới Hiệp sĩ và Ác quỷ
 
-## Vision
+## Tầm nhìn
 
-Tạo ra một MMORPG công bằng, nơi người chơi mạnh lên nhờ công sức, chiến lược và một chút may mắn.
+Tạo một MMORPG công bằng, nơi người chơi mạnh lên nhờ nỗ lực, chiến lược và một
+chút may mắn.
 
----
+## Người chơi hướng tới
 
-## Target Players
+- Người yêu thích MMORPG và hành trình phát triển nhân vật lâu dài.
+- Người thích săn quái, thu thập nguyên liệu và săn trùm.
+- Người thích giao dịch, chế tạo và nâng cấp trang bị.
 
-- Người yêu thích MMORPG
-- Người thích farm
-- Người thích săn Boss
-- Người thích giao dịch
-- Người thích nâng cấp trang bị
-- Người chơi lâu dài
+## Cảm giác cốt lõi
 
----
+Mỗi lần đăng nhập, người chơi có một mục tiêu để mong đợi: có thể nhận được món
+đồ hiếm, nâng cấp thành công, gom đủ nguyên liệu, tham gia sự kiện mới hoặc làm
+nhân vật mạnh hơn.
 
-## Core Feeling
+## Vòng lặp chơi chính
 
-Người chơi mở game mỗi ngày với cảm giác:
+```text
+Đăng nhập → làm nhiệm vụ → săn quái/thu thập → đánh trùm → nhận vật phẩm
+          → chế tạo/nâng cấp → phát triển nhân vật → tham gia sự kiện → tiếp tục
+```
 
-- Hôm nay biết đâu sẽ rớt đồ hiếm.
-- Hôm nay đập đồ sẽ lên.
-- Hôm nay sắp đủ nguyên liệu chế tạo.
-- Hôm nay có sự kiện mới.
-- Hôm nay nhân vật mạnh hơn hôm qua.
+## Nguyên tắc
 
----
+- Không bán lợi thế sức mạnh trực tiếp.
+- Không dung túng công cụ gian lận hoặc sửa client để tạo lợi thế.
+- Giữ môi trường chơi công bằng, cập nhật đều và chăm sóc cộng đồng.
 
-## Core Gameplay Loop
+## Doanh thu dự kiến
 
-Đăng nhập
+Trò chơi miễn phí. Doanh thu có thể đến từ trang phục, thẻ mùa, gói thành viên
+hoặc tiện ích không làm mất cân bằng sức mạnh giữa người chơi.
 
-↓
-
-Làm nhiệm vụ
-
-↓
-
-Farm nguyên liệu
-
-↓
-
-Đánh Boss
-
-↓
-
-Rớt đồ
-
-↓
-
-Nâng cấp
-
-↓
-
-Mạnh hơn
-
-↓
-
-Tham gia Event
-
-↓
-
-Tiếp tục phát triển nhân vật
-
----
-
-## Core Principles
-
-- Không Pay To Win
-- Không Tool
-- Không Mod
-- Công bằng
-- Cập nhật thường xuyên
-- Chăm sóc cộng đồng
-
----
-
-## Monetization
-
-Game miễn phí.
-
-Doanh thu đến từ:
-
-- Trang phục
-- Battle Pass
-- Thẻ tháng
-- Gói tiện ích
-- Vật phẩm không ảnh hưởng cân bằng
+Đây là định hướng thiết kế, không phải danh sách hệ thống đã được triển khai.

@@ -165,6 +165,110 @@ public sealed class AccountSessionNetworkIntegrationTests
         Assert.False(staleA.Renewed);
     }
 
+    [Fact]
+    public async Task TwoDevicesPressContinueConcurrently_OnlyOneClaimsLease()
+    {
+        var store = CreateStore();
+        Guid deviceA = Guid.NewGuid();
+        Guid deviceB = Guid.NewGuid();
+        var start = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<ActiveAccountLeaseClaim> claimA = ClaimWhenReleasedAsync(
+            store, deviceA, start.Task);
+        Task<ActiveAccountLeaseClaim> claimB = ClaimWhenReleasedAsync(
+            store, deviceB, start.Task);
+        start.SetResult();
+
+        ActiveAccountLeaseClaim[] claims = await Task.WhenAll(claimA, claimB);
+        Assert.Single(claims, value =>
+            value.Status == ActiveAccountLeaseClaimStatus.Acquired);
+        Assert.Single(claims, value =>
+            value.Status == ActiveAccountLeaseClaimStatus.ActiveElsewhere);
+    }
+
+    [Fact]
+    public async Task TwoConnectedClients_ContendingForSameAccount_OnlyOneOwnsLease()
+    {
+        var clock = new MutableClock(InitialUtc);
+        var store = CreateStore();
+        await using TestConnection deviceA = await CreateConnectionAsync(
+            store, clock);
+        await using TestConnection deviceB = await CreateConnectionAsync(
+            store, clock);
+        var release = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<ActiveAccountLeaseClaim> claimA = ClaimWhenReleasedAsync(
+            store, deviceA.Server.ConnectionId, release.Task);
+        Task<ActiveAccountLeaseClaim> claimB = ClaimWhenReleasedAsync(
+            store, deviceB.Server.ConnectionId, release.Task);
+        release.SetResult();
+        ActiveAccountLeaseClaim[] claims = await Task.WhenAll(claimA, claimB);
+
+        Assert.Single(claims, value =>
+            value.Status == ActiveAccountLeaseClaimStatus.Acquired);
+        Assert.Single(claims, value =>
+            value.Status == ActiveAccountLeaseClaimStatus.ActiveElsewhere);
+    }
+
+    [Fact]
+    public async Task SuspendedClientWithoutHeartbeat_LosesLeaseAfterTtl()
+    {
+        var clock = new MutableClock(InitialUtc);
+        var store = CreateStore();
+        Guid deviceA = Guid.NewGuid();
+        ActiveAccountLeaseClaim claim = await store.TryClaimAsync(
+            "account-1", deviceA, clock.UtcNow);
+
+        // Suspending the app stops its realtime heartbeat. The server does not
+        // trust the client's local clock and expires ownership at the TTL.
+        clock.UtcNow = InitialUtc.AddSeconds(21);
+        ActiveAccountLeaseClaim replacement = await store.TryClaimAsync(
+            "account-1", Guid.NewGuid(), clock.UtcNow);
+
+        Assert.Equal(ActiveAccountLeaseClaimStatus.Acquired, replacement.Status);
+        Assert.NotEqual(claim.Generation, replacement.Generation);
+        Assert.False(await store.IsOwnerAsync(
+            "account-1", deviceA, claim.Generation, clock.UtcNow));
+    }
+
+    [Fact]
+    public async Task AppCloseCrashOrNetworkLoss_UsesDisconnectGrace()
+    {
+        var store = CreateStore();
+        Guid deviceA = Guid.NewGuid();
+        Guid deviceB = Guid.NewGuid();
+        ActiveAccountLeaseClaim claim = await store.TryClaimAsync(
+            "account-1", deviceA, InitialUtc);
+
+        // Clean app close, process crash, and network loss all appear to the
+        // server as a closed TCP connection. The same grace policy applies.
+        Assert.True(await store.BeginDisconnectGraceAsync(
+            "account-1", deviceA, claim.Generation, InitialUtc));
+        ActiveAccountLeaseClaim duringGrace = await store.TryClaimAsync(
+            "account-1", deviceB, InitialUtc.AddSeconds(5));
+        ActiveAccountLeaseClaim afterGrace = await store.TryClaimAsync(
+            "account-1", deviceB, InitialUtc.AddSeconds(11));
+
+        Assert.Equal(
+            ActiveAccountLeaseClaimStatus.CoolingDown,
+            duringGrace.Status);
+        Assert.Equal(
+            ActiveAccountLeaseClaimStatus.Acquired,
+            afterGrace.Status);
+    }
+
+    private static async Task<ActiveAccountLeaseClaim> ClaimWhenReleasedAsync(
+        IActiveAccountLeaseStore store,
+        Guid connectionId,
+        Task start)
+    {
+        await start;
+        return await store.TryClaimAsync(
+            "account-1", connectionId, InitialUtc);
+    }
+
     private static InMemoryActiveAccountLeaseStore CreateStore() =>
         new(
             TimeSpan.FromSeconds(20),

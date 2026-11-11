@@ -1,6 +1,7 @@
 {
   "environment": "Development",
   "network": {
+    "bindAddress": "127.0.0.1",
     "port": 7777,
     "maximumPacketBytes": 1048576
   },
@@ -10,8 +11,9 @@
   },
   "authentication": {
     "developmentBypassEnabled": false,
+    "ipRateLimitEnabled": false,
     "refreshTokenLifetimeDays": 30,
-    "maximumAttemptsPerWindow": 10,
+    "maximumAttemptsPerWindow": 500,
     "attemptWindowSeconds": 60,
     "heartbeatIntervalSeconds": 5,
     "sessionLeaseTtlSeconds": 20,

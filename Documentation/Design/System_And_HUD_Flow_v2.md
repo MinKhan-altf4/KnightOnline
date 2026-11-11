@@ -2,6 +2,10 @@
 
 ## Phạm vi tài liệu
 
+Đây là đặc tả luồng sản phẩm, không phải danh sách chức năng đã triển khai.
+Hãy xem `Documentation/Trang_Thai_Du_An.md` để nắm mốc dự án và đối chiếu code
+trước khi dùng nội dung làm yêu cầu nghiệm thu.
+
 Tài liệu này tổng hợp các luồng:
 
 1. Tiếp tục bằng phiên đăng nhập đã lưu.

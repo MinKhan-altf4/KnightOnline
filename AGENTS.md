@@ -1,23 +1,23 @@
-# KnightOnline Repository Instructions
+# Hướng dẫn làm việc trong repository KnightOnline
 
-Before planning or changing this repository, read and follow:
+Trước khi lập kế hoạch hoặc thay đổi repository này, hãy đọc và tuân thủ:
 
 - `Documentation/KNIGHT_PROJECT_CORE_RULES.md`
 
-These rules are mandatory for every module and every contributor.
+Quy tắc này bắt buộc với mọi module và người đóng góp.
 
-Do not create a DevLog for every individual task or checkpoint. Accumulate the
-session's material changes and create or update one session summary only when
-the user explicitly asks to write the log or close the working session.
+Không tạo DevLog cho từng task nhỏ hoặc checkpoint. Hãy tích lũy thông tin thay
+đổi trong phiên và chỉ tạo/cập nhật một bản tổng kết khi người dùng yêu cầu ghi
+log hoặc chốt phiên làm việc.
 
-Session DevLogs belong in:
+DevLog của phiên đặt tại:
 
 ```text
 Documentation/DevLogs/YYYY-MM-DD-task-name.md
 ```
 
-Critical decisions, migrations, security changes, known risks and test results
-must not be lost while waiting for the session summary.
+Trong lúc chờ tổng kết, không được làm mất quyết định quan trọng, migration,
+thay đổi bảo mật, rủi ro đã biết hoặc kết quả kiểm thử.
 
-Do not duplicate the core rules in this file. The document linked above is the
-single source of truth.
+Không sao chép bộ quy tắc cốt lõi vào file này. Tài liệu được liên kết ở trên là
+nguồn quy tắc duy nhất.

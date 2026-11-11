@@ -1,9 +1,12 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Accounts;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Players;
 using KnightOnline.Server.Time;
+using KnightOnline.Server.Persistence;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
@@ -22,7 +25,7 @@ public sealed class CreateGuestPacketHandler(
         string payload,
         CancellationToken cancellationToken)
     {
-        if (!rateLimiter.TryAcquire(
+        if (options.IpRateLimitEnabled && !rateLimiter.TryAcquire(
                 $"{connection.RemoteAddress}|create-guest",
                 clock.UtcNow))
         {
@@ -41,6 +44,13 @@ public sealed class CreateGuestPacketHandler(
                 connection,
                 PacketType.CreateGuestResponse,
                 cancellationToken);
+            return;
+        }
+        if (!AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(rateLimiter, clock, "device",
+                request.DeviceId))
+        {
+            await AuthenticationPacketHandlerSupport.SendRateLimitedAsync(
+                connection, PacketType.CreateGuestResponse, cancellationToken);
             return;
         }
 
@@ -73,7 +83,7 @@ public sealed class ResumeAccountPacketHandler(
         string payload,
         CancellationToken cancellationToken)
     {
-        if (!rateLimiter.TryAcquire(
+        if (options.IpRateLimitEnabled && !rateLimiter.TryAcquire(
                 $"{connection.RemoteAddress}|resume",
                 clock.UtcNow))
         {
@@ -87,6 +97,7 @@ public sealed class ResumeAccountPacketHandler(
         ResumeAccountRequestPacket? request =
             JsonSerializer.Deserialize<ResumeAccountRequestPacket>(payload);
         if (request == null ||
+            request.RequestId == Guid.Empty ||
             string.IsNullOrWhiteSpace(request.RefreshToken) ||
             string.IsNullOrWhiteSpace(request.DeviceId))
         {
@@ -96,8 +107,18 @@ public sealed class ResumeAccountPacketHandler(
                 cancellationToken);
             return;
         }
+        if (!AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(rateLimiter, clock, "resume-device",
+                request.DeviceId) ||
+            !AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(rateLimiter, clock, "resume-token",
+                request.RefreshToken))
+        {
+            await AuthenticationPacketHandlerSupport.SendRateLimitedAsync(
+                connection, PacketType.ResumeAccountResponse, cancellationToken);
+            return;
+        }
 
         AuthenticationResult result = await authentication.ResumeAsync(
+            request.RequestId,
             request.RefreshToken,
             request.DeviceId,
             cancellationToken);
@@ -127,7 +148,7 @@ public sealed class LoginPacketHandler(
         string payload,
         CancellationToken cancellationToken)
     {
-        if (!rateLimiter.TryAcquire(
+        if (options.IpRateLimitEnabled && !rateLimiter.TryAcquire(
                 $"{connection.RemoteAddress}|login",
                 clock.UtcNow))
         {
@@ -141,6 +162,7 @@ public sealed class LoginPacketHandler(
         LoginRequestPacket? request =
             JsonSerializer.Deserialize<LoginRequestPacket>(payload);
         if (request == null ||
+            request.RequestId == Guid.Empty ||
             string.IsNullOrWhiteSpace(request.Username) ||
             string.IsNullOrWhiteSpace(request.Password) ||
             string.IsNullOrWhiteSpace(request.DeviceId))
@@ -151,8 +173,18 @@ public sealed class LoginPacketHandler(
                 cancellationToken);
             return;
         }
+        if (!AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(rateLimiter, clock, "login-account",
+                request.Username.Trim().ToUpperInvariant()) ||
+            !AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(rateLimiter, clock, "login-device",
+                request.DeviceId))
+        {
+            await AuthenticationPacketHandlerSupport.SendRateLimitedAsync(
+                connection, PacketType.LoginResponse, cancellationToken);
+            return;
+        }
 
         AuthenticationResult result = await authentication.LoginAsync(
+            request.RequestId,
             request.Username,
             request.Password,
             request.DeviceId,
@@ -169,9 +201,25 @@ public sealed class LoginPacketHandler(
     }
 }
 
+internal static class AuthenticationIdentityRateLimit
+{
+    public static bool TryAcquireIdentityLimit(
+        AuthenticationRateLimiter rateLimiter,
+        IServerClock clock,
+        string category,
+        string value)
+    {
+        byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        string digest = Convert.ToHexString(bytes);
+        return rateLimiter.TryAcquire($"identity:{category}:{digest}",
+            clock.UtcNow);
+    }
+}
+
 public sealed class LeaveAccountSessionPacketHandler(
     IActiveAccountLeaseStore accountSessions,
     ActivePlayerRegistry activePlayers,
+    CharacterRepository characters,
     IServerClock clock) : IPacketHandler
 {
     public PacketType PacketType =>
@@ -186,6 +234,21 @@ public sealed class LeaveAccountSessionPacketHandler(
     {
         if (connection.PlayerSession != null)
         {
+            PlayerSession session = connection.PlayerSession!;
+            if (!await characters.SaveSessionSnapshotAsync(
+                    connection.AccountKey!, session.CharacterId,
+                    connection.AccountSessionGeneration,
+                    session.MapDefinitionId, session.SpawnPointId,
+                    session.Position.X, session.Position.Y, cancellationToken) ||
+                !await characters.ReleaseSessionAsync(
+                    connection.AccountKey!, session.CharacterId,
+                    connection.AccountSessionGeneration, cancellationToken))
+            {
+                await SendResponseAsync(connection, false,
+                    "The character snapshot could not be saved.",
+                    cancellationToken);
+                return;
+            }
             activePlayers.Release(connection);
             if (!connection.TryDetachPlayerSession(out _))
             {
@@ -438,7 +501,7 @@ internal static class AuthenticationPacketHandlerSupport
         AuthenticatedAccount account) =>
         new(
             AuthenticationResultCode.AccountActive,
-            "Tài khoản đang được đăng nhập ở nơi khác.",
+            "TÃ i khoáº£n Ä‘ang Ä‘Æ°á»£c Ä‘Äƒng nháº­p á»Ÿ nÆ¡i khÃ¡c.",
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,
@@ -449,7 +512,7 @@ internal static class AuthenticationPacketHandlerSupport
         AuthenticatedAccount account) =>
         new(
             AuthenticationResultCode.ServerFull,
-            "Máy chủ hiện đã đầy. Vui lòng thử lại sau.",
+            "MÃ¡y chá»§ hiá»‡n Ä‘Ã£ Ä‘áº§y. Vui lÃ²ng thá»­ láº¡i sau.",
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,

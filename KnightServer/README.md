@@ -1,70 +1,66 @@
-# KnightServer - Game Server
+# Máy chủ game KnightOnline
 
-## PostgreSQL development setup
+Máy chủ game viết bằng .NET 10, dùng PostgreSQL/EF Core và TCP. Cấu hình môi
+trường hiện tại trong `serverSettings.json` là `Development`; server tự áp dụng
+migration đang chờ khi khởi động.
 
-KnightServer uses PostgreSQL through EF Core/Npgsql. The first persistence
-vertical slice stores a development account and its characters. Authentication
-is not implemented yet, so every local connection currently uses the account
-key `local-dev`.
+## Yêu cầu
 
-### 1. Create the application role and database
+- .NET SDK 10.
+- PostgreSQL đang chạy local.
+- PowerShell hoặc terminal tương đương.
 
-From the repository root:
+## Tạo database local
+
+Từ thư mục gốc repository, tạo role và database bằng tài khoản PostgreSQL quản
+trị:
 
 ```powershell
 psql -U postgres -h localhost -f KnightServer/Database/bootstrap.sql
 ```
 
-The script asks for a new password for `knightonline_app`. This is separate from
-the PostgreSQL administrator password.
+Script sẽ hỏi mật khẩu mới cho role `knightonline_app`. Hãy dùng mật khẩu riêng
+cho ứng dụng; không đưa mật khẩu vào Git.
 
-### 2. Store the connection string outside Git
-
-Replace `YOUR_APP_PASSWORD` locally:
+Lưu connection string bằng .NET User Secrets:
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:KnightOnline" "Host=localhost;Port=5432;Database=knightonline_dev;Username=knightonline_app;Password=YOUR_APP_PASSWORD" --project KnightServer
+dotnet user-secrets set "ConnectionStrings:KnightOnline" "Host=localhost;Port=5432;Database=knightonline_dev;Username=knightonline_app;Password=MAT_KHAU_LOCAL" --project KnightServer
 ```
 
-For CI or deployment, use this environment variable instead:
+Trong CI hoặc môi trường triển khai, dùng biến môi trường
+`KNIGHTONLINE_ConnectionStrings__KnightOnline` hoặc secret manager tương ứng.
 
-```text
-KNIGHTONLINE_ConnectionStrings__KnightOnline
-```
-
-Never commit a real password or connection string.
-
-### 3. Restore tools and apply migrations
+## Khởi động
 
 ```powershell
-dotnet tool restore
-dotnet tool run dotnet-ef database update --project KnightServer
-```
-
-KnightServer also applies pending migrations during startup. Applying them
-explicitly here makes setup failures easier to diagnose.
-
-### 4. Run
-
-```powershell
+dotnet restore KnightServer
 dotnet run --project KnightServer
 ```
 
-Expected startup output:
+Server lắng nghe cổng `7777` theo `serverSettings.json`. Khi khởi động, migration
+được áp dụng; lỗi cấu hình/database sẽ xuất hiện trong cửa sổ server.
 
-```text
-[Server] Listening on port 7777.
+## Kiểm thử
+
+```powershell
+dotnet test KnightServer.Tests/KnightServer.Tests.csproj -c Release
+dotnet test KnightServer.IntegrationTests/KnightServer.IntegrationTests.csproj -c Release
 ```
 
-### Persistence verification
+Integration test dùng PostgreSQL thật và có thể tạo/xóa dữ liệu test. Chỉ chạy
+với database Development dành riêng cho kiểm thử; không trỏ vào dữ liệu người
+dùng thật.
 
-1. Create a character from the Unity client.
-2. Stop both Client and Server.
-3. Start Server and reconnect.
-4. The character must still appear with the same `CharacterId` and `Level`.
+## Cấu hình Development đáng chú ý
 
-Current development constraints:
+- Tối đa 3 nhân vật mỗi tài khoản/máy chủ.
+- Tối đa 500 tài khoản active và 750 kết nối transport trong một tiến trình.
+- Heartbeat 5 giây, lease TTL 20 giây, thời gian grace khi mất kết nối 10 giây.
+- Development registration completion đang bật; server không vì vậy mà trở
+  thành sẵn sàng Production.
 
-- Maximum four characters per account.
-- Character names are globally unique and case-insensitive.
-- All clients use `local-dev` until authentication is implemented.
+Giá trị thực tế lấy từ `serverSettings.json` và phải được kiểm tra cùng
+`KnightServer/Configuration/ServerOptions.cs`. Không coi các giới hạn trên là
+cam kết tải Production; lease/capacity hiện không thay thế kiến trúc phân tán,
+TLS, kho credential an toàn hoặc load test.

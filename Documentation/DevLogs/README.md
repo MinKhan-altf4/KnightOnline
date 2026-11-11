@@ -1,79 +1,56 @@
-# KnightOnline DevLogs
+# Nhật ký phiên làm việc
 
-Thư mục này lưu **bản tổng kết của các phiên làm việc đã kết thúc**. DevLog là
-lịch sử thay đổi và bằng chứng bàn giao; DevLog không phải đặc tả hiện hành của
-game.
+DevLog ghi lại kết quả và bằng chứng tại thời điểm làm việc. Đây là lịch sử,
+không phải mô tả tự cập nhật về trạng thái code hiện tại. Xem
+[Tình trạng dự án](../Trang_Thai_Du_An.md) để bắt đầu.
 
-## Người mới nên đọc theo thứ tự nào?
+## Quy tắc ghi nhật ký
 
-1. `Documentation/KNIGHT_PROJECT_CORE_RULES.md` — quy tắc bắt buộc.
-2. Tài liệu luồng hoặc kiến trúc được chủ dự án giao cho task.
-3. DevLog gần nhất có liên quan trực tiếp đến module được giao.
-4. Code, test và cấu hình hiện tại — nguồn xác nhận trạng thái triển khai thực tế.
+- Chỉ tạo/cập nhật DevLog khi chủ dự án yêu cầu ghi log hoặc chốt phiên.
+- Một DevLog tổng kết một phiên; không tạo file cho từng lỗi nhỏ hay checkpoint.
+- Giữ lại quyết định, migration, rủi ro và kết quả test quan trọng.
+- Không sửa lịch sử để khiến trạng thái cũ trông như hiện trạng mới.
+- File mới đặt theo mẫu `YYYY-MM-DD-task-name.md` trong thư mục này.
+- Không ghi secret, token hoặc dữ liệu nhạy cảm.
 
-Nếu DevLog mâu thuẫn với tài liệu luồng hiện hành hoặc quyết định mới của chủ dự
-án, không tự chọn một phía. Ghi lại điểm mâu thuẫn và xác nhận trước khi thay đổi
-logic nghiệp vụ.
+## Các mốc gần nhất
 
-## Cấu trúc thư mục
+| Ngày | Mốc | Tình trạng ghi trong log |
+|---|---|---|
+| 11-11-2026 | [Lease một instance và fencing phiên](2026-11-11-single-instance-session-fencing.md) | 86/86 test qua cùng PostgreSQL; migration đã áp dụng, bot restart/reconnect và cổng tester ngoài mạng còn mở. |
+| 04-08-2026 | [Vertical slice nhiệm vụ tân thủ](2026-08-04-starter-tutorial-vertical-slice.md) | Test server tại thời điểm đó đạt; kiểm tra cổng trong Unity còn chờ. |
+| 04-08-2026 | [Sinh lực, HUD và đăng xuất](2026-08-04-phase-1-vitals-hud-and-session-exit.md) | Test server tại thời điểm đó đạt; smoke test Unity cuối phiên còn chờ. |
+| 03-08-2026 | [Gameplay authoritative và HUD](2026-08-03-authoritative-alpha-foundation-and-hud.md) | Test/build server đạt tại thời điểm ghi; HUD cần kiểm tra hình ảnh nhiều tỉ lệ màn hình. |
+| 02-08-2026 | [Character và EnterWorld](2026-08-02-character-world-foundation.md) | Test server đạt; một số kiểm tra Unity/movement còn cần làm thủ công. |
+| 02-08-2026 | [Baseline và session lease](2026-08-02-baseline-and-session-lease.md) | Test server đạt; Unity A/B và các yêu cầu Production còn mở. |
 
-```text
-Documentation/DevLogs/
-├── README.md
-├── SESSION_DEVLOG_TEMPLATE.md
-├── YYYY-MM-DD-task-name.md
-└── Archive/
-    └── YYYY-MM/
-        └── YYYY-MM-DD-task-name.md
-```
+Nhật ký cũ đã gom tóm tắt tại [giai đoạn củng cố ban đầu](../Archive/Tom_Tat_Cung_Co_Ban_Dau.md)
+và [tài liệu kiến trúc cũ](../Archive/Tom_Tat_Tai_Lieu_Cu.md). Không dùng tài liệu Archive làm
+acceptance criteria nếu tài liệu hiện hành hoặc quyết định mới hơn có nội dung
+khác.
 
-- Chỉ tạo **một DevLog tổng kết cho một phiên làm việc** khi chủ dự án yêu cầu
-  viết log hoặc kết thúc phiên.
-- DevLog phiên mới nằm trực tiếp tại `Documentation/DevLogs/` theo quy định của
-  repository để dễ thấy trong quá trình bàn giao.
-- `Archive/YYYY-MM/` chỉ chứa log lịch sử đã được chủ dự án cho phép dọn khỏi
-  danh sách làm việc hiện tại. Không tự ý chuyển hoặc xóa DevLog đang được dùng.
-- Không tạo log cho từng lỗi nhỏ, checkpoint hoặc thao tác Unity.
-- Không sửa lịch sử để làm nó giống trạng thái hiện tại. Nếu quyết định thay đổi,
-  ghi trong DevLog của phiên mới và đánh dấu tài liệu nguồn sự thật liên quan.
+## Tài liệu ưu tiên theo phạm vi
 
-## Chỉ mục lịch sử
-
-| Ngày | Phạm vi | File | Trạng thái khi đọc |
-|---|---|---|---|
-| 2026-07-25 | Chuẩn hóa Core Rules | [core-rules-standardization](Archive/2026-07/2026-07-25-core-rules-standardization.md) | Lịch sử; Core Rules hiện tại mới là nguồn sự thật |
-| 2026-07-25 | Audit tuân thủ kiến trúc/bảo mật | [core-rules-compliance-audit](Archive/2026-07/2026-07-25-core-rules-compliance-audit.md) | Baseline cũ; số test và technical debt có thể đã thay đổi |
-| 2026-07-25 | Admin Management Contract | [admin-management-core-rule](Archive/2026-07/2026-07-25-admin-management-core-rule.md) | Lịch sử quyết định; xem `CORE-11` hiện tại |
-| 2026-07-25 | Unity Authentication Entry UI | [unity-authentication-entry-ui](Archive/2026-07/2026-07-25-unity-authentication-entry-ui.md) | Lịch sử triển khai; scene hiện tại có thể đã thay đổi |
-| 2026-07-26 | Authentication, Registration, Character Session | [auth-registration-character-session](Archive/2026-07/2026-07-26-auth-registration-character-session.md) | Lịch sử; quy tắc timeout Character Select 15 giây đã bị loại bỏ sau phiên này |
-
-## Nguồn sự thật theo phạm vi
-
-| Phạm vi | Tài liệu ưu tiên |
+| Phạm vi | Tài liệu hiện hành |
 |---|---|
-| Quy tắc kỹ thuật bắt buộc | `Documentation/KNIGHT_PROJECT_CORE_RULES.md` |
-| Luồng game và HUD | `Documentation/Design/System_And_HUD_Flow_v2.md` |
+| Quy tắc bắt buộc | `Documentation/KNIGHT_PROJECT_CORE_RULES.md` |
+| Tình trạng và bước tiếp theo | `Documentation/Trang_Thai_Du_An.md` |
+| Cấu trúc source | `Documentation/Architecture/Repository_Structure.md` |
+| Luồng runtime và giới hạn Alpha | `Documentation/Architecture/Current_Unity_Runtime_And_Alpha_500_Online.md` |
+| Hợp đồng lease/phiên và cổng mạng | `Documentation/Architecture/Session_Lease_Contract.md` |
+| Luồng game/HUD | `Documentation/Design/System_And_HUD_Flow_v2.md` |
 | Character Flow | `Documentation/Design/Character_Flow_Architecture_Plan.md` |
-| Chuyển Authentication/Character sang Production | `Documentation/Production/Account_And_Character_Flow_Cutover.md` |
-| Đăng ký Production | `Documentation/Production/Registration_Flow.md` |
-| Kiến trúc tổng quan | Chưa có bản hiện hành; không dùng bản Day 11 trong `Archive/` làm nguồn sự thật |
 
-## Brief giao việc tối thiểu
-
-Chủ dự án nên giao mỗi người một phạm vi rõ ràng:
+## Mẫu giao việc
 
 ```text
 Mục tiêu:
 Module sở hữu:
 Trong phạm vi:
 Ngoài phạm vi:
-Tài liệu nguồn sự thật:
-Acceptance criteria:
-Test bắt buộc:
-Dependency với người khác:
+Tài liệu nguồn:
+Điều kiện nghiệm thu:
+Kiểm thử cần chạy:
+Dependency:
 Rủi ro/điểm cần xác nhận:
 ```
-
-Mỗi file chỉ có một người chịu trách nhiệm chính tại một thời điểm. Nếu hai task
-cùng cần sửa một file hoặc contract, hai người phải thống nhất boundary trước khi
-code để tránh ghi đè và tạo hai nguồn logic.

@@ -1,5 +1,8 @@
 # Kế hoạch PvP MMORPG
 
+Các mục dưới đây là định hướng đề xuất; không có nghĩa hệ thống PvP đã được
+triển khai hoặc nằm trong milestone hiện tại.
+
 ## Triết lý
 
 -   MMORPG thưởng cho cày cuốc.

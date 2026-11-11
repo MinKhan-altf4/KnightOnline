@@ -10,6 +10,7 @@ namespace KnightOnline.Client.Data.Models
         public bool IsGuest;
         public string RefreshToken;
         public string DeviceId;
+        public string PendingResumeRequestId;
         public long ExpiresAtUtcTicks;
 
         public DateTime ExpiresAtUtc =>

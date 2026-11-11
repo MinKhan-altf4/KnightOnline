@@ -1,8 +1,12 @@
 # CHARACTER FLOW — KẾ HOẠCH KIẾN TRÚC VÀ TRIỂN KHAI
 
-Trạng thái: **Đang triển khai — Phase 1 đến Phase 4**
+Trạng thái: **Tài liệu thiết kế; không dùng nhãn phase/checklist bên dưới làm tiến độ hiện hành**
 Phạm vi: Entry → Authentication/Registration → Character Select → Character
 Creation → Starter Map → Tutorial → Class Promotion
+
+Tiến độ mới hơn nằm trong `Documentation/Trang_Thai_Du_An.md` và DevLog theo
+module. Một số mục trong phần Foundation increment phản ánh checkpoint cũ; hãy
+đối chiếu code, cấu hình và test trước khi mở lại làm việc.
 
 ## 1. Mục tiêu
 

@@ -1,78 +1,48 @@
-# KnightOnline Documentation
+# Cổng tài liệu KnightOnline
 
-Đây là cổng vào duy nhất cho tài liệu dự án. Người mới không nên đọc tuần tự
-toàn bộ thư mục; hãy đọc theo phạm vi công việc được chủ dự án giao.
+Không cần đọc toàn bộ thư mục. Bắt đầu từ [tình trạng dự án](Trang_Thai_Du_An.md),
+sau đó đọc quy tắc và tài liệu đúng module đang làm.
 
-## Bắt đầu tại đây
+## Thứ tự dành cho người mới
 
-1. Đọc `KNIGHT_PROJECT_CORE_RULES.md`.
-2. Đọc tài liệu nguồn sự thật của module được giao trong bảng bên dưới.
-3. Đọc DevLog gần nhất có liên quan để biết bối cảnh triển khai.
-4. Đối chiếu code, test và config hiện tại trước khi kết luận một chức năng đã
-   hoàn thành.
+1. [Tình trạng dự án](Trang_Thai_Du_An.md) — dự án đang ở đâu và nên kiểm tra gì
+   trước.
+2. [Quy tắc cốt lõi](KNIGHT_PROJECT_CORE_RULES.md) — yêu cầu bắt buộc cho mọi
+   thay đổi.
+3. [Cấu trúc repository](Architecture/Repository_Structure.md) — trách nhiệm
+   client, server, test và boundary giữa module.
+4. Chọn tài liệu theo phạm vi bên dưới.
+5. Đọc DevLog gần nhất liên quan để hiểu lịch sử, rồi đối chiếu source và test.
 
-## Cấu trúc
+## Tài liệu theo phạm vi
 
-```text
-Documentation/
-├── README.md
-├── KNIGHT_PROJECT_CORE_RULES.md
-├── Architecture/
-├── Design/
-├── Production/
-├── Audits/
-├── DevLogs/
-└── Archive/
-```
-
-| Thư mục | Mục đích | Có phải nguồn sự thật hiện tại? |
+| Bạn đang tìm hiểu | Tài liệu nên đọc | Lưu ý |
 |---|---|---|
-| `Architecture/` | Kiến trúc và luồng runtime đã đối chiếu trực tiếp với code hiện tại | Có, theo ngày/trạng thái ghi trong từng file |
-| `Design/` | Luồng người chơi, game design, HUD và Character Flow | Có, theo đúng phạm vi của từng file |
-| `Production/` | Điều kiện và kế hoạch thay adapter local khi mở server thật | Có cho kế hoạch cutover; phải đối chiếu code trước rollout |
-| `Audits/` | Báo cáo kiểm tra tại một thời điểm | Không; là snapshot lịch sử |
-| `DevLogs/` | Tổng kết và bàn giao theo phiên | Không; là lịch sử thay đổi |
-| `Archive/` | Kế hoạch/kiến trúc cũ đã bị trạng thái dự án vượt qua | Không |
+| Luồng khởi động Unity, đăng nhập, chọn nhân vật, vào game | [Runtime Unity và đánh giá Alpha](Architecture/Current_Unity_Runtime_And_Alpha_500_Online.md) | Audit ngày 02-08-2026; cần đối chiếu lại code trước khi coi là hiện trạng mới nhất. |
+| Luồng nhân vật và tạo nhân vật | [Character Flow](Design/Character_Flow_Architecture_Plan.md) | Tài liệu thiết kế; xem phần tiến độ và đối chiếu server/client. |
+| HUD và luồng màn hình | [System/HUD Flow](Design/System_And_HUD_Flow_v2.md) | Đặc tả sản phẩm dài; không phải toàn bộ chức năng đã được triển khai. |
+| UI Toolkit trong Làng Tân Thủ | [Hướng dẫn HUD Làng Tân Thủ](Design/Unity_UI_Toolkit_Starter_Village_Guide.md) | Có ví dụ UXML/USS và cách kiểm tra trong Unity. |
+| Menu chức năng InGame | [Hướng dẫn menu UI Toolkit](Design/Unity_UI_Toolkit_Function_Menu_Guide.md) | Phạm vi menu hiện có; các chức năng chưa xây dựng có thể chỉ là chỗ giữ chỗ. |
+| Đăng ký tài khoản khi mở server thật | [Luồng đăng ký Production](Production/Registration_Flow.md) | Kế hoạch và điều kiện phát hành, không đồng nghĩa đã sẵn sàng Production. |
+| Chuyển Authentication/Character sang Production | [Kế hoạch cutover](Production/Account_And_Character_Flow_Cutover.md) | Đối chiếu lại trạng thái adapter và migration trước khi triển khai. |
+| Lịch sử thay đổi theo phiên | [DevLogs](DevLogs/README.md) | Tài liệu lịch sử; các kết quả test có ngày và không thay thế việc chạy lại. |
 
-## Nguồn sự thật hiện hành
+## Thư mục
 
-| Phạm vi | File |
-|---|---|
-| Quy tắc kỹ thuật bắt buộc | `KNIGHT_PROJECT_CORE_RULES.md` |
-| Cấu trúc repository và trách nhiệm module | `Architecture/Repository_Structure.md` |
-| Luồng Unity hiện tại, nhiều thiết bị và Alpha 500 online | `Architecture/Current_Unity_Runtime_And_Alpha_500_Online.md` |
-| Luồng hệ thống và HUD | `Design/System_And_HUD_Flow_v2.md` |
-| Character Flow | `Design/Character_Flow_Architecture_Plan.md` |
-| Tầm nhìn và vòng lặp game | `Design/GameDesign.md` |
-| Định hướng PvP | `Design/PvP_MMORPG_Plan.md` |
-| Authentication/Character Production cutover | `Production/Account_And_Character_Flow_Cutover.md` |
-| Đăng ký tài khoản Production | `Production/Registration_Flow.md` |
-| Quy trình và chỉ mục DevLog | `DevLogs/README.md` |
+- `Architecture/`: cấu trúc source và luồng runtime.
+- `Design/`: thiết kế game, luồng giao diện và hướng dẫn UI.
+- `Production/`: kế hoạch/cổng chuẩn bị cho môi trường Production.
+- `Audits/`: kết quả kiểm tra tại một thời điểm; không tự cập nhật.
+- `DevLogs/`: tổng kết phiên làm việc.
+- `Archive/`: tài liệu lịch sử đã bị tài liệu mới thay thế; không dùng làm yêu
+  cầu hiện hành.
 
-Báo cáo baseline mới nhất:
+## Quy tắc giữ tài liệu gọn
 
-- `Audits/2026-08-04-project-development-checkpoint.md`
-
-Checkpoint này tổng hợp toàn bộ tiến trình từ nền móng repository đến Vertical
-Slice nhiệm vụ tân thủ, đồng thời cung cấp checklist rà soát code định kỳ.
-
-## Khoảng trống tài liệu đã xác nhận
-
-- Đã có kiến trúc runtime cho Unity, authentication, Character Flow và đánh giá
-  Alpha 500 online; vẫn chưa có sơ đồ toàn bộ module backend/gameplay ngoài phạm
-  vi file này.
-- Chưa có `Project Status/Roadmap` hiện hành để giao việc theo module.
-- Các bản Day 11/Phase 1/Roadmap cũ đã được chuyển vào `Archive/` và không được
-  dùng làm acceptance criteria.
-
-Hai khoảng trống đầu tiên cần được xây dựng từ kết quả audit repository trong
-đợt củng cố dự án, không sao chép trạng thái từ tài liệu legacy.
-
-## Quy tắc cập nhật tài liệu
-
-- Một quyết định nghiệp vụ chỉ có một tài liệu nguồn sự thật.
-- Tài liệu lịch sử không được âm thầm sửa thành trạng thái mới.
-- Khi thay đổi luồng, cập nhật đặc tả hiện hành trong cùng task.
-- Khi kết thúc phiên và được chủ dự án yêu cầu, viết một DevLog tổng kết.
-- File không còn đúng phải chuyển `Archive/` hoặc ghi trạng thái deprecated;
-  không để lẫn với tài liệu hiện hành.
+- Mỗi quyết định hoặc luồng chỉ có một tài liệu nguồn hiện hành.
+- Khi audit cũ bị thay thế, đánh dấu lịch sử hoặc chuyển lưu trữ; không để nó
+  cạnh tài liệu hiện hành mà không ghi rõ trạng thái.
+- Không tạo DevLog cho từng lỗi nhỏ. Chỉ tổng kết/cập nhật log khi chủ dự án yêu
+  cầu ghi log hoặc chốt phiên.
+- Không suy ra tính năng đã hoàn tất chỉ từ tài liệu thiết kế hay DevLog; kiểm
+  tra code, cấu hình, migration, test và Unity runtime.

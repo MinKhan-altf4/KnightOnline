@@ -4,6 +4,11 @@ Trạng thái đối chiếu: 2026-08-07
 Phạm vi: cấu trúc source hiện hành của Unity Client, .NET Server, test và tài
 liệu.
 
+> Cây thư mục dưới đây được kiểm tra lần cuối ngày 07-08-2026. Các thay đổi UI
+> Toolkit tháng 10 và chỉnh giao diện Bootstrap tháng 11 chưa được rà soát đầy
+> đủ trong tài liệu này. Xem `Documentation/Trang_Thai_Du_An.md` và đối chiếu
+> repository trước khi dựa vào danh sách file/module.
+
 > Đây là tài liệu kiến trúc hiện hành. Khi thêm, xóa hoặc di chuyển module, phải
 > cập nhật file này trong cùng thay đổi. Vai trò và dependency của module vẫn
 > phải tuân thủ `Documentation/KNIGHT_PROJECT_CORE_RULES.md`.
@@ -16,7 +21,7 @@ KnightOnline/
 ├── Builds/                        # Build local; không commit output
 ├── Documentation/                 # Kiến trúc, thiết kế, audit và DevLog
 ├── KnightClient/                  # Unity Client
-├── KnightServer/                  # .NET 8 game server
+├── KnightServer/                  # .NET 10 game server
 ├── KnightServer.Tests/            # Unit test server
 ├── KnightServer.IntegrationTests/ # PostgreSQL/network integration test
 ├── .gitattributes

@@ -1,4 +1,4 @@
-# KNIGHT PROJECT CORE RULES
+# QUY TẮC CỐT LÕI DỰ ÁN KNIGHTONLINE
 
 > Bộ quy tắc cốt lõi bắt buộc của toàn bộ dự án KnightOnline.
 >
@@ -83,7 +83,7 @@ Mọi request từ client đều không đáng tin cậy. Server phải kiểm t
 - range, cooldown, tài nguyên và thứ tự hành động;
 - rate limit, replay, duplicate và dữ liệu bất thường.
 
-## CORE-05 — Security First
+## CORE-05 — Ưu tiên bảo mật
 
 Tính năng không đủ an toàn không được phát hành Production.
 
@@ -468,7 +468,7 @@ Ngoại lệ phải được ghi trong ADR/DevLog với:
 Prototype phải bị chặn khỏi Production bằng config/build/deployment boundary,
 không chỉ bằng ghi chú.
 
-## CORE-28 — Definition of Done
+## CORE-28 — Điều kiện hoàn tất
 
 Task chỉ hoàn thành khi:
 

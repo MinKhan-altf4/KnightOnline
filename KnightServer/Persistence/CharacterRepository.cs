@@ -19,6 +19,20 @@ public sealed class CharacterRepository(
     IServerClock clock,
     IMapCatalog mapCatalog)
 {
+    private const int SnapshotWriteAttempts = 8;
+    public async Task ClearSessionFencesAfterProcessRestartAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = new KnightDbContext(options);
+        await db.Characters
+            .Where(value => value.CurrentSessionGeneration != null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(value => value.CurrentSessionGeneration,
+                    (Guid?)null)
+                .SetProperty(value => value.Version,
+                    value => value.Version + 1), cancellationToken);
+    }
+
     public async Task EnsureAccountExistsAsync(string accountKey)
     {
         await using var db = new KnightDbContext(options);
@@ -81,6 +95,154 @@ public sealed class CharacterRepository(
                 value.Account.AccountKey == accountKey);
 
         return character == null ? null : ToSummary(character);
+    }
+
+    public async Task<bool> BeginSessionAsync(
+        string accountKey,
+        int characterId,
+        Guid sessionGeneration,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(accountKey) || characterId <= 0 ||
+            sessionGeneration == Guid.Empty)
+            return false;
+
+        await using var db = new KnightDbContext(options);
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            int? version = await db.Characters.AsNoTracking()
+                .Where(value => value.Id == characterId &&
+                    value.Account.AccountKey == accountKey)
+                .Select(value => (int?)value.Version)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (version == null)
+                return false;
+
+            int updated = await db.Characters
+                .Where(value => value.Id == characterId &&
+                    value.Account.AccountKey == accountKey &&
+                    value.Version == version.Value &&
+                    value.CurrentSessionGeneration == null)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.CurrentSessionGeneration,
+                        sessionGeneration)
+                    .SetProperty(value => value.Version,
+                        value => value.Version + 1), cancellationToken);
+            if (updated == 1)
+                return true;
+        }
+
+        return false;
+    }
+
+    public async Task<bool> ReleaseSessionAsync(
+        string accountKey,
+        int characterId,
+        Guid sessionGeneration,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(accountKey) || characterId <= 0 ||
+            sessionGeneration == Guid.Empty)
+            return false;
+
+        await using var db = new KnightDbContext(options);
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            var current = await db.Characters.AsNoTracking()
+                .Where(value => value.Id == characterId &&
+                    value.Account.AccountKey == accountKey &&
+                    value.CurrentSessionGeneration == sessionGeneration)
+                .Select(value => new { value.Version })
+                .SingleOrDefaultAsync(cancellationToken);
+            if (current == null)
+                return false;
+
+            int updated = await db.Characters
+                .Where(value => value.Id == characterId &&
+                    value.Account.AccountKey == accountKey &&
+                    value.CurrentSessionGeneration == sessionGeneration &&
+                    value.Version == current.Version)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.CurrentSessionGeneration,
+                        (Guid?)null)
+                    .SetProperty(value => value.Version,
+                        value => value.Version + 1), cancellationToken);
+            if (updated == 1)
+                return true;
+        }
+
+        return false;
+    }
+
+    public async Task<bool> SaveSessionSnapshotAsync(
+        string accountKey,
+        int characterId,
+        Guid sessionGeneration,
+        string mapDefinitionId,
+        string spawnPointId,
+        float positionX,
+        float positionY,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(accountKey) || characterId <= 0 ||
+            sessionGeneration == Guid.Empty ||
+            string.IsNullOrWhiteSpace(mapDefinitionId) ||
+            string.IsNullOrWhiteSpace(spawnPointId) ||
+            !float.IsFinite(positionX) || !float.IsFinite(positionY))
+            return false;
+
+        await using var db = new KnightDbContext(options);
+        for (int attempt = 0; attempt < SnapshotWriteAttempts; attempt++)
+        {
+            var current = await db.Characters.AsNoTracking()
+                .Where(value => value.Id == characterId &&
+                    value.Account.AccountKey == accountKey &&
+                    value.CurrentSessionGeneration == sessionGeneration)
+                .Select(value => new
+                {
+                    value.Version,
+                    value.CurrentMapDefinitionId,
+                    value.CurrentSpawnPointId,
+                    value.PositionX,
+                    value.PositionY,
+                })
+                .SingleOrDefaultAsync(cancellationToken);
+            if (current == null)
+            {
+                Console.WriteLine(
+                    "[Persistence][Warning] Character snapshot rejected: " +
+                    "the session generation no longer owns this character.");
+                return false;
+            }
+            if (string.Equals(current.CurrentMapDefinitionId,
+                    mapDefinitionId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(current.CurrentSpawnPointId, spawnPointId,
+                    StringComparison.OrdinalIgnoreCase) &&
+                current.PositionX == positionX && current.PositionY == positionY)
+                return true;
+
+            int updated = await db.Characters
+                .Where(value => value.Id == characterId &&
+                    value.Account.AccountKey == accountKey &&
+                    value.CurrentSessionGeneration == sessionGeneration &&
+                    value.Version == current.Version)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.CurrentMapDefinitionId,
+                        mapDefinitionId)
+                    .SetProperty(value => value.CurrentSpawnPointId,
+                        spawnPointId)
+                    .SetProperty(value => value.PositionX, positionX)
+                    .SetProperty(value => value.PositionY, positionY)
+                    .SetProperty(value => value.Version,
+                        value => value.Version + 1), cancellationToken);
+            if (updated == 1)
+                return true;
+        }
+
+        Console.WriteLine(
+            "[Persistence][Warning] Character snapshot was not saved after " +
+            $"{SnapshotWriteAttempts} version conflicts.");
+        return false;
     }
 
     public async Task<bool> IsNameAvailableAsync(string normalizedName)

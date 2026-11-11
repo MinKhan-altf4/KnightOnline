@@ -5,6 +5,7 @@ using KnightOnline.Server.Accounts;
 using KnightOnline.Server.Combat;
 using KnightOnline.Server.Characters;
 using KnightOnline.Server.Configuration;
+using KnightOnline.Server.Hosting;
 using KnightOnline.Server.Monsters;
 using KnightOnline.Server.Networking;
 using KnightOnline.Server.Networking.Handlers;
@@ -15,6 +16,7 @@ using KnightOnline.Server.Time;
 using KnightOnline.Server.Tutorials;
 using KnightOnline.Server.World;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace KnightOnline.Server;
 
@@ -45,6 +47,9 @@ public static class Program
                 databaseOptions);
             return;
         }
+
+        using SingleInstanceGuard instanceGuard =
+            SingleInstanceGuard.Acquire();
         IServerClock clock = new SystemServerClock();
         ICharacterCreationCatalog characterCatalog =
             CreateCharacterCatalog(options.Characters);
@@ -59,6 +64,7 @@ public static class Program
             characterNamePolicy,
             clock,
             mapCatalog);
+        await characterRepository.ClearSessionFencesAfterProcessRestartAsync();
         await characterRepository.EnsureAccountExistsAsync(
             options.Characters.DevelopmentAccountKey);
 
@@ -90,7 +96,7 @@ public static class Program
                 options.Characters.StartingTutorialDefinitionId,
                 StringComparison.OrdinalIgnoreCase));
         var starterTutorialService = new StarterTutorialService(
-            databaseOptions, starterTutorial, experienceCurve, mapCatalog, clock);
+            databaseOptions, starterTutorial, experienceCurve, clock);
         IActiveAccountLeaseStore accountSessions =
             new InMemoryActiveAccountLeaseStore(
                 TimeSpan.FromSeconds(
@@ -98,12 +104,22 @@ public static class Program
                 TimeSpan.FromSeconds(
                     options.Authentication.DisconnectGraceSeconds),
                 options.Capacity.MaximumActiveAccounts);
+        IConfiguration applicationConfiguration = DatabaseConfiguration.Build();
+        string activeReceiptKeyId = ReadAuthenticationReceiptActiveKeyId(
+                applicationConfiguration)
+            ?? throw new InvalidOperationException(
+                "Set Authentication:ActiveReceiptKeyId in User Secrets or " +
+                "KNIGHTONLINE_Authentication__ActiveReceiptKeyId.");
+        Dictionary<string, string> receiptKeys =
+            ReadAuthenticationReceiptKeys(applicationConfiguration);
         var authentication = new AccountAuthenticationService(
             databaseOptions,
-            new AuthTokenProtector(),
+            new AuthTokenProtector(activeReceiptKeyId, receiptKeys),
             new PasswordHasher(),
             TimeSpan.FromDays(
                 options.Authentication.RefreshTokenLifetimeDays),
+            TimeSpan.FromMinutes(
+                options.Authentication.AuthenticationReceiptLifetimeMinutes),
             clock);
         IRegistrationTransactionStore registrationTransactions =
             new InMemoryRegistrationTransactionStore();
@@ -159,6 +175,7 @@ public static class Program
             new LeaveAccountSessionPacketHandler(
                 accountSessions,
                 activePlayers,
+                characterRepository,
                 clock),
             new AccountSessionHeartbeatPacketHandler(
                 accountSessions,
@@ -189,7 +206,7 @@ public static class Program
             new ListPortalsPacketHandler(options.PortalDefinitions,
                 options.MapDefinitions),
             new UsePortalPacketHandler(options.PortalDefinitions,
-                starterTutorialService, mapCatalog, clock),
+                starterTutorialService, characterRepository, mapCatalog, clock),
             new SelectCharacterPacketHandler(
                 characterRepository,
                 activePlayers,
@@ -227,8 +244,23 @@ public static class Program
                 TimeSpan.FromMilliseconds(
                     options.World.TickMilliseconds)),
             "monster-respawn-loop");
+        ObserveBackgroundTask(
+            RunCharacterSnapshotLoopAsync(
+                activePlayers,
+                accountSessions,
+                characterRepository,
+                clock,
+                TimeSpan.FromSeconds(5)),
+            "character-snapshot-loop");
+        ObserveBackgroundTask(
+            RunAuthenticationReceiptCleanupLoopAsync(
+                authentication, TimeSpan.FromMinutes(15)),
+            "authentication-receipt-cleanup-loop");
 
-        var listener = new TcpListener(IPAddress.Any, options.Network.Port);
+        var listener = new TcpListener(
+            IPAddress.Parse(options.Network.BindAddress),
+            options.Network.Port);
+        var runtime = new ServerRuntime(characterRepository);
         listener.Start();
         Console.WriteLine($"[Server] Listening on port {options.Network.Port}.");
         Console.WriteLine(
@@ -260,7 +292,8 @@ public static class Program
                     connections,
                     activePlayers,
                     accountSessions,
-                    clock),
+                    clock,
+                    runtime),
                 "client-connection");
         }
     }
@@ -298,7 +331,8 @@ public static class Program
         ConnectionRegistry connections,
         ActivePlayerRegistry activePlayers,
         IActiveAccountLeaseStore accountSessions,
-        IServerClock clock)
+        IServerClock clock,
+        ServerRuntime runtime)
     {
         try
         {
@@ -306,6 +340,33 @@ public static class Program
         }
         finally
         {
+            try
+            {
+                if (connection.PlayerSession is { } playerSession &&
+                    connection.AccountKey is { } playerAccountKey)
+                {
+                    await runtime.Characters.SaveSessionSnapshotAsync(
+                        playerAccountKey,
+                        playerSession.CharacterId,
+                        connection.AccountSessionGeneration,
+                        playerSession.MapDefinitionId,
+                        playerSession.SpawnPointId,
+                        playerSession.Position.X,
+                        playerSession.Position.Y,
+                        CancellationToken.None);
+                    await runtime.Characters.ReleaseSessionAsync(
+                        playerAccountKey,
+                        playerSession.CharacterId,
+                        connection.AccountSessionGeneration,
+                        CancellationToken.None);
+                }
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(
+                    $"[Persistence][Error] Session snapshot cleanup failed: " +
+                    $"{exception.GetType().Name}: {exception.Message}");
+            }
             if (connection.AccountKey is { } accountKey)
             {
                 await accountSessions.BeginDisconnectGraceAsync(
@@ -318,6 +379,8 @@ public static class Program
             connections.Remove(connection);
         }
     }
+
+    private sealed record ServerRuntime(CharacterRepository Characters);
 
     private static async Task RunMonsterRespawnLoopAsync(
         MonsterService monsterService,
@@ -390,6 +453,106 @@ public static class Program
                     new MonsterRespawnedPacket(ToPacket(snapshot)));
             }
         }
+    }
+
+    private static async Task RunCharacterSnapshotLoopAsync(
+        ActivePlayerRegistry activePlayers,
+        IActiveAccountLeaseStore accountSessions,
+        CharacterRepository characters,
+        IServerClock clock,
+        TimeSpan tickInterval)
+    {
+        using var timer = new PeriodicTimer(tickInterval);
+        while (await timer.WaitForNextTickAsync())
+        {
+            foreach (ClientConnection connection in
+                     activePlayers.GetConnectionsSnapshot())
+            {
+                PlayerSession? session = connection.PlayerSession;
+                string? accountKey = connection.AccountKey;
+                if (session == null || accountKey == null ||
+                    !await accountSessions.IsOwnerAsync(
+                        accountKey,
+                        connection.ConnectionId,
+                        connection.AccountSessionGeneration,
+                        clock.UtcNow))
+                    continue;
+
+                try
+                {
+                    await characters.SaveSessionSnapshotAsync(
+                        accountKey,
+                        session.CharacterId,
+                        connection.AccountSessionGeneration,
+                        session.MapDefinitionId,
+                        session.SpawnPointId,
+                        session.Position.X,
+                        session.Position.Y,
+                        CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine(
+                        "[Persistence][Warning] Character snapshot failed: " +
+                        $"{exception.GetType().Name}: {exception.Message}");
+                }
+            }
+        }
+    }
+
+    private static async Task RunAuthenticationReceiptCleanupLoopAsync(
+        AccountAuthenticationService authentication,
+        TimeSpan interval)
+    {
+        using var timer = new PeriodicTimer(interval);
+        while (await timer.WaitForNextTickAsync())
+        {
+            try
+            {
+                await authentication.DeleteExpiredReceiptsAsync(
+                    CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(
+                    "[Authentication][Warning] Receipt cleanup failed: " +
+                    $"{exception.GetType().Name}: {exception.Message}");
+            }
+        }
+    }
+
+    private static string? ReadAuthenticationReceiptActiveKeyId(
+        IConfiguration configuration) =>
+        Environment.GetEnvironmentVariable(
+            "KNIGHTONLINE_Authentication__ActiveReceiptKeyId") ??
+        configuration["Authentication:ActiveReceiptKeyId"];
+
+    private static Dictionary<string, string> ReadAuthenticationReceiptKeys(
+        IConfiguration configuration)
+    {
+        const string environmentPrefix =
+            "KNIGHTONLINE_Authentication__ReceiptKeys__";
+        Dictionary<string, string> keys = configuration
+            .GetSection("Authentication:ReceiptKeys")
+            .GetChildren()
+            .ToDictionary(value => value.Key,
+                value => value.Value ?? string.Empty,
+                StringComparer.Ordinal);
+
+        foreach (System.Collections.DictionaryEntry entry in
+                 Environment.GetEnvironmentVariables())
+        {
+            if (entry.Key is not string key ||
+                !key.StartsWith(environmentPrefix,
+                    StringComparison.OrdinalIgnoreCase) ||
+                entry.Value is not string value)
+                continue;
+            string keyId = key[environmentPrefix.Length..];
+            if (!string.IsNullOrWhiteSpace(keyId))
+                keys[keyId] = value;
+        }
+
+        return keys;
     }
 
     private static MonsterSnapshotPacket ToPacket(MonsterSnapshot snapshot) =>

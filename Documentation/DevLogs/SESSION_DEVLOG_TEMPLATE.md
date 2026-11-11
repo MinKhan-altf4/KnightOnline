@@ -1,8 +1,8 @@
-# DevLog — Tên phiên làm việc
+# Nhật ký phiên — [Tên phiên]
 
 Ngày: YYYY-MM-DD  
 Người phụ trách:  
-Phân loại: Critical / Authoritative gameplay / Presentation / Tooling
+Phân loại: Nghiêm trọng / Gameplay do server quyết định / Giao diện / Công cụ
 
 ## 1. Mục tiêu và phạm vi
 
@@ -12,36 +12,35 @@ Phân loại: Critical / Authoritative gameplay / Presentation / Tooling
 
 ## 2. Kết quả hoàn thành
 
-- 
+-
 
 ## 3. File và module thay đổi
 
-- 
+-
 
 ## 4. Quyết định kỹ thuật
 
-- Quyết định:
-- Lý do:
-- Tài liệu nguồn sự thật đã cập nhật:
+- Quyết định và lý do:
+- Tài liệu nguồn đã cập nhật:
 
-## 5. Contract và compatibility
+## 5. Contract và tương thích
 
 - Packet/API/event/schema thay đổi:
-- Tương thích client/server cũ:
-- Rollout hoặc feature flag:
+- Tương thích client/server phiên bản cũ:
+- Cách rollout hoặc cờ tính năng:
 
 ## 6. Database, migration và cấu hình
 
 - Migration:
-- Config:
-- Secret:
+- Cấu hình:
+- Secret (không ghi giá trị):
 - Rollback/forward-fix:
 
-## 7. Security và Admin Management Contract
+## 7. Bảo mật và khả năng quản trị
 
 - Validation/authorization:
-- Audit/metric/alert:
-- Admin read model/command:
+- Audit/metric/cảnh báo:
+- Read model/lệnh Admin:
 - Phần còn hoãn:
 
 ## 8. Kiểm tra
@@ -49,22 +48,20 @@ Phân loại: Critical / Authoritative gameplay / Presentation / Tooling
 | Kiểm tra | Kết quả | Ghi chú |
 |---|---|---|
 | Build | Chưa chạy | |
-| Automated tests | Chưa chạy | |
-| Unity manual test | Chưa chạy | |
-| Multi-client/reconnect | Chưa chạy | |
+| Kiểm thử tự động | Chưa chạy | |
+| Kiểm tra thủ công trong Unity | Chưa chạy | |
+| Nhiều client/kết nối lại | Chưa chạy | |
 
-## 9. Rủi ro và technical debt
+## 9. Rủi ro và nợ kỹ thuật
 
-- Rủi ro:
-- Mức ảnh hưởng:
-- Owner:
+- Rủi ro/mức ảnh hưởng:
+- Người phụ trách:
 - Điều kiện xử lý:
 
 ## 10. Bàn giao và bước tiếp theo
 
-- Trạng thái hiện tại:
+- Trạng thái:
 - Việc tiếp theo:
 - File nên đọc trước:
-- Blocker:
+- Điểm chặn:
 - Commit/PR:
-

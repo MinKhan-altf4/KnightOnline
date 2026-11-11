@@ -30,7 +30,6 @@ public sealed class StarterTutorialService(
     DbContextOptions<KnightDbContext> databaseOptions,
     TutorialDefinitionOptions definition,
     IExperienceCurve experienceCurve,
-    IMapCatalog mapCatalog,
     IServerClock clock)
 {
     public async Task<TutorialCommandResult> InteractWithQuestNpcAsync(
@@ -147,22 +146,6 @@ public sealed class StarterTutorialService(
         return await BuildResultAsync(db, character, progress,
             TutorialCommandStatus.Applied, transition.Outcome,
             cancellationToken);
-    }
-
-    public async Task PersistPortalTransitionAsync(int characterId,
-        string mapDefinitionId, string spawnPointId, float x, float y,
-        CancellationToken cancellationToken)
-    {
-        await using var db = new KnightDbContext(databaseOptions);
-        CharacterEntity? character = await db.Characters.SingleOrDefaultAsync(
-            value => value.Id == characterId, cancellationToken);
-        if (character == null) return;
-        character.CurrentMapDefinitionId = mapDefinitionId;
-        character.CurrentSpawnPointId = spawnPointId;
-        character.PositionX = x;
-        character.PositionY = y;
-        character.Version++;
-        await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<bool> IsAtStepAsync(int characterId,
@@ -289,17 +272,6 @@ public sealed class StarterTutorialService(
         entity.State = snapshot.State;
         entity.CurrentStepDefinitionId = snapshot.CurrentStepDefinitionId;
         entity.ObjectiveProgress = snapshot.ObjectiveProgress;
-    }
-    private void ApplyCharacterSpawn(CharacterEntity character, string mapId,
-        string spawnPointId)
-    {
-        if (!mapCatalog.TryResolveSpawn(mapId, spawnPointId,
-                out MapSpawnPoint spawn))
-            throw new InvalidOperationException($"Missing spawn {mapId}/{spawnPointId}.");
-        character.CurrentMapDefinitionId = mapId;
-        character.CurrentSpawnPointId = spawnPointId;
-        character.PositionX = spawn.Position.X;
-        character.PositionY = spawn.Position.Y;
     }
     private TutorialCommandResult Invalid() => new(
         TutorialCommandStatus.InvalidRequest, StarterTutorialOutcome.NoChange,

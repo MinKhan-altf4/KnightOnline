@@ -157,13 +157,15 @@ namespace KnightOnline.Client.Network
                 new CreateGuestRequestPacket(deviceId));
 
         public UniTask SendResumeAccountRequestAsync(
+            Guid requestId,
             string refreshToken,
             string deviceId) =>
             SendPacketAsync(
                 PacketType.ResumeAccountRequest,
-                new ResumeAccountRequestPacket(refreshToken, deviceId));
+                new ResumeAccountRequestPacket(requestId, refreshToken, deviceId));
 
         public UniTask SendLoginRequestAsync(
+            Guid requestId,
             string username,
             string password,
             string deviceId,
@@ -171,6 +173,7 @@ namespace KnightOnline.Client.Network
             SendPacketAsync(
                 PacketType.LoginRequest,
                 new LoginRequestPacket(
+                    requestId,
                     username,
                     password,
                     deviceId,

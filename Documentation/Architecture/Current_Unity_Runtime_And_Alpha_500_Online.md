@@ -1,6 +1,8 @@
-# Luồng Unity hiện tại và mức sẵn sàng Alpha 500 người online
+# Luồng Unity và đánh giá Alpha 500 người online — mốc 02-08-2026
 
-> Trạng thái: tài liệu hiện hành, đối chiếu trực tiếp với code ngày 2026-08-02.
+> Đây là snapshot đối chiếu trực tiếp với code ngày 2026-08-02. Xem
+> `Documentation/Trang_Thai_Du_An.md` để biết mốc dự án mới hơn; kiểm tra source
+> trước khi coi bất kỳ kết luận nào dưới đây là hiện trạng.
 > Phạm vi: Unity Client, kết nối game server, authentication, Character Select,
 > vào game và rủi ro nhiều thiết bị.
 > Không dùng tài liệu này để khẳng định Production-ready hoặc đã chịu tải 500

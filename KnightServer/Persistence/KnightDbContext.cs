@@ -27,6 +27,8 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
         Set<GameplayAuditRecordEntity>();
     public DbSet<DomainOutboxMessageEntity> DomainOutboxMessages =>
         Set<DomainOutboxMessageEntity>();
+    public DbSet<AuthenticationRequestReceiptEntity>
+        AuthenticationRequestReceipts => Set<AuthenticationRequestReceiptEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,6 +65,26 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
             entity.HasIndex(account => account.NormalizedUsername)
                 .IsUnique()
                 .HasFilter("\"normalized_username\" IS NOT NULL");
+        });
+
+        modelBuilder.Entity<AuthenticationRequestReceiptEntity>(entity =>
+        {
+            entity.ToTable("authentication_request_receipts");
+            entity.HasKey(value => value.RequestId);
+            entity.Property(value => value.RequestId).HasColumnName("request_id");
+            entity.Property(value => value.KeyId).HasColumnName("key_id")
+                .HasMaxLength(64).IsRequired();
+            entity.Property(value => value.Operation).HasColumnName("operation")
+                .HasMaxLength(32).IsRequired();
+            entity.Property(value => value.RequestFingerprint)
+                .HasColumnName("request_fingerprint").HasMaxLength(64).IsRequired();
+            entity.Property(value => value.ProtectedResult)
+                .HasColumnName("protected_result").IsRequired();
+            entity.Property(value => value.CreatedAtUtc)
+                .HasColumnName("created_at_utc").IsRequired();
+            entity.Property(value => value.ExpiresAtUtc)
+                .HasColumnName("expires_at_utc").IsRequired();
+            entity.HasIndex(value => value.ExpiresAtUtc);
         });
 
         modelBuilder.Entity<CharacterEntity>(entity =>
@@ -114,6 +136,8 @@ public sealed class KnightDbContext(DbContextOptions<KnightDbContext> options)
                 .HasColumnName("position_x");
             entity.Property(character => character.PositionY)
                 .HasColumnName("position_y");
+            entity.Property(character => character.CurrentSessionGeneration)
+                .HasColumnName("current_session_generation");
             entity.Property(character => character.CreatedAtUtc)
                 .HasColumnName("created_at_utc")
                 .IsRequired();

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Data;
 using KnightOnline.Server.Time;
 using Npgsql;
+using System.Text.Json;
 
 namespace KnightOnline.Server.Accounts;
 
@@ -12,6 +13,7 @@ public sealed class AccountAuthenticationService(
     AuthTokenProtector tokens,
     PasswordHasher passwords,
     TimeSpan refreshTokenLifetime,
+    TimeSpan authenticationReceiptLifetime,
     IServerClock clock)
 {
     private readonly string _dummyPasswordHash =
@@ -50,11 +52,13 @@ public sealed class AccountAuthenticationService(
     }
 
     public async Task<AuthenticationResult> ResumeAsync(
+        Guid requestId,
         string refreshToken,
         string deviceId,
         CancellationToken cancellationToken)
     {
-        if (!AuthenticationInputPolicy.IsValidRefreshToken(refreshToken) ||
+        if (requestId == Guid.Empty ||
+            !AuthenticationInputPolicy.IsValidRefreshToken(refreshToken) ||
             !AuthenticationInputPolicy.IsValidDeviceId(deviceId))
             return AuthenticationResult.Failed(
                 AuthenticationFailure.InvalidRequest);
@@ -67,6 +71,14 @@ public sealed class AccountAuthenticationService(
         await using var transaction = await db.Database.BeginTransactionAsync(
             IsolationLevel.ReadCommitted,
             cancellationToken);
+        await LockRequestAsync(db, requestId, cancellationToken);
+        string fingerprintInput = $"resume|{deviceId}|{refreshToken}";
+        await DeleteExpiredReceiptsAsync(db, now, cancellationToken);
+        AuthenticationResult? replay = await FindReceiptAsync(
+            db, requestId, "resume", fingerprintInput, now,
+            cancellationToken);
+        if (replay != null)
+            return replay;
         RefreshSessionEntity? current = await db.RefreshSessions
             .Include(session => session.Account)
             .SingleOrDefaultAsync(
@@ -133,23 +145,27 @@ public sealed class AccountAuthenticationService(
             current.FamilyId);
         current.ReplacedBySessionId = replacement.Id;
         db.RefreshSessions.Add(replacement);
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        return AuthenticationResult.Success(ToAuthenticated(
+        AuthenticationResult result = AuthenticationResult.Success(ToAuthenticated(
             current.Account,
             replacementToken,
             now));
+        db.AuthenticationRequestReceipts.Add(CreateReceipt(
+            requestId, "resume", fingerprintInput, result, now));
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public async Task<AuthenticationResult> LoginAsync(
+        Guid requestId,
         string username,
         string password,
         string deviceId,
         string? guestRefreshToken,
         CancellationToken cancellationToken)
     {
-        if (!AuthenticationInputPolicy.IsValidLoginUsername(username) ||
+        if (requestId == Guid.Empty ||
+            !AuthenticationInputPolicy.IsValidLoginUsername(username) ||
             !AuthenticationInputPolicy.IsValidLoginPassword(password) ||
             !AuthenticationInputPolicy.IsValidDeviceId(deviceId) ||
             (!string.IsNullOrEmpty(guestRefreshToken) &&
@@ -163,6 +179,20 @@ public sealed class AccountAuthenticationService(
         string deviceHash = tokens.Hash(deviceId);
 
         await using var db = new KnightDbContext(databaseOptions);
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.ReadCommitted,
+            cancellationToken);
+        await LockRequestAsync(db, requestId, cancellationToken);
+        string fingerprintInput =
+            $"login|{NormalizeUsername(username)}|{password}|{deviceId}|" +
+            $"{guestRefreshToken}";
+        await DeleteExpiredReceiptsAsync(db, now, cancellationToken);
+        AuthenticationResult? replay = await FindReceiptAsync(
+            db, requestId, "login", fingerprintInput, now,
+            cancellationToken);
+        if (replay != null)
+            return replay;
+
         AccountEntity? account = await db.Accounts.SingleOrDefaultAsync(
             candidate =>
                 candidate.Kind == AccountKind.Registered &&
@@ -174,9 +204,6 @@ public sealed class AccountAuthenticationService(
         if (account == null || !passwordValid)
             return AuthenticationResult.Failed(
                 AuthenticationFailure.InvalidCredentials);
-
-        await using var transaction =
-            await db.Database.BeginTransactionAsync(cancellationToken);
 
         // A device remembers one account only. Revoke every older token issued
         // to this device before issuing the replacement.
@@ -225,13 +252,15 @@ public sealed class AccountAuthenticationService(
             rawToken,
             deviceId,
             now));
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        return AuthenticationResult.Success(ToAuthenticated(
+        AuthenticationResult result = AuthenticationResult.Success(ToAuthenticated(
             account,
             rawToken,
             now));
+        db.AuthenticationRequestReceipts.Add(CreateReceipt(
+            requestId, "login", fingerprintInput, result, now));
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public async Task<AuthenticationResult> ConvertGuestAsync(
@@ -341,6 +370,78 @@ public sealed class AccountAuthenticationService(
             CreatedAtUtc = now,
             ExpiresAtUtc = now.Add(refreshTokenLifetime),
         };
+
+    private async Task<AuthenticationResult?> FindReceiptAsync(
+        KnightDbContext db,
+        Guid requestId,
+        string operation,
+        string fingerprintInput,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        AuthenticationRequestReceiptEntity? receipt =
+            await db.AuthenticationRequestReceipts
+                .SingleOrDefaultAsync(value => value.RequestId == requestId,
+                    cancellationToken);
+        if (receipt == null)
+            return null;
+        if (receipt.ExpiresAtUtc <= now)
+            return null;
+        string fingerprint = tokens.Fingerprint(
+            receipt.KeyId, fingerprintInput);
+        if (!string.Equals(receipt.Operation, operation,
+                StringComparison.Ordinal) ||
+            !string.Equals(receipt.RequestFingerprint, fingerprint,
+                StringComparison.Ordinal))
+            return AuthenticationResult.Failed(
+                AuthenticationFailure.InvalidRequest);
+
+        return JsonSerializer.Deserialize<AuthenticationResult>(
+            tokens.Unprotect(receipt.KeyId, receipt.ProtectedResult))
+            ?? throw new InvalidDataException(
+                "Stored authentication request receipt is invalid.");
+    }
+
+    private AuthenticationRequestReceiptEntity CreateReceipt(
+        Guid requestId,
+        string operation,
+        string fingerprintInput,
+        AuthenticationResult result,
+        DateTime now) => new()
+    {
+        RequestId = requestId,
+        KeyId = tokens.ActiveKeyId,
+        Operation = operation,
+        RequestFingerprint = tokens.Fingerprint(fingerprintInput),
+        ProtectedResult = tokens.Protect(JsonSerializer.Serialize(result)),
+        CreatedAtUtc = now,
+        ExpiresAtUtc = now.Add(authenticationReceiptLifetime),
+    };
+
+    public async Task DeleteExpiredReceiptsAsync(
+        CancellationToken cancellationToken)
+    {
+        await using var db = new KnightDbContext(databaseOptions);
+        await DeleteExpiredReceiptsAsync(db, clock.UtcNow, cancellationToken);
+    }
+
+    private static Task<int> DeleteExpiredReceiptsAsync(
+        KnightDbContext db,
+        DateTime now,
+        CancellationToken cancellationToken) =>
+        db.AuthenticationRequestReceipts
+            .Where(value => value.ExpiresAtUtc <= now)
+            .ExecuteDeleteAsync(cancellationToken);
+
+    private static Task<int> LockRequestAsync(
+        KnightDbContext db,
+        Guid requestId,
+        CancellationToken cancellationToken)
+    {
+        long lockKey = BitConverter.ToInt64(requestId.ToByteArray());
+        return db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({lockKey})", cancellationToken);
+    }
 
     private static async Task RevokeTokenFamilyAsync(
         KnightDbContext db,

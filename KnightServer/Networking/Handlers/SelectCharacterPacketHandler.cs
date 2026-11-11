@@ -117,6 +117,42 @@ public sealed class SelectCharacterPacketHandler(
             return;
         }
 
+        if (!await characters.BeginSessionAsync(
+                connection.AccountKey,
+                character.CharacterId,
+                connection.AccountSessionGeneration,
+                cancellationToken))
+        {
+            activePlayers.Release(character.CharacterId, connection);
+            await SendFailure(
+                connection,
+                SelectCharacterResult.Unauthorized,
+                "The character session could not be fenced for persistence.",
+                cancellationToken);
+            return;
+        }
+
+        if (!await accountSessions.IsOwnerAsync(
+                connection.AccountKey,
+                connection.ConnectionId,
+                connection.AccountSessionGeneration,
+                clock.UtcNow,
+                cancellationToken))
+        {
+            await characters.ReleaseSessionAsync(
+                connection.AccountKey,
+                character.CharacterId,
+                connection.AccountSessionGeneration,
+                cancellationToken);
+            activePlayers.Release(character.CharacterId, connection);
+            await SendFailure(
+                connection,
+                SelectCharacterResult.Unauthorized,
+                "The account lease expired while selecting the character.",
+                cancellationToken);
+            return;
+        }
+
         DateTime utcNow = clock.UtcNow;
         var spawnPosition = new Vector2(
             character.PositionX,
@@ -160,6 +196,11 @@ public sealed class SelectCharacterPacketHandler(
 
         if (!connection.TryAttachPlayerSession(session))
         {
+            await characters.ReleaseSessionAsync(
+                connection.AccountKey,
+                character.CharacterId,
+                connection.AccountSessionGeneration,
+                cancellationToken);
             activePlayers.Release(character.CharacterId, connection);
             await SendFailure(
                 connection,

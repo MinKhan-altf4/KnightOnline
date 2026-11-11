@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 
 namespace KnightOnline.Server.Configuration;
@@ -54,6 +55,14 @@ public sealed class ServerOptions
                 "implemented before Staging or Production can start.");
         }
 
+        if (!IPAddress.TryParse(Network.BindAddress, out IPAddress? bindAddress))
+            throw new InvalidDataException(
+                "Network.BindAddress must be an IP address.");
+        if (!IPAddress.IsLoopback(bindAddress))
+            throw new InvalidDataException(
+                "The game server may bind only to loopback until TLS, " +
+                "production credential storage, and public-network hardening " +
+                "are implemented.");
         if (Network.Port is <= 0 or > 65535)
             throw new InvalidDataException("Network.Port must be between 1 and 65535.");
         if (Network.MaximumPacketBytes <= 0)
@@ -69,10 +78,16 @@ public sealed class ServerOptions
         if (Authentication.RefreshTokenLifetimeDays <= 0)
             throw new InvalidDataException(
                 "Authentication.RefreshTokenLifetimeDays must be positive.");
+        if (Authentication.AuthenticationReceiptLifetimeMinutes is < 1 or > 240)
+            throw new InvalidDataException(
+                "Authentication receipt lifetime must be between 1 and 240 minutes.");
         if (Authentication.MaximumAttemptsPerWindow <= 0 ||
             Authentication.AttemptWindowSeconds <= 0)
             throw new InvalidDataException(
                 "Authentication rate-limit values must be positive.");
+        if (!Authentication.IpRateLimitEnabled && !isDevelopment)
+            throw new InvalidDataException(
+                "IP rate limiting may be disabled only in Development.");
         if (Authentication.HeartbeatIntervalSeconds <= 0 ||
             Authentication.SessionLeaseTtlSeconds <=
                 Authentication.HeartbeatIntervalSeconds ||
@@ -422,6 +437,7 @@ public sealed class ServerOptions
 
 public sealed class NetworkOptions
 {
+    public string BindAddress { get; set; } = "127.0.0.1";
     public int Port { get; set; }
     public int MaximumPacketBytes { get; set; }
 }
@@ -435,7 +451,9 @@ public sealed class CapacityOptions
 public sealed class AuthenticationOptions
 {
     public bool DevelopmentBypassEnabled { get; set; }
+    public bool IpRateLimitEnabled { get; set; } = true;
     public int RefreshTokenLifetimeDays { get; set; } = 30;
+    public int AuthenticationReceiptLifetimeMinutes { get; set; } = 60;
     public int MaximumAttemptsPerWindow { get; set; } = 10;
     public int AttemptWindowSeconds { get; set; } = 60;
     public int HeartbeatIntervalSeconds { get; set; } = 5;

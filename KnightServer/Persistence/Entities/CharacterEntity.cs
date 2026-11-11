@@ -16,6 +16,7 @@ public sealed class CharacterEntity
     public required string CurrentSpawnPointId { get; set; }
     public float PositionX { get; set; }
     public float PositionY { get; set; }
+    public Guid? CurrentSessionGeneration { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public int Version { get; set; } = 1;
     public AccountEntity Account { get; set; } = null!;

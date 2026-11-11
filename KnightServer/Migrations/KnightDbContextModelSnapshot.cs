@@ -17,7 +17,7 @@ namespace KnightOnline.Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -74,6 +74,51 @@ namespace KnightOnline.Server.Migrations
                         .HasFilter("\"normalized_username\" IS NOT NULL");
 
                     b.ToTable("accounts", (string)null);
+                });
+
+            modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.AuthenticationRequestReceiptEntity", b =>
+                {
+                    b.Property<Guid>("RequestId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key_id");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("ProtectedResult")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_result");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.HasKey("RequestId");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.ToTable("authentication_request_receipts", (string)null);
                 });
 
             modelBuilder.Entity("KnightOnline.Server.Persistence.Entities.CharacterAppearanceEntity", b =>
@@ -181,6 +226,10 @@ namespace KnightOnline.Server.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("current_map_definition_id");
+
+                    b.Property<Guid?>("CurrentSessionGeneration")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_session_generation");
 
                     b.Property<string>("CurrentSpawnPointId")
                         .IsRequired()

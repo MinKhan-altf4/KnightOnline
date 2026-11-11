@@ -39,6 +39,7 @@ namespace KnightOnline.Client.Gameplay.Services
         private CancellationTokenSource _heartbeatCancellation;
         private CancellationTokenSource _sessionRetryCancellation;
         private Guid _sessionGeneration;
+        private Guid _pendingAuthenticationRequestId;
 
         public AuthenticationFlowService(
             NetworkClient network,
@@ -221,6 +222,8 @@ namespace KnightOnline.Client.Gameplay.Services
         public void StageLogin(string username, string password)
         {
             CancelSessionRetry();
+            _pendingAuthenticationRequestId = Guid.Empty;
+            ClearPendingResumeRequestId();
             _pendingUsername = username?.Trim();
             _pendingPassword = password;
             PublishEntry("Nhấn Chơi tiếp để xác thực tài khoản.");
@@ -254,11 +257,13 @@ namespace KnightOnline.Client.Gameplay.Services
                     return;
 
                 _isManualLogin = true;
+                EnsureAuthenticationRequestId();
                 string guestToken =
                     _session != null && _session.IsGuest
                         ? _session.RefreshToken
                         : null;
                 _network.SendLoginRequestAsync(
+                        _pendingAuthenticationRequestId,
                         _pendingUsername,
                         _pendingPassword,
                         deviceId,
@@ -276,7 +281,13 @@ namespace KnightOnline.Client.Gameplay.Services
                 return;
             }
 
+            if (!EnsureResumeRequestIdIsPersisted())
+            {
+                HideLoading();
+                return;
+            }
             _network.SendResumeAccountRequestAsync(
+                    _pendingAuthenticationRequestId,
                     _session.RefreshToken,
                     _session.DeviceId)
                 .Forget();
@@ -321,6 +332,9 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void OnAuthenticationResult(AuthenticationResultEvent result)
         {
+            // The server response resolves this logical attempt. Transport
+            // retries before a response retain the same id across reconnects.
+            _pendingAuthenticationRequestId = Guid.Empty;
             switch (result.Result)
             {
                 case AuthenticationOutcome.Success:
@@ -404,6 +418,59 @@ namespace KnightOnline.Client.Gameplay.Services
             _isManualLogin = false;
             HideLoading();
             PublishEntry(result.Message);
+        }
+
+        private void EnsureAuthenticationRequestId()
+        {
+            if (_pendingAuthenticationRequestId == Guid.Empty)
+                _pendingAuthenticationRequestId = Guid.NewGuid();
+        }
+
+        private bool EnsureResumeRequestIdIsPersisted()
+        {
+            if (_session == null)
+                return false;
+
+            if (_pendingAuthenticationRequestId == Guid.Empty &&
+                !Guid.TryParse(_session.PendingResumeRequestId,
+                    out _pendingAuthenticationRequestId))
+            {
+                _pendingAuthenticationRequestId = Guid.NewGuid();
+            }
+
+            string requestId = _pendingAuthenticationRequestId.ToString("N");
+            if (string.Equals(_session.PendingResumeRequestId, requestId,
+                    StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            _session.PendingResumeRequestId = requestId;
+            try
+            {
+                _store.Save(_session);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                ReportCredentialStoreUnavailable(exception);
+                return false;
+            }
+        }
+
+        private void ClearPendingResumeRequestId()
+        {
+            if (_session == null ||
+                string.IsNullOrWhiteSpace(_session.PendingResumeRequestId))
+                return;
+
+            _session.PendingResumeRequestId = string.Empty;
+            try
+            {
+                _store.Save(_session);
+            }
+            catch (Exception exception)
+            {
+                ReportCredentialStoreUnavailable(exception);
+            }
         }
 
         private void CompleteSuccess(AuthenticationResultEvent result)

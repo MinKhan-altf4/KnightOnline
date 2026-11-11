@@ -4,6 +4,7 @@ using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Players;
 using KnightOnline.Server.Progression;
+using KnightOnline.Server.Persistence;
 using KnightOnline.Server.Time;
 using KnightOnline.Server.Tutorials;
 using KnightOnline.Server.World;
@@ -166,6 +167,7 @@ public sealed class ListPortalsPacketHandler(
 public sealed class UsePortalPacketHandler(
     IReadOnlyList<PortalDefinitionOptions> portals,
     StarterTutorialService tutorialService,
+    CharacterRepository characters,
     IMapCatalog maps,
     IServerClock clock) : IPacketHandler
 {
@@ -210,8 +212,14 @@ public sealed class UsePortalPacketHandler(
         await InteractNpcPacketHandler.SendTransitionAsync(connection, session,
             maps, portal.DestinationMapDefinitionId,
             portal.DestinationSpawnPointId, clock.UtcNow, cancellationToken);
-        await tutorialService.PersistPortalTransitionAsync(session.CharacterId,
-            portal.DestinationMapDefinitionId, portal.DestinationSpawnPointId,
-            session.Position.X, session.Position.Y, cancellationToken);
+        if (!await characters.SaveSessionSnapshotAsync(connection.AccountKey!,
+                session.CharacterId, connection.AccountSessionGeneration,
+                session.MapDefinitionId, session.SpawnPointId,
+                session.Position.X, session.Position.Y, cancellationToken))
+        {
+            await connection.ForceDisconnectAsync(
+                ForcedDisconnectReason.SessionLeaseExpired,
+                "Character session generation changed during portal save.");
+        }
     }
 }

@@ -27,13 +27,16 @@ namespace KnightOnline.Client.Shared.Packets
 
     public sealed class ResumeAccountRequestPacket
     {
+        public Guid RequestId { get; }
         public string RefreshToken { get; }
         public string DeviceId { get; }
 
         public ResumeAccountRequestPacket(
+            Guid requestId,
             string refreshToken,
             string deviceId)
         {
+            RequestId = requestId;
             RefreshToken = refreshToken;
             DeviceId = deviceId;
         }
@@ -41,17 +44,20 @@ namespace KnightOnline.Client.Shared.Packets
 
     public sealed class LoginRequestPacket
     {
+        public Guid RequestId { get; }
         public string Username { get; }
         public string Password { get; }
         public string DeviceId { get; }
         public string? GuestRefreshToken { get; }
 
         public LoginRequestPacket(
+            Guid requestId,
             string username,
             string password,
             string deviceId,
             string? guestRefreshToken)
         {
+            RequestId = requestId;
             Username = username;
             Password = password;
             DeviceId = deviceId;
