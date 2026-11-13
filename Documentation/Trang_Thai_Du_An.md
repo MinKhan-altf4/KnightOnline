@@ -1,8 +1,8 @@
 # Tình trạng dự án KnightOnline
 
-**Đối chiếu tài liệu:** 11-11-2026  
-**Cơ sở:** lịch sử Git đến commit `a232050` (10-11-2026) và tài liệu trong repository.  
-**Giới hạn:** đây là bản hướng dẫn bắt đầu phiên làm việc, không phải xác nhận đã chạy Unity hay kiểm thử toàn bộ source.
+**Đối chiếu tài liệu:** 13-11-2026  
+**Cơ sở:** commit `c860744` và [đánh giá luồng 13-11-2026](Audits/2026-11-13-danh-gia-luong-va-huong-di.md).  
+**Giới hạn:** đây là bản hướng dẫn bắt đầu phiên làm việc. Server đã build và chạy unit test (83 đạt, 3 bỏ qua vì cần PostgreSQL); Unity chưa được chạy lại.
 
 ## Dự án đang ở đâu?
 
@@ -20,6 +20,17 @@ Các thay đổi gần đây nhất trong Git tập trung vào giao diện:
 
 Đây là dấu mốc từ lịch sử commit; cần kiểm tra Play Mode để xác nhận giao diện
 hiện tại, đặc biệt sau khi Unity biên dịch lại.
+
+## Sai sót đang mở cần ưu tiên
+
+Chi tiết và vị trí code xem [bản đánh giá](Audits/2026-11-13-danh-gia-luong-va-huong-di.md) mục 3.2.
+
+- `KnightServer.IntegrationTests` không biên dịch (dùng API cũ); CI chưa build project này.
+- Vòng accept của server có thể sập khi từ chối kết nối lúc đầy; chưa có timeout
+  cho kết nối chưa xác thực; bộ giới hạn tần suất không dọn key.
+- Kiểm tra tầm NPC/cổng và vị trí lưu snapshot dùng vị trí chưa được cập nhật.
+- Hòa giải vị trí phía client gây giật; chưa đồng bộ người chơi khác.
+- Mất kết nối khi đang trong game có thể không hiện thông báo (cần xác nhận).
 
 ## Việc nên làm đầu tiên trong phiên tiếp theo
 

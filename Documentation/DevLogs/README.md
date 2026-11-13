@@ -24,10 +24,9 @@ không phải mô tả tự cập nhật về trạng thái code hiện tại. X
 | 02-08-2026 | [Character và EnterWorld](2026-08-02-character-world-foundation.md) | Test server đạt; một số kiểm tra Unity/movement còn cần làm thủ công. |
 | 02-08-2026 | [Baseline và session lease](2026-08-02-baseline-and-session-lease.md) | Test server đạt; Unity A/B và các yêu cầu Production còn mở. |
 
-Nhật ký cũ đã gom tóm tắt tại [giai đoạn củng cố ban đầu](../Archive/Tom_Tat_Cung_Co_Ban_Dau.md)
-và [tài liệu kiến trúc cũ](../Archive/Tom_Tat_Tai_Lieu_Cu.md). Không dùng tài liệu Archive làm
-acceptance criteria nếu tài liệu hiện hành hoặc quyết định mới hơn có nội dung
-khác.
+Nhật ký và tài liệu trước tháng 08-2026 đã gom tại [tóm tắt lịch sử](../Archive/Tom_Tat_Lich_Su.md).
+Không dùng tài liệu Archive làm tiêu chí nghiệm thu nếu tài liệu hiện hành hoặc
+quyết định mới hơn có nội dung khác.
 
 ## Tài liệu ưu tiên theo phạm vi
 
@@ -39,7 +38,8 @@ khác.
 | Luồng runtime và giới hạn Alpha | `Documentation/Architecture/Current_Unity_Runtime_And_Alpha_500_Online.md` |
 | Hợp đồng lease/phiên và cổng mạng | `Documentation/Architecture/Session_Lease_Contract.md` |
 | Luồng game/HUD | `Documentation/Design/System_And_HUD_Flow_v2.md` |
-| Character Flow | `Documentation/Design/Character_Flow_Architecture_Plan.md` |
+| Luồng nhân vật | `Documentation/Design/Character_Flow_Architecture_Plan.md` |
+| Sai sót đã biết và hướng đi | `Documentation/Audits/2026-11-13-danh-gia-luong-va-huong-di.md` |
 
 ## Mẫu giao việc
 

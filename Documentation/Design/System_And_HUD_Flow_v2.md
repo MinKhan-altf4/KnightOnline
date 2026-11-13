@@ -26,13 +26,12 @@ Tài liệu này tổng hợp các luồng:
 
 Từ tài liệu này trở đi, mọi thuật ngữ liên quan đến điểm lưu an toàn, bao gồm:
 
-- map spawn safe;
-- Spawn Save;
-- spawn save;
+- điểm xuất hiện an toàn (map spawn safe);
+- điểm lưu (Spawn Save, spawn save);
 
 đều được quy định thống nhất tên gọi là:
 
-> **safe zone**
+> **safe zone** (vùng an toàn)
 
 ---
 
@@ -560,7 +559,7 @@ Người chơi đang Ingame và xảy ra một trong các trường hợp:
 - Chọn Đăng xuất.
 - Đóng ứng dụng.
 - Mất mạng.
-- Force Close.
+- Buộc đóng ứng dụng (Force Close).
 
 ## 2. Đăng xuất chủ động
 
@@ -615,7 +614,7 @@ Server lưu:
 
 Đăng xuất không hủy các thông số này.
 
-## 8. Timestamp
+## 8. Mốc thời gian (timestamp)
 
 Server lưu mốc thời gian đăng xuất để Luồng 4 sử dụng khi người chơi đăng nhập lại.
 
@@ -1114,7 +1113,7 @@ Không đưa các mục sau vào thanh này vì đã nằm trong Menu nhân vậ
 
 ---
 
-# XIV. POP-UP AUTO
+# XIV. POP-UP TỰ ĐỘNG (AUTO)
 
 ## 1. Cách mở
 
@@ -1168,7 +1167,7 @@ Banner không được:
 
 - Khóa thao tác.
 - Che Khung Trạng thái Nhân vật.
-- Che Minimap.
+- Che bản đồ nhỏ (Minimap).
 - Che khu vực kỹ năng quan trọng.
 
 ## 3. Khi mở Thanh Chức năng Thu gọn
@@ -1349,7 +1348,7 @@ Thì:
 - Phân loại nếu có:
   - Quái thường.
   - Quái tinh anh.
-  - Mini Boss.
+  - Trùm nhỏ (Mini Boss).
   - Boss.
   - Quái nhiệm vụ.
 
@@ -1366,7 +1365,7 @@ Thì:
 
 ---
 
-# XXI. TARGET NPC
+# XXI. CHỌN MỤC TIÊU NPC
 
 ## 1. Thông tin hiển thị
 
@@ -1436,7 +1435,7 @@ ContextActionSlot
 ## 3. Chuyển thành nút tương tác khi
 
 - Target người chơi thân thiện hoặc trung lập.
-- Target NPC.
+- Chọn mục tiêu NPC.
 - Target vật thể tương tác.
 
 ## 4. Giữ nguyên skill/combat khi
@@ -1582,7 +1581,7 @@ HUD không tự quyết định:
 - Vật phẩm.
 - Trang bị.
 - Cooldown.
-- Buff/Debuff.
+- Hiệu ứng tăng/giảm (Buff/Debuff).
 - Trạng thái đã đọc của thư.
 - Kết quả Auto.
 - HP mục tiêu.

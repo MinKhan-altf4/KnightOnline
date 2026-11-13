@@ -50,10 +50,10 @@ thiết kế trước khi tiếp tục.
 Module không được truy cập chi tiết triển khai hoặc database của module khác.
 Giao tiếp qua:
 
-- command/query;
+- command/query (lệnh/truy vấn);
 - interface;
-- API/packet contract;
-- domain event;
+- contract API/packet;
+- domain event (sự kiện nghiệp vụ);
 - message;
 - read model được công bố.
 
@@ -108,7 +108,7 @@ Không chỉ dựa vào sự kiện đóng ứng dụng. Session online phải d
 - heartbeat;
 - server-side lease có TTL;
 - grace period được cấu hình;
-- session generation/connection ID;
+- session generation và connection ID;
 - cleanup chỉ được xóa đúng generation mà nó sở hữu.
 
 Close app/tab, crash, mất mạng và suspend phải dẫn tới `inactive` sau thời hạn
@@ -139,7 +139,7 @@ Không gọi email, payment, Discord hoặc dịch vụ ngoài khi database tran
 đang mở. Sử dụng:
 
 - transactional outbox cho message/event;
-- idempotent consumer;
+- consumer idempotent (xử lý lặp không gây tác dụng phụ);
 - saga/compensation cho transaction phân tán;
 - retry có giới hạn và dead-letter queue.
 
@@ -152,12 +152,12 @@ vật, thay đổi vật phẩm/tiền tệ, hoàn thành quest, trade và admin
 
 Event contract phải có:
 
-- EventId, occurred-at UTC;
+- EventId, thời điểm xảy ra (UTC);
 - version;
 - correlation ID và causation ID;
-- aggregate/entity identity;
+- định danh aggregate/entity;
 - ordering rule nếu cần;
-- schema compatibility policy.
+- chính sách tương thích schema.
 
 Event cần giao hàng tin cậy phải đi qua Outbox. Consumer phải idempotent.
 
@@ -179,7 +179,7 @@ cơ chế phát hiện sửa đổi. Không cho Admin API sửa hoặc xóa audi
 
 PII phải được phân loại, che/redact và lưu đúng thời hạn pháp lý/vận hành.
 
-## CORE-11 — Admin Web qua Admin API
+## CORE-11 — Web quản trị chỉ đi qua Admin API
 
 Admin Web không truy cập trực tiếp game database. Thao tác quản trị phải qua
 Admin API và application/domain service tương ứng.
@@ -210,7 +210,7 @@ Admin UI/API nào được hoãn.
 
 Các thao tác nguy hiểm hoặc hàng loạt phải hỗ trợ khi phù hợp:
 
-- dry-run/preview;
+- chạy thử (dry-run)/xem trước;
 - xác nhận lại và nhập lý do;
 - giới hạn số lượng/phạm vi;
 - idempotency;
@@ -232,8 +232,8 @@ duyệt, không chứa command path và tuân thủ data governance.
 
 Packet/API/controller chỉ:
 
-1. Parse request.
-2. Authentication/authorization.
+1. Phân tích (parse) request.
+2. Xác thực và phân quyền.
 3. Validate.
 4. Gọi application service.
 5. Ánh xạ response.
@@ -269,11 +269,11 @@ disconnect, reconnect, server restart và nhiều người thao tác cùng tài 
 
 Phải chọn rõ:
 
-- isolation/locking strategy;
-- optimistic concurrency/version;
+- chiến lược isolation/khóa;
+- kiểm soát đồng thời lạc quan (version);
 - timeout và cancellation;
-- retry policy;
-- ownership/lease;
+- chính sách thử lại;
+- quyền sở hữu/lease;
 - invariant được database bảo vệ.
 
 Không dùng lock trong-memory làm bảo đảm duy nhất khi chạy nhiều server.
@@ -292,7 +292,7 @@ Không giả định `Down()` luôn an toàn. Với thay đổi phá hủy dữ 
 - thời gian và người chịu trách nhiệm;
 - migration note trong DevLog.
 
-## CORE-17 — API/packet/event compatibility
+## CORE-17 — Tương thích API/packet/event
 
 Mọi contract phải có versioning và chính sách tương thích.
 
@@ -300,10 +300,10 @@ Phải xem xét:
 
 - client cũ với server mới;
 - server cũ với client mới;
-- rolling deployment;
-- feature flag;
+- triển khai cuốn chiếu (rolling deployment);
+- cờ tính năng (feature flag);
 - thời gian deprecation;
-- unknown field/message handling;
+- cách xử lý field/message không nhận biết;
 - migration dữ liệu liên quan.
 
 Breaking change phải được phê duyệt và có kế hoạch rollout/rollback.
@@ -316,7 +316,7 @@ thích rõ.
 Phân loại:
 
 - cancellation/disconnect dự kiến: xử lý yên lặng hoặc log mức Debug;
-- validation/business rejection: structured Info/Warning;
+- từ chối do validation/nghiệp vụ: log có cấu trúc mức Info/Warning;
 - unexpected exception: Error kèm stack trace và correlation context;
 - security incident: security audit/alert riêng.
 
@@ -328,12 +328,12 @@ identifier phù hợp và tránh PII không cần thiết.
 Module Critical và Authoritative không được release nếu thiếu mức quan sát phù
 hợp:
 
-- structured log;
+- log có cấu trúc;
 - metric;
-- health/readiness check;
+- kiểm tra health/readiness;
 - correlation/trace;
 - alert có owner;
-- dashboard/runbook;
+- dashboard/runbook (sổ tay vận hành);
 - lịch sử lỗi.
 
 Alert phải có ngưỡng và hành động xử lý, không tạo cảnh báo chỉ để “có”.
@@ -396,11 +396,11 @@ Không force-push Production branch. Không commit binary/cache/database/secret.
 
 Test phải tương xứng với phân loại thay đổi:
 
-- domain unit test;
-- database/integration test;
-- authorization/security test;
-- concurrency/idempotency/rollback test;
-- migration compatibility test;
+- unit test cho domain;
+- test database/tích hợp;
+- test phân quyền/bảo mật;
+- test đồng thời/idempotency/rollback;
+- test tương thích migration;
 - Unity play/edit mode test hoặc manual checklist cho UI.
 
 Không chỉ kiểm tra happy path. Nếu test tự động chưa khả thi, DevLog phải ghi

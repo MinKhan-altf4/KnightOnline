@@ -56,7 +56,7 @@ App.unity
   -> Entry chờ người chơi chủ động thao tác
 ```
 
-### 3.1 AppLifetimeScope
+### 3.1 Phạm vi ứng dụng (`AppLifetimeScope`)
 
 Đây là composition root cấp ứng dụng. Nó đăng ký `EventBus`, cấu hình network,
 authentication/gameplay settings, session store Development, các packet response
@@ -255,7 +255,7 @@ chậm có thể kéo dài cả lượt broadcast. Trước Alpha cần:
 - Interest-based broadcast và outbound queue hữu hạn.
 - TLS cho endpoint Alpha public; secret lấy từ environment/secret store.
 - Secure token store trong bản client phát hành.
-- Structured log, metric, health/readiness cho connection/auth/session/game loop.
+- Log có cấu trúc, metric, health/readiness cho kết nối, xác thực, phiên và vòng lặp game.
 - Test concurrency cùng account và test idempotency/retry authentication.
 - Movement/combat được server validate đầy đủ cho phần gameplay đưa vào Alpha.
 
@@ -286,7 +286,7 @@ Các failure test bắt buộc:
 - server restart trong Character Select và InGame;
 - database chậm/mất kết nối;
 - client không đọc packet hoặc gửi packet chậm;
-- duplicate/reordered request;
+- request trùng hoặc sai thứ tự;
 - connection thứ 501 và transport vượt quota.
 
 Ngưỡng latency/error cụ thể phải được chủ dự án chốt sau baseline đầu tiên. Không
@@ -297,16 +297,16 @@ tự tuyên bố “đạt 500” chỉ vì server không crash; phải có acce
 
 ### 8.1 Metric/read model tối thiểu
 
-- transport connections: anonymous/authenticated/select/in-game;
-- active leases, lease conflict, heartbeat expiry, reconnect outcome;
+- số kết nối transport theo trạng thái: ẩn danh/đã xác thực/chọn nhân vật/trong game;
+- số lease đang hoạt động, xung đột lease, heartbeat hết hạn, kết quả kết nối lại;
 - login/resume success/failure/rate-limited và latency;
-- packet receive/send rate, outbound queue depth, slow-consumer disconnect;
-- active player theo map, game-loop duration, broadcast fan-out latency;
+- tốc độ nhận/gửi packet, độ sâu hàng đợi gửi, số lần ngắt client nhận chậm;
+- người chơi đang hoạt động theo map, thời gian một vòng lặp game, độ trễ phát tán broadcast;
 - DB query latency/pool saturation và unhandled exception.
 
 Nhãn metric không chứa raw account key, username, IP đầy đủ hoặc token.
 
-### 8.2 Admin Management Contract cho session/capacity
+### 8.2 Hợp đồng quản trị cho phiên và sức chứa
 
 Admin API về sau được phép cung cấp read model: server, trạng thái capacity,
 connection count, active lease count, trạng thái Select/InGame, lease expiry và
@@ -314,7 +314,7 @@ account identity đã che khi có quyền phù hợp.
 
 Command nguy hiểm như disconnect session hoặc revoke token phải có:
 
-- permission theo action/server/scope;
+- quyền theo hành động/máy chủ/phạm vi;
 - lý do bắt buộc;
 - RequestId/idempotency;
 - actor, thời gian UTC, trước/sau và kết quả trong audit append-only;

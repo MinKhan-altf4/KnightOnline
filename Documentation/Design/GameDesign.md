@@ -35,4 +35,40 @@ nhân vật mạnh hơn.
 Trò chơi miễn phí. Doanh thu có thể đến từ trang phục, thẻ mùa, gói thành viên
 hoặc tiện ích không làm mất cân bằng sức mạnh giữa người chơi.
 
+## Định hướng PvP
+
+> Phần này gộp từ `PvP_MMORPG_Plan.md` cũ. Đây là đề xuất; PvP chưa được triển
+> khai và không thuộc milestone hiện tại.
+
+### Triết lý
+
+- Nhập vai (MMORPG) thưởng cho sự cày cuốc; đấu trường thưởng cho kỹ năng.
+- Tỉ lệ cảm giác mong muốn: 70% nhập vai + 30% hành động.
+- Trang bị tạo lợi thế và mở ra chiến thuật; kỹ năng quyết định chiến thắng.
+- Tránh kiểu PvP "80% đồ + 20% may mắn"; giảm yếu tố ngẫu nhiên.
+
+### Lộ trình
+
+1. Đấu trường 1v1: nền tảng chiến đấu, hạng, điểm ELO, bảng xếp hạng; lướt, né,
+   combo ngắn và đọc đối thủ.
+2. Đấu trường 3v3: dành cho nhóm bạn, dùng chung hạng/ELO với 1v1 nhưng khác cơ
+   chế chiến đấu và ghép trận; hạn chế tài khoản phụ (smurf).
+3. Đấu trường bang hội 5v5: bang hội tuyển thành viên.
+4. Giải đấu (tournament).
+
+### Ghép trận
+
+- Chia khung cấp độ: 65–74, 75–84, 85–94…
+- Ưu tiên ELO gần nhau; với đội, so ELO trung bình và điểm trang bị (Gear
+  Score) trung bình.
+- Kiểm tra chênh lệch điểm trang bị trước khi ghép.
+
+### Hành trình người chơi
+
+```text
+PvE → có trang bị → 1v1 → leo hạng → 3v3 → được bang hội tuyển → 5v5 → giải đấu
+```
+
+---
+
 Đây là định hướng thiết kế, không phải danh sách hệ thống đã được triển khai.

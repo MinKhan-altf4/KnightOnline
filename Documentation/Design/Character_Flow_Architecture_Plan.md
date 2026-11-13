@@ -1,11 +1,11 @@
-# CHARACTER FLOW — KẾ HOẠCH KIẾN TRÚC VÀ TRIỂN KHAI
+# LUỒNG NHÂN VẬT — KẾ HOẠCH KIẾN TRÚC VÀ TRIỂN KHAI
 
 Trạng thái: **Tài liệu thiết kế; không dùng nhãn phase/checklist bên dưới làm tiến độ hiện hành**
-Phạm vi: Entry → Authentication/Registration → Character Select → Character
-Creation → Starter Map → Tutorial → Class Promotion
+Phạm vi: màn vào game → xác thực/đăng ký → chọn nhân vật → tạo nhân vật →
+bản đồ tân thủ → nhiệm vụ hướng dẫn → thăng cấp nghề (Class Promotion)
 
 Tiến độ mới hơn nằm trong `Documentation/Trang_Thai_Du_An.md` và DevLog theo
-module. Một số mục trong phần Foundation increment phản ánh checkpoint cũ; hãy
+module. Một số mục trong phần "Bước nền tảng" phản ánh checkpoint cũ; hãy
 đối chiếu code, cấu hình và test trước khi mở lại làm việc.
 
 ## 1. Mục tiêu
@@ -142,13 +142,13 @@ CharacterSelectPanel
 
 ---
 
-## 5. Class Definition
+## 5. Định nghĩa nghề (Class Definition)
 
 Không dùng enum đóng hoặc hardcode điều kiện theo class trong UI/handler.
 
 Bốn class ban đầu là dữ liệu:
 
-| DefinitionId | DisplayName |
+| Mã định nghĩa (`DefinitionId`) | Tên hiển thị |
 |---|---|
 | `warrior` | Chiến binh |
 | `assassin` | Sát thủ |
@@ -177,7 +177,7 @@ Client yêu cầu Creation Catalog và tự render danh sách. Thêm class mới
 
 ---
 
-## 6. Class Promotion
+## 6. Thăng cấp nghề (Class Promotion)
 
 Promotion là đồ thị definition, không phải chuỗi `if/else`.
 
@@ -260,7 +260,7 @@ female
 Class có thể quy định body type được phép nhưng mặc định bốn starter class hỗ trợ
 cả nam và nữ.
 
-### Appearance selection contract
+### Contract chọn ngoại hình
 
 ```json
 {
@@ -271,7 +271,7 @@ cả nam và nữ.
 
 Create request gửi danh sách selection, không gửi sprite/prefab path.
 
-### Appearance Definition
+### Định nghĩa ngoại hình
 
 ```text
 appearance_definitions
@@ -299,7 +299,7 @@ Tách ba nguồn dữ liệu:
 2. Account sở hữu cosmetic.
 3. Character đang trang bị cosmetic.
 
-### Ownership
+### Quyền sở hữu
 
 ```text
 account_cosmetic_entitlements
@@ -316,7 +316,7 @@ account_cosmetic_entitlements
 Tóc và biểu cảm mua bằng shop mặc định thuộc account. Nếu cần cosmetic chỉ dành
 cho một nhân vật, thêm ownership scope bằng policy thay vì tạo bảng tùy tiện.
 
-### Equipped appearance
+### Ngoại hình đang trang bị
 
 ```text
 character_appearances
@@ -342,7 +342,7 @@ Server luôn kiểm tra compatibility và ownership.
 
 ---
 
-## 9. Character Creation Wizard
+## 9. Trình tạo nhân vật nhiều bước
 
 ```text
 CharacterCreationPanel
@@ -356,10 +356,10 @@ CharacterCreationPanel
 ### Trình tự
 
 1. Chọn slot trống.
-2. Request Creation Catalog.
+2. Yêu cầu catalog tạo nhân vật (Creation Catalog).
 3. Chọn class.
-4. Chọn male/female.
-5. Chọn body/hair/bottom/expression.
+4. Chọn nam/nữ.
+5. Chọn thân hình/tóc/quần/biểu cảm.
 6. Nhập tên.
 7. Xem preview và xác nhận.
 8. Gửi Create Character.
@@ -381,9 +381,9 @@ Client không gửi:
 
 - level;
 - HP/MP;
-- damage/defense;
+- sát thương/phòng thủ;
 - skill;
-- map/spawn;
+- bản đồ/điểm xuất hiện;
 - quyền sở hữu cosmetic.
 
 ---
@@ -413,15 +413,15 @@ Trong một database transaction:
 2. Khóa hoặc bảo vệ slot bằng unique constraint.
 3. Kiểm tra số character tối đa.
 4. Validate catalog version và definitions.
-5. Validate appearance compatibility/ownership.
+5. Kiểm tra ngoại hình tương thích và đã sở hữu.
 6. Tạo character.
-7. Ghi appearance loadout.
+7. Ghi bộ ngoại hình (appearance loadout).
 8. Tạo tutorial progress.
 9. Gán starter map/spawn point.
 10. Ghi domain event/outbox và idempotency result.
 11. Commit.
 
-Sau commit:
+Sau khi commit:
 
 ```text
 CreateCharacterResponse
@@ -437,7 +437,7 @@ Disconnect khi kết quả chưa rõ phải cho phép query bằng RequestId; kh
 
 ## 12. Database dự kiến
 
-### characters
+### Bảng `characters`
 
 ```text
 id
@@ -477,7 +477,7 @@ Migration phải dùng expand/contract và được kiểm thử trên Staging.
 
 ---
 
-## 13. Starter Map
+## 13. Bản đồ tân thủ
 
 Chỉ có một map tân thủ ban đầu:
 
@@ -499,7 +499,7 @@ tọa độ spawn.
 
 ---
 
-## 14. Tutorial State Machine
+## 14. Máy trạng thái nhiệm vụ hướng dẫn
 
 Không dùng level làm nguồn trạng thái duy nhất.
 
@@ -520,7 +520,7 @@ NotStarted
 - Chọn Không: đánh dấu bỏ qua tutorial mở rộng.
 - Mốc level và step nằm trong tutorial definition/config.
 
-### Persistence
+### Lưu trữ
 
 ```text
 character_tutorial_progress
@@ -545,19 +545,19 @@ hợp. Mod client không thể nhảy step hoặc nhận reward hai lần.
 Các contract cần version hóa:
 
 - `ListCharactersRequest/Response` mở rộng slot/class/body/appearance.
-- `GetCharacterCreationCatalogRequest/Response`.
+- `GetCharacterCreationCatalogRequest/Response` — lấy catalog tạo nhân vật.
 - `CheckCharacterNameRequest/Response` — chỉ hỗ trợ UX.
-- `CreateCharacterRequest/Response`.
+- `CreateCharacterRequest/Response` — tạo nhân vật.
 - `SelectCharacterRequest/Response` mở rộng map/spawn.
-- `ChooseTutorialContinuationRequest/Response`.
-- class promotion contracts ở giai đoạn sau.
+- `ChooseTutorialContinuationRequest/Response` — chọn tiếp tục/bỏ qua hướng dẫn.
+- contract thăng cấp nghề ở giai đoạn sau.
 
 Unknown definition/field phải được xử lý an toàn để hỗ trợ client cũ/server mới
 và rolling deployment.
 
 ---
 
-## 16. Server-authoritative và chống mod
+## 16. Server quyết định và chống sửa client
 
 Không thể ngăn tuyệt đối việc sửa client. Mục tiêu là client bị sửa không thể
 thay đổi trạng thái chính thức.
@@ -565,13 +565,13 @@ thay đổi trạng thái chính thức.
 Server phải kiểm tra:
 
 - account sở hữu character;
-- account/server/slot invariant;
+- bất biến tài khoản/máy chủ/ô nhân vật;
 - class/body/appearance có trong catalog;
-- cosmetic ownership;
-- class promotion requirements;
-- name uniqueness;
-- starter map/spawn;
-- tutorial order/reward;
+- quyền sở hữu cosmetic;
+- điều kiện thăng cấp nghề;
+- tên là duy nhất;
+- bản đồ/điểm xuất hiện tân thủ;
+- thứ tự và phần thưởng nhiệm vụ hướng dẫn;
 - RequestId, replay, duplicate và rate limit;
 - movement, combat, cooldown và trạng thái map.
 
@@ -585,45 +585,46 @@ Client mod có thể đổi hình hiển thị trên máy của họ nhưng khô
 - nhận tutorial reward nhiều lần;
 - chọn character của account khác.
 
-### Hardening bản phát hành
+### Gia cố bản phát hành
 
 - IL2CPP;
 - không Development Build;
-- tắt Script Debugging/Profiler attach;
+- tắt Script Debugging và khả năng gắn Profiler;
 - TLS cho Production;
-- protocol/build version enforcement;
-- asset catalog hash/signature khi phù hợp;
+- bắt buộc kiểm tra phiên bản protocol/bản build;
+- hash/chữ ký cho asset catalog khi phù hợp;
 - Android Play Integrity;
 - iOS App Attest/DeviceCheck;
-- structured security telemetry và risk score;
+- telemetry bảo mật có cấu trúc và điểm rủi ro;
 - không ban chỉ dựa vào một tín hiệu client.
 
-Obfuscation/integrity chỉ tăng chi phí tấn công, không thay thế server validation.
+Làm rối mã (obfuscation) và kiểm tra toàn vẹn chỉ tăng chi phí tấn công, không
+thay thế kiểm tra phía server.
 
 ---
 
-## 17. Admin Management Contract
+## 17. Hợp đồng quản trị (Admin Management Contract)
 
 Admin Web chỉ truy cập qua Admin API.
 
-Read model dự kiến:
+Dữ liệu đọc (read model) dự kiến:
 
-- class/promotion catalog và version;
-- appearance catalog;
-- cosmetic entitlement history;
-- character slot/class/body/appearance;
-- tutorial progress;
-- name conflict/rejection metric;
-- suspicious creation/promotion requests.
+- catalog nghề/thăng cấp và phiên bản;
+- catalog ngoại hình;
+- lịch sử cấp quyền sở hữu cosmetic;
+- ô, nghề, thân hình, ngoại hình của nhân vật;
+- tiến độ nhiệm vụ hướng dẫn;
+- số liệu trùng tên/bị từ chối tên;
+- yêu cầu tạo nhân vật/thăng cấp đáng ngờ.
 
 Command dự kiến:
 
-- enable/disable catalog definition;
-- schedule catalog version;
-- grant/revoke cosmetic entitlement;
+- bật/tắt một định nghĩa trong catalog;
+- lên lịch phát hành phiên bản catalog;
+- cấp/thu hồi quyền sở hữu cosmetic;
 - sửa tutorial state trong quy trình hỗ trợ có kiểm soát;
 - khóa character/account;
-- dry-run migration/catalog validation.
+- chạy thử (dry-run) migration và kiểm tra catalog.
 
 Command phải có permission theo action/resource/server, lý do, RequestId, audit
 trước/sau và approval khi nguy hiểm. Admin không chỉnh trực tiếp database.
@@ -669,68 +670,68 @@ event/model trước khi Presentation sử dụng.
 
 ## 19. Thứ tự triển khai
 
-### Phase 1 — Contract và catalog
+### Giai đoạn 1 — Contract và catalog
 
 1. Chuẩn hóa `ServerId`.
 2. Tạo class/body/appearance definition contracts.
 3. Tạo Creation Catalog packet.
 4. Seed bốn starter class và hai body type.
 
-### Phase 2 — Persistence
+### Giai đoạn 2 — Lưu trữ
 
 1. Mở rộng `characters`.
 2. Tạo `character_appearances`.
 3. Tạo slot/name unique constraints.
 4. Migration và integration test.
 
-### Phase 3 — Character Select
+### Giai đoạn 3 — Chọn nhân vật
 
 1. Ba slot cố định.
-2. Empty/create state.
-3. Preview/name/level/class.
-4. Back và timeout.
+2. Trạng thái ô trống/tạo mới.
+3. Xem trước, tên, cấp, nghề.
+4. Quay lại (không tự hết giờ; xem mục 1).
 
-### Phase 4 — Character Creation
+### Giai đoạn 4 — Tạo nhân vật
 
-1. Wizard class.
-2. Body type.
-3. Appearance assembler.
-4. Name/confirmation.
-5. Atomic create + idempotency.
-6. Tự select sau create.
+1. Bước chọn nghề.
+2. Chọn thân hình.
+3. Ghép ngoại hình.
+4. Đặt tên và xác nhận.
+5. Tạo nguyên tử + idempotency.
+6. Tự chọn nhân vật sau khi tạo.
 
-### Phase 5 — Starter Map và Tutorial
+### Giai đoạn 5 — Bản đồ tân thủ và nhiệm vụ hướng dẫn
 
-1. Starter spawn definition.
-2. Tutorial progress persistence.
-3. Core tutorial.
-4. Continue offer.
-5. Extended/skipped/completed.
+1. Định nghĩa điểm xuất hiện tân thủ.
+2. Lưu tiến độ hướng dẫn.
+3. Hướng dẫn cốt lõi.
+4. Đề nghị tiếp tục.
+5. Mở rộng/bỏ qua/hoàn tất.
 
-### Phase 6 — Cosmetic Economy
+### Giai đoạn 6 — Kinh tế cosmetic
 
-1. Entitlement ownership.
-2. Equip/unequip policy.
-3. Shop integration.
-4. Audit/Admin API.
+1. Quyền sở hữu cosmetic.
+2. Chính sách trang bị/tháo.
+3. Tích hợp cửa hàng.
+4. Audit và Admin API.
 
-### Phase 7 — Promotion
+### Giai đoạn 7 — Thăng cấp nghề
 
-1. Promotion catalog.
-2. Requirement engine.
-3. Warrior → Berserker.
-4. History/audit/UI.
+1. Catalog thăng cấp.
+2. Bộ máy kiểm tra điều kiện.
+3. Chiến binh → Cuồng chiến (Berserker).
+4. Lịch sử, audit và giao diện.
 
-### Phase 8 — Hardening
+### Giai đoạn 8 — Gia cố
 
-1. Abuse/race/replay/load tests.
-2. Security telemetry.
-3. Integrity platform adapters.
-4. Staging migration/rollback drill.
+1. Test lạm dụng, race condition, replay và tải.
+2. Telemetry bảo mật.
+3. Adapter kiểm tra toàn vẹn theo nền tảng.
+4. Diễn tập migration/rollback trên Staging.
 
 ---
 
-## 20. Test matrix tối thiểu
+## 20. Ma trận kiểm thử tối thiểu
 
 | Trường hợp | Kết quả |
 |---|---|
@@ -755,7 +756,7 @@ event/model trước khi Presentation sử dụng.
 
 ---
 
-## 21. Release gate
+## 21. Điều kiện phát hành
 
 Không phát hành nếu:
 
@@ -777,11 +778,11 @@ Không phát hành nếu:
 Các nội dung sau là dữ liệu, có thể quyết định sau mà không đổi kiến trúc:
 
 - chỉ số cụ thể của bốn class;
-- skill starter;
+- kỹ năng khởi đầu;
 - promotion của Assassin/Mage/Archer;
 - mốc chính xác thay cho level 150;
 - danh sách hair/body/expression ban đầu;
-- reward tutorial;
+- phần thưởng hướng dẫn;
 - map chuyển tới sau tutorial;
 - giá và loại tiền mua cosmetic;
 - sprite/animation chính thức.
@@ -794,7 +795,7 @@ hardcode trước catalog rồi vá server về sau.
 
 ## 23. Tiến độ triển khai
 
-### Foundation increment
+### Bước nền tảng
 
 - [x] Contract catalog class/body/appearance có version.
 - [x] Bốn starter class và hai body type lấy từ server config.
@@ -813,8 +814,9 @@ hardcode trước catalog rồi vá server về sau.
   phụ thuộc sprite hoặc prefab nhân vật chính thức.
 - [x] Tạo thành công tự gửi request chọn character.
 - [ ] Preview assembler bằng sprite/addressable thật.
-- [ ] Tutorial command/state transition và reward.
-- [ ] Cosmetic entitlement/equip command.
-- [ ] Class promotion requirement engine.
+- [x] Command, chuyển trạng thái và phần thưởng nhiệm vụ hướng dẫn tân thủ
+  (`StarterTutorialService`, xem DevLog 04-08-2026).
+- [ ] Command cấp quyền sở hữu/trang bị cosmetic.
+- [ ] Bộ máy điều kiện thăng cấp nghề.
 - [ ] Admin API/UI; foundation hiện chỉ chuẩn bị domain/read boundary.
-- [ ] Platform integrity adapters và security load/replay tests.
+- [ ] Adapter kiểm tra toàn vẹn theo nền tảng và test bảo mật tải/replay.

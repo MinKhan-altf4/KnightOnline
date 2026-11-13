@@ -501,7 +501,7 @@ internal static class AuthenticationPacketHandlerSupport
         AuthenticatedAccount account) =>
         new(
             AuthenticationResultCode.AccountActive,
-            "TÃ i khoáº£n Ä‘ang Ä‘Æ°á»£c Ä‘Äƒng nháº­p á»Ÿ nÆ¡i khÃ¡c.",
+            "Tài khoản đang được đăng nhập ở nơi khác.",
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,
@@ -512,7 +512,7 @@ internal static class AuthenticationPacketHandlerSupport
         AuthenticatedAccount account) =>
         new(
             AuthenticationResultCode.ServerFull,
-            "MÃ¡y chá»§ hiá»‡n Ä‘Ã£ Ä‘áº§y. Vui lÃ²ng thá»­ láº¡i sau.",
+            "Máy chủ hiện đã đầy. Vui lòng thử lại sau.",
             account.AccountKey,
             account.IsGuest,
             account.RefreshToken,

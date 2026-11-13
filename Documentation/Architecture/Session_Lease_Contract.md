@@ -17,7 +17,7 @@
 - Snapshot được lưu định kỳ 5 giây, sau chuyển cổng và khi TCP kết thúc. Ghi snapshot của session cũ không thể đè session generation mới.
 - Nếu server/process bị dừng đột ngột, có thể mất tối đa một chu kỳ snapshot vị trí; không tuyên bố checkpoint đồng bộ liên tục.
 
-## Authentication retry
+## Gửi lại yêu cầu xác thực (retry)
 
 - Login và Resume bắt buộc có `RequestId`. Với Resume, client lưu ID đang chờ cùng refresh token trong local session store trước khi gửi; nếu ứng dụng bị tắt sau khi server rotate token nhưng trước khi nhận response, lần mở lại gửi lại cùng cặp token/ID. Login thủ công cần người chơi nhập lại thông tin nếu app tắt trước response.
 - Server khóa theo RequestId trong transaction PostgreSQL, lưu fingerprint nội dung và kết quả auth được mã hóa cùng transaction với việc phát hành/rotate refresh token. Retry cùng ID/cùng nội dung nhận lại đúng kết quả; cùng ID nhưng nội dung hoặc operation khác bị từ chối. RequestId khác dùng lại refresh token cũ vẫn kích hoạt reuse detection.

@@ -1,4 +1,4 @@
-# KẾ HOẠCH CHUYỂN AUTHENTICATION, REGISTRATION VÀ CHARACTER FLOW LÊN PRODUCTION
+# KẾ HOẠCH CHUYỂN XÁC THỰC, ĐĂNG KÝ VÀ LUỒNG NHÂN VẬT LÊN PRODUCTION
 
 ## 1. Mục đích
 
@@ -175,32 +175,32 @@ Guest chọn Đăng ký
 
 ### 5.1 Dữ liệu không được truyền qua URL
 
-- Password.
-- Guest refresh token.
-- Access/refresh token.
-- Password hash.
-- Email verification secret.
-- Authorization code tồn tại lâu dài.
+- Mật khẩu.
+- Refresh token của tài khoản khách.
+- Access token/refresh token.
+- Mã băm mật khẩu.
+- Mã bí mật xác minh email.
+- Authorization code có thời hạn dài.
 
 ### 5.2 Transaction đăng ký bắt buộc
 
 Mỗi registration transaction cần:
 
 - transaction ID;
-- RequestId/idempotency key;
-- account/guest identity dạng server-side reference;
-- state/nonce hash;
+- `RequestId`/khóa idempotency;
+- định danh tài khoản/khách dưới dạng tham chiếu phía server;
+- mã băm state/nonce;
 - PKCE challenge;
-- authorization-code hash;
-- created, expiry và consumed UTC;
-- version/concurrency token;
+- mã băm authorization code;
+- thời điểm tạo, hết hạn và đã dùng (UTC);
+- phiên bản/token kiểm soát đồng thời;
 - correlation ID;
 - kết quả cuối cùng.
 
 Code, PKCE, expiry và trạng thái chưa dùng phải được kiểm tra và consume nguyên
 tử. Replay hoặc hai callback đồng thời không được cấp token hai lần.
 
-### 5.3 Guest conversion
+### 5.3 Chuyển tài khoản khách thành tài khoản đăng ký
 
 Trong một database transaction:
 
@@ -208,11 +208,11 @@ Trong một database transaction:
 2. Kiểm tra transaction chưa dùng, chưa hết hạn và đã xác minh email.
 3. Kiểm tra unique username/email chuẩn hóa.
 4. Chuyển `AccountKind` từ Guest sang Registered.
-5. Giữ nguyên ownership của tối đa ba character.
-6. Thu hồi guest refresh-token family.
-7. Tạo refresh-token family mới.
-8. Đánh dấu registration transaction consumed.
-9. Ghi security event/outbox.
+5. Giữ nguyên quyền sở hữu tối đa ba nhân vật.
+6. Thu hồi họ refresh token của tài khoản khách.
+7. Tạo họ refresh token mới.
+8. Đánh dấu registration transaction đã dùng.
+9. Ghi sự kiện bảo mật/outbox.
 10. Commit.
 
 Nếu có lỗi trước commit, toàn bộ thay đổi phải rollback.
@@ -224,16 +224,16 @@ Nếu có lỗi trước commit, toàn bộ thay đổi phải rollback.
 Các contract/luồng sau đã được thiết kế để tiếp tục sử dụng:
 
 - `AccountAuthenticationService`.
-- Refresh-token rotation và reuse detection hiện có.
+- Cơ chế xoay vòng refresh token và phát hiện dùng lại hiện có.
 - `AuthenticationFlowService` và Entry chờ người chơi xác nhận.
 - `IActiveAccountLeaseStore`.
 - `RegistrationFlowService`.
 - `IRegistrationTransactionStore`.
 - `IRegistrationPortal`.
 - `IGuestRegistrationConverter`.
-- Packet Begin Registration và các event/result phía Unity.
-- Server-authoritative character ownership/selection.
-- Giới hạn ba character/account/server từ server configuration/repository.
+- Packet bắt đầu đăng ký (`BeginRegistration`) và các event/kết quả phía Unity.
+- Server quyết định quyền sở hữu và việc chọn nhân vật.
+- Giới hạn ba nhân vật mỗi tài khoản/máy chủ lấy từ cấu hình và repository phía server.
 
 Các lớp này vẫn cần security review và integration test, nhưng không nên viết lại
 toàn bộ khi thay adapter Production.
@@ -242,18 +242,18 @@ toàn bộ khi thay adapter Production.
 
 ## 7. Thành phần local-only phải thay
 
-| Hiện tại/local | Production phải dùng |
+| Hiện tại (local) | Production phải dùng |
 |---|---|
-| Raw TCP game transport | TLS hoặc transport bảo mật đã được review |
+| TCP thô cho game | TLS hoặc transport bảo mật đã được review |
 | `DevelopmentAccountSessionStore` | Keychain/Keystore/Credential Manager |
-| `InMemoryActiveAccountLeaseStore` | Redis/distributed lease có TTL + heartbeat |
-| `InMemoryRegistrationTransactionStore` | PostgreSQL transaction store |
-| `DevelopmentRegistrationPortal` | Web Account Service HTTPS |
-| `CompleteDevelopmentRegistrationRequest` | Verified web callback + one-time authorization code |
-| Development registration code trả về client | Code chỉ phát sau web verification |
-| Console security logging | Structured security audit + metric + alert |
-| Secret/config local | Vault/secret manager/managed identity |
-| Một process server | Multi-instance deployment có readiness và graceful shutdown |
+| `InMemoryActiveAccountLeaseStore` | Redis/lease phân tán có TTL + heartbeat |
+| `InMemoryRegistrationTransactionStore` | Kho registration transaction trên PostgreSQL |
+| `DevelopmentRegistrationPortal` | Dịch vụ tài khoản Web qua HTTPS |
+| `CompleteDevelopmentRegistrationRequest` | Callback Web đã xác minh + authorization code dùng một lần |
+| Mã đăng ký Development trả thẳng về client | Mã chỉ phát sau khi Web xác minh |
+| Log bảo mật ra console | Audit bảo mật có cấu trúc + metric + cảnh báo |
+| Secret/cấu hình local | Vault/secret manager/managed identity |
+| Một tiến trình server | Triển khai nhiều instance có readiness và tắt êm (graceful shutdown) |
 
 `CompleteDevelopmentRegistrationRequest` phải bị vô hiệu trong Staging và
 Production. Production không nhận username/password qua game socket.
@@ -277,13 +277,13 @@ Production. Production không nhận username/password qua game socket.
 
 ### 8.2 Constraint quan trọng
 
-- Unique normalized username.
-- Unique normalized email nếu email là định danh đăng nhập.
-- Unique registration RequestId.
-- Unique authorization-code hash.
-- Foreign key character → account.
-- Concurrency/version token cho transaction quan trọng.
-- Index cho token hash, family ID, expiry và trạng thái.
+- Username đã chuẩn hóa là duy nhất.
+- Email đã chuẩn hóa là duy nhất nếu email là định danh đăng nhập.
+- `RequestId` đăng ký là duy nhất.
+- Mã băm authorization code là duy nhất.
+- Khóa ngoại nhân vật → tài khoản.
+- Token phiên bản/kiểm soát đồng thời cho transaction quan trọng.
+- Index cho mã băm token, ID họ token, hạn dùng và trạng thái.
 
 ### 8.3 Quy trình migration
 
@@ -297,47 +297,49 @@ Production. Production không nhận username/password qua game socket.
 
 ## 9. Password, token và thiết bị
 
-### 9.1 Password
+### 9.1 Mật khẩu
 
-- Website nhận password qua HTTPS.
+- Website nhận mật khẩu qua HTTPS.
 - Hash bằng Argon2id hoặc thuật toán được security review chấp thuận.
-- Salt riêng cho từng password.
+- Salt riêng cho từng mật khẩu.
 - Work factor nằm trong config/version của hash.
-- Có thể dùng pepper trong secret manager.
-- Không log password hoặc password hash.
+- Có thể dùng pepper lưu trong secret manager.
+- Không log mật khẩu hoặc mã băm mật khẩu.
+- Hiện trạng (13-11-2026): server dùng PBKDF2-SHA256 210.000 vòng; cần nâng
+  lên Argon2id hoặc PBKDF2 ≥ 600.000 vòng trước Production.
 - Hỗ trợ rehash khi policy thay đổi.
 
-### 9.2 Refresh token
+### 9.2 Token làm mới (refresh token)
 
 - Token ngẫu nhiên có entropy đủ mạnh.
 - Database chỉ lưu token hash.
-- Rotation sau mỗi lần resume.
-- Reuse token cũ phải thu hồi cả token family và tạo security alert.
+- Xoay vòng token sau mỗi lần tiếp tục phiên (resume).
+- Dùng lại token cũ phải thu hồi cả họ token và tạo cảnh báo bảo mật.
 - Token có expiry tuyệt đối.
-- Đổi/reset password phải thu hồi session theo policy.
+- Đổi/đặt lại mật khẩu phải thu hồi phiên theo chính sách.
 - Thiết bị chỉ lưu account đăng nhập thành công gần nhất.
 
-### 9.3 Device ID
+### 9.3 Mã thiết bị (Device ID)
 
 - Device ID không phải bằng chứng danh tính và không thay thế token.
 - Không tin device ID do client gửi để authorization.
-- Chỉ dùng làm tín hiệu session/risk/rate limit đã được hash hoặc pseudonymize.
+- Chỉ dùng làm tín hiệu phiên/rủi ro/giới hạn tần suất, sau khi đã băm hoặc giả danh hóa.
 - Phải có policy khi hệ điều hành reset hoặc ứng dụng bị gỡ.
 
 ---
 
 ## 10. Rate limit và chống tấn công
 
-Tách bucket/policy cho:
+Tách bucket/chính sách riêng cho:
 
-- Create Guest.
-- Login.
-- Resume token.
-- Begin Registration.
-- Email verification/resend.
-- Complete Registration.
-- Password recovery.
-- Character selection.
+- Tạo tài khoản khách.
+- Đăng nhập.
+- Tiếp tục phiên bằng token.
+- Bắt đầu đăng ký.
+- Xác minh/gửi lại email.
+- Hoàn tất đăng ký.
+- Khôi phục mật khẩu.
+- Chọn nhân vật.
 
 Rate limit nên kết hợp account, IP, device, subnet và risk signal; không khóa chỉ
 dựa vào IP. Thông báo đăng nhập thất bại không được giúp dò username/email tồn
@@ -349,19 +351,19 @@ tại. CAPTCHA chỉ dùng theo risk để tránh gây khó chịu cho người 
 
 Admin Web không truy cập trực tiếp game database. Admin API cần read model cho:
 
-- account status và loại guest/registered;
-- email verification status;
-- session/revocation history;
-- registration transaction status;
-- Active Session/server;
-- security events và rate-limit incidents.
+- trạng thái tài khoản và loại khách/đã đăng ký;
+- trạng thái xác minh email;
+- lịch sử phiên/thu hồi phiên;
+- trạng thái registration transaction;
+- phiên đang hoạt động và máy chủ tương ứng;
+- sự kiện bảo mật và sự cố vượt giới hạn tần suất.
 
 Phải che email, IP, device và identifier nhạy cảm. Không endpoint nào được trả:
 
-- password/password hash;
-- raw refresh token;
-- raw authorization code;
-- email verification secret.
+- mật khẩu/mã băm mật khẩu;
+- refresh token gốc;
+- authorization code gốc;
+- mã bí mật xác minh email.
 
 Command khóa/mở account, thu hồi session hoặc hỗ trợ recovery phải có permission
 chi tiết, lý do, RequestId, audit append-only và MFA/passkey cho admin.
@@ -372,52 +374,53 @@ chi tiết, lý do, RequestId, audit append-only và MFA/passkey cho admin.
 
 ### Giai đoạn A — Persistence và secret
 
-1. Tạo production schema/migrations.
-2. Chuyển password hashing policy phù hợp Production.
+1. Tạo schema/migration cho Production.
+2. Chuyển chính sách băm mật khẩu phù hợp Production.
 3. Triển khai secret manager.
-4. Triển khai secure token storage trên Unity cho từng nền tảng.
+4. Triển khai kho token an toàn trên Unity cho từng nền tảng.
 
-### Giai đoạn B — Web registration
+### Giai đoạn B — Đăng ký qua Web
 
-1. Dựng Web Account Service HTTPS.
-2. Dựng PostgreSQL registration transaction store.
+1. Dựng dịch vụ tài khoản Web qua HTTPS.
+2. Dựng kho registration transaction trên PostgreSQL.
 3. Xác minh email và transactional outbox.
-4. App Links/Universal Links + PKCE/state/one-time code.
-5. Tắt development completion.
+4. App Links/Universal Links + PKCE/state/mã dùng một lần.
+5. Tắt luồng hoàn tất đăng ký Development.
 
-### Giai đoạn C — Distributed session
+### Giai đoạn C — Phiên phân tán
 
-1. Redis Active Account Lease.
-2. TTL, heartbeat, grace period và generation ownership.
+1. Lease tài khoản đang hoạt động trên Redis.
+2. TTL, heartbeat, thời gian ân hạn và quyền sở hữu theo generation.
 3. Test crash, mất mạng, reconnect và nhiều server instance.
 
-### Giai đoạn D — Hardening
+### Giai đoạn D — Gia cố
 
-1. TLS game transport.
-2. Rate limit phân tán.
-3. Structured log, metric, trace, alert.
-4. Audit/security events.
-5. Dependency, secret và vulnerability scan.
-6. Backup/restore drill và incident runbook.
+1. TLS cho transport game.
+2. Giới hạn tần suất phân tán.
+3. Log có cấu trúc, metric, trace và cảnh báo.
+4. Audit và sự kiện bảo mật.
+5. Quét dependency, secret và lỗ hổng.
+6. Diễn tập backup/restore và runbook xử lý sự cố.
 
 ### Giai đoạn E — Staging và Alpha
 
 1. Chạy migration trên Staging.
 2. Test hai thiết bị/một account.
-3. Test token replay/reuse/expiry.
-4. Test đăng ký duplicate/race/rollback.
-5. Test Character Select timeout và lease cleanup.
-6. Load test login burst và reconnect storm.
-7. Security review/pentest.
+3. Test phát lại/dùng lại/hết hạn token.
+4. Test đăng ký trùng, tranh chấp đồng thời và rollback.
+5. Test dọn lease khi người chơi đứng lâu ở màn chọn nhân vật (màn này không
+   tự hết giờ; lease chỉ hết khi Back, mất kết nối hoặc heartbeat ngừng).
+6. Test tải: đăng nhập dồn dập và hàng loạt client kết nối lại.
+7. Review bảo mật/pentest.
 8. Chỉ mở Alpha khi toàn bộ release gate đạt.
 
 ---
 
-## 13. Release gate bắt buộc
+## 13. Điều kiện phát hành bắt buộc
 
 Không mở Production nếu còn một trong các điều sau:
 
-- Development authentication bypass đang bật.
+- Cờ bỏ qua xác thực Development (`developmentBypassEnabled`) đang bật.
 - Development registration completion đang bật.
 - Game authentication truyền qua kết nối không mã hóa.
 - Refresh token hoặc password lưu bằng PlayerPrefs/file rõ.
@@ -467,10 +470,10 @@ Bước nên thực hiện tiếp theo:
 
 1. Dựng `GuestRegistrationPanel` để test local từ Unity.
 2. Viết integration test hoàn chỉnh cho guest conversion bằng PostgreSQL test DB.
-3. Tạo PostgreSQL `registration_transactions` implementation và migration.
-4. Thêm heartbeat/TTL contract cho Redis Active Account Lease.
-5. Thay `DevelopmentAccountSessionStore` bằng secure storage abstraction theo
+3. Viết bản triển khai `registration_transactions` trên PostgreSQL kèm migration.
+4. Thêm contract heartbeat/TTL cho lease tài khoản trên Redis.
+5. Thay `DevelopmentAccountSessionStore` bằng lớp trừu tượng kho an toàn theo
    nền tảng trước khi phát hành build cho người dùng thật.
 
-Tài liệu chi tiết riêng về registration:
+Tài liệu chi tiết riêng về đăng ký:
 `Documentation/Production/Registration_Flow.md`.

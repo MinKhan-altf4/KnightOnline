@@ -34,11 +34,11 @@ Phân loại: Nghiêm trọng / Gameplay do server quyết định / Giao diện
 - Migration:
 - Cấu hình:
 - Secret (không ghi giá trị):
-- Rollback/forward-fix:
+- Rollback/sửa tiến (forward-fix):
 
 ## 7. Bảo mật và khả năng quản trị
 
-- Validation/authorization:
+- Kiểm tra đầu vào/phân quyền:
 - Audit/metric/cảnh báo:
 - Read model/lệnh Admin:
 - Phần còn hoãn:

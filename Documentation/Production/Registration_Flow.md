@@ -45,19 +45,19 @@ Account Service, persistence, email, secret store và callback được thay th�
   rollback toàn bộ.
 - Không gọi email/dịch vụ ngoài trong database transaction; dùng outbox.
 - Client không quyết định account ID, trạng thái xác minh hoặc kết quả conversion.
-- Production không nhận password qua game socket.
-- Login, registration và recovery có rate limit riêng theo account/IP/device.
+- Production không nhận mật khẩu qua socket game.
+- Đăng nhập, đăng ký và khôi phục có giới hạn tần suất riêng theo tài khoản/IP/thiết bị.
 
 ## 4. Ranh giới thay thế
 
-| Boundary | Local test | Production |
+| Ranh giới | Test local | Production |
 |---|---|---|
-| `IRegistrationTransactionStore` | In-memory | PostgreSQL, unique RequestId, atomic consume |
-| `IRegistrationPortal` | URL localhost | Web Account Service HTTPS |
-| Completion | Development-only packet | Verified web callback + one-time code |
-| Token storage Unity | Development store | OS secure credential storage |
-| Delivery | Không gửi email | Email provider qua outbox |
-| Secrets | Development config | Vault/managed identity |
+| `IRegistrationTransactionStore` | Trong bộ nhớ | PostgreSQL, `RequestId` duy nhất, đánh dấu đã dùng nguyên tử |
+| `IRegistrationPortal` | URL localhost | Dịch vụ tài khoản Web qua HTTPS |
+| Hoàn tất đăng ký | Packet chỉ dành cho Development | Callback Web đã xác minh + mã dùng một lần |
+| Lưu token trên Unity | Kho Development (PlayerPrefs) | Kho thông tin xác thực an toàn của hệ điều hành |
+| Gửi thư | Không gửi email | Nhà cung cấp email qua outbox |
+| Secret | Cấu hình Development | Vault/managed identity |
 
 Packet `CompleteDevelopmentRegistrationRequest` chỉ là bộ mô phỏng local và
 **PHẢI bị vô hiệu ngoài Development**. Production dùng callback của Web Account
@@ -65,26 +65,26 @@ Service; Unity không gửi username/password bằng packet này.
 
 ## 5. Dữ liệu Production
 
-Production cần các bảng versioned migration:
+Production cần các bảng được tạo bằng migration có version:
 
 - `registration_transactions`;
 - `email_verifications`;
 - `refresh_sessions`/`refresh_token_families`;
 - `security_events`;
-- transactional `outbox_messages`.
+- `outbox_messages` theo mô hình transactional outbox.
 
-`registration_transactions` tối thiểu có transaction ID, hashed guest identity,
-hashed state/code, PKCE challenge, RequestId unique, created/expiry/consumed UTC,
-version và correlation ID. Raw guest token, raw authorization code và password
-không được lưu.
+`registration_transactions` tối thiểu có ID transaction, định danh khách đã băm,
+state/code đã băm, PKCE challenge, `RequestId` duy nhất, thời điểm tạo/hết hạn/đã
+dùng (UTC), version và correlation ID. Không lưu token khách gốc, authorization
+code gốc hay mật khẩu.
 
-## 6. Admin-ready
+## 6. Sẵn sàng cho quản trị (Admin-ready)
 
 Admin Web chỉ truy cập qua Admin API. Read model được phép hiển thị trạng thái,
 thời gian, kết quả, server và correlation ID; phải che email/device/IP. Admin
-không được xem password hash, raw token hoặc tự đánh dấu verification thành công.
-Command thu hồi session/khóa account phải có permission chi tiết, lý do,
-RequestId và audit append-only.
+không được xem mã băm mật khẩu, token gốc hoặc tự đánh dấu xác minh thành công.
+Command thu hồi phiên/khóa tài khoản phải có quyền chi tiết, lý do, `RequestId`
+và audit chỉ-ghi-thêm (append-only).
 
 ## 7. Điều kiện trước Production
 
