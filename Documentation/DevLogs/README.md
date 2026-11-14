@@ -17,6 +17,7 @@ không phải mô tả tự cập nhật về trạng thái code hiện tại. X
 
 | Ngày | Mốc | Tình trạng ghi trong log |
 |---|---|---|
+| 14-11-2026 | [Ổn định P0 và mô phỏng thế giới P1](2026-11-14-p0-stabilization-and-p1-world-simulation.md) | 134 unit + 18 integration test đạt; bot 500 vào game 0 lỗi; protocol 3; test EditMode và hai client trong Unity còn chờ (có hướng dẫn test trong log). |
 | 11-11-2026 | [Lease một instance và fencing phiên](2026-11-11-single-instance-session-fencing.md) | 86/86 test qua cùng PostgreSQL; migration đã áp dụng, bot restart/reconnect và cổng tester ngoài mạng còn mở. |
 | 04-08-2026 | [Vertical slice nhiệm vụ tân thủ](2026-08-04-starter-tutorial-vertical-slice.md) | Test server tại thời điểm đó đạt; kiểm tra cổng trong Unity còn chờ. |
 | 04-08-2026 | [Sinh lực, HUD và đăng xuất](2026-08-04-phase-1-vitals-hud-and-session-exit.md) | Test server tại thời điểm đó đạt; smoke test Unity cuối phiên còn chờ. |
