@@ -36,6 +36,7 @@ public sealed class WorldSimulation
     private readonly WorldSimulationSettings _settings;
     private readonly AoiGrid _aoi;
     private readonly Dictionary<Guid, VisibilityTracker> _observers = new();
+    private readonly WorldSnapshotJson _snapshotJson = new();
     private long _tick;
 
     public WorldSimulation(
@@ -114,6 +115,7 @@ public sealed class WorldSimulation
     {
         var activeObservers = new HashSet<Guid>();
         int queued = 0;
+        _snapshotJson.BeginTick();
 
         foreach ((ClientConnection observer, WorldPlayerState self) in inWorld)
         {
@@ -129,8 +131,8 @@ public sealed class WorldSimulation
             if (delta.IsEmpty)
                 continue;
 
-            if (observer.TryEnqueue(PacketType.WorldEntitiesSnapshot,
-                    ToPacket(tick, utcNow, delta)))
+            if (observer.TryEnqueuePayloadJson(PacketType.WorldEntitiesSnapshot,
+                    _snapshotJson.Build(tick, utcNow, delta)))
                 queued++;
         }
 
@@ -183,17 +185,4 @@ public sealed class WorldSimulation
             movement.Direction);
     }
 
-    private static WorldEntitiesSnapshotPacket ToPacket(long tick,
-        DateTime utcNow, VisibilityDelta delta) =>
-        new(
-            tick,
-            utcNow,
-            delta.Spawned.Select(value => new RemotePlayerSpawnPacket(
-                value.CharacterId, value.Name, value.Level,
-                value.ClassDefinitionId, value.Position.X, value.Position.Y,
-                value.Direction.X, value.Direction.Y)).ToArray(),
-            delta.Moved.Select(value => new RemotePlayerMovePacket(
-                value.CharacterId, value.Position.X, value.Position.Y,
-                value.Direction.X, value.Direction.Y)).ToArray(),
-            delta.Despawned.ToArray());
 }

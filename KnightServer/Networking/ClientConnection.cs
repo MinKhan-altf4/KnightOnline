@@ -229,12 +229,19 @@ public sealed class ClientConnection : IAsyncDisposable
     /// A full queue means the client cannot keep up: it is closed as a slow
     /// consumer and false is returned.
     /// </summary>
-    public bool TryEnqueue<T>(PacketType packetType, T payload)
-    {
-        if (IsClosed)
-            return false;
+    public bool TryEnqueue<T>(PacketType packetType, T payload) =>
+        !IsClosed && TryEnqueueFrame(packetType, Serialize(packetType, payload));
 
-        if (_sendQueue.Writer.TryWrite(Serialize(packetType, payload)))
+    /// <summary>
+    /// Like <see cref="TryEnqueue{T}"/> for a payload that is already JSON
+    /// (hot paths that build JSON once and reuse fragments).
+    /// </summary>
+    public bool TryEnqueuePayloadJson(PacketType packetType, string payloadJson) =>
+        !IsClosed && TryEnqueueFrame(packetType, Frame(packetType, payloadJson));
+
+    private bool TryEnqueueFrame(PacketType packetType, byte[] frame)
+    {
+        if (_sendQueue.Writer.TryWrite(frame))
             return true;
 
         if (!IsClosed)
@@ -268,9 +275,11 @@ public sealed class ClientConnection : IAsyncDisposable
         await DisposeAsync();
     }
 
-    private static byte[] Serialize<T>(PacketType packetType, T payload)
+    private static byte[] Serialize<T>(PacketType packetType, T payload) =>
+        Frame(packetType, JsonSerializer.Serialize(payload));
+
+    private static byte[] Frame(PacketType packetType, string payloadJson)
     {
-        string payloadJson = JsonSerializer.Serialize(payload);
         string envelopeJson = JsonSerializer.Serialize(
             new PacketEnvelope(packetType, payloadJson));
         byte[] body = Encoding.UTF8.GetBytes(envelopeJson);

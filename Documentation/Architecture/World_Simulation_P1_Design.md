@@ -113,7 +113,32 @@ TCP giữ thứ tự. Client bỏ snapshot có `ServerTick` ≤ tick đã áp d�
 | Bot | 50/200/500 kết nối, đo tick time và kích thước snapshot |
 | Play Mode | hai client Unity cùng map thấy nhau, di chuyển không giật |
 
-## 12. Rollout và rollback
+## 12. Số đo (14-11-2026)
+
+### 12.1 Benchmark tick trong tiến trình
+
+Lệnh: `KNIGHTONLINE_RUN_BENCHMARKS=1 dotnet test KnightServer.Tests -c Release --filter Category=Benchmark`.
+
+Kịch bản xấu nhất: N người trên **một** map 20×12 (cả map nằm trong một vùng AOI), mỗi người đổi hướng ngẫu nhiên mỗi 100 ms, socket loopback thật, client đọc hết dữ liệu, 200 tick. Server và client chạy cùng một máy dev nên thời gian tick bị ảnh hưởng bởi tải I/O loopback.
+
+| N | Tick p50 | Tick có snapshot p95 | Gửi / người | Slow consumer |
+|---|---|---|---|---|
+| 50 | 0,03 ms | 3,1 ms | 64 KiB/s | 0 |
+| 200 | 0,09 ms | 30 ms | 132 KiB/s | 0 |
+| 500 | 2,8 ms | **168 ms** | 136 KiB/s | 0 |
+
+Trước khi ghép fragment JSON (`WorldSnapshotJson`), tick có snapshot p95 ở N=500 là 251 ms.
+
+### 12.2 Kết luận và việc tiếp theo
+
+- Đến khoảng 200 người cùng một vùng AOI, tick nằm trong ngân sách 50 ms. Với 500 người dồn một chỗ thì vượt.
+- Nút thắt thật là **băng thông**: gửi tối đa 100 thực thể × 10 Hz, tức khoảng 130 KiB/s mỗi người. Không khả thi qua Internet. Đề xuất theo thứ tự lợi ích:
+  1. **Dead reckoning:** chỉ gửi `Moved` khi hướng đổi hoặc sai lệch so với ngoại suy vượt ngưỡng, kèm một lần hiệu chỉnh mỗi giây. Client ngoại suy bằng hướng × tốc độ. Đây là thay đổi giao thức (protocol 3).
+  2. Bỏ JSON lồng trong envelope (payload đang bị escape lần hai), chuyển sang định dạng nhị phân. Thay đổi giao thức lớn, cần ADR.
+  3. Giảm `world.maximumVisiblePlayers` hoặc tần suất snapshot theo khoảng cách (gần 10 Hz, xa 2–5 Hz).
+- Bot load test qua luồng đăng nhập thật nằm ở `KnightBot`. Kết quả sẽ bổ sung khi có database thử riêng.
+
+## 13. Rollout và rollback
 
 - Client và server phải nâng cùng lúc lên protocol 2. Client 1 bị từ chối kèm thông báo cập nhật.
 - Rollback: revert commit theo từng bước. Không có migration database trong P1.
