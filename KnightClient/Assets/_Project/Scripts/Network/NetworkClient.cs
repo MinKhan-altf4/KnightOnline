@@ -159,13 +159,19 @@ namespace KnightOnline.Client.Network
                 PacketType.EnterWorldRequest,
                 new EnterWorldRequestPacket(gameplaySessionId));
 
-        public UniTask SendPlayerMoveInputAsync(Vector2 direction) =>
+        /// <summary>
+        /// Sends a movement input and returns its ClientSequence so the caller
+        /// can match the server acknowledgement (own-player prediction).
+        /// </summary>
+        public long SendPlayerMoveInput(Vector2 direction)
+        {
+            long sequence = Interlocked.Increment(ref _movementSequence);
             SendPacketAsync(
                 PacketType.PlayerMoveInput,
-                new PlayerMoveInputPacket(
-                    direction.x,
-                    direction.y,
-                    Interlocked.Increment(ref _movementSequence)));
+                new PlayerMoveInputPacket(direction.x, direction.y, sequence))
+                .Forget();
+            return sequence;
+        }
 
         public UniTask SendCreateGuestRequestAsync(string deviceId) =>
             SendPacketAsync(

@@ -21,13 +21,15 @@ namespace KnightOnline.Client.Core.Bootstrap
         private CharacterData _character;
         private PlayerController _player;
         private InGameMenuView _menuView;
+        private RemotePlayerDirectory _remotePlayers;
         private IDisposable _mapSubscription;
 
         [Inject]
         public void Construct(NetworkClient networkClient, IEventBus events,
             CharacterData character, PlayerController player,
-            InGameMenuView menuView)
+            InGameMenuView menuView, RemotePlayerDirectory remotePlayers)
         {
+            _remotePlayers = remotePlayers;
             _networkClient = networkClient;
             _events = events;
             _character = character;
@@ -57,6 +59,9 @@ namespace KnightOnline.Client.Core.Bootstrap
             var presentation = new GameObject("AuthoritativeWorldPresentation")
                 .AddComponent<AuthoritativeWorldPresentation>();
             presentation.Initialize(_events, _networkClient);
+            new GameObject("RemotePlayers")
+                .AddComponent<RemotePlayersPresenter>()
+                .Initialize(_remotePlayers);
             var villageHud = new GameObject("VillageUIToolkitHud")
                 .AddComponent<VillageUIToolkitHud>();
             villageHud.Initialize(_events, _character, _menuView);

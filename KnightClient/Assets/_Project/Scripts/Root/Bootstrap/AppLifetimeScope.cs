@@ -72,6 +72,8 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler, MapTransitionSnapshotHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, InventorySnapshotHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, UsePortalResponseHandler>(Lifetime.Singleton);
+            builder.Register<RemotePlayerDirectory>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, WorldEntitiesSnapshotHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterHealthChangedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterDiedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterRespawnedHandler>(Lifetime.Singleton);

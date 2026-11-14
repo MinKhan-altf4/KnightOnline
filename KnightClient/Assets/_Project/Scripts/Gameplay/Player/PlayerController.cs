@@ -41,6 +41,8 @@ namespace KnightOnline.Client.Gameplay.Player
         private Vector2 _authoritativePosition;
         private bool _hasAuthoritativePosition;
         private long _lastServerSnapshotSequence;
+        private readonly MovementPrediction _prediction = new();
+        private Vector2 _pendingCorrection;
 
         /// <summary>Ưu tiên MoveSpeed từ CharacterData; fallback về giá trị Inspector.</summary>
         private float MoveSpeed => _characterData?.MoveSpeed ?? _defaultMoveSpeed;
@@ -100,7 +102,9 @@ namespace KnightOnline.Client.Gameplay.Player
             _lastSentDirection = _currentDirection;
             _hasSentMovement = true;
             _nextMovementSyncTime = Time.unscaledTime + _movementSyncInterval;
-            _networkClient.SendPlayerMoveInputAsync(_currentDirection).Forget();
+            long sequence = _networkClient.SendPlayerMoveInput(_currentDirection);
+            if (_rigidbody != null)
+                _prediction.Record(sequence, _rigidbody.position);
         }
 
         private void FixedUpdate()
@@ -111,6 +115,7 @@ namespace KnightOnline.Client.Gameplay.Player
                 ? _currentDirection * MoveSpeed
                 : Vector2.zero;
 
+            ApplyPendingCorrection();
             ReconcileAuthoritativePosition();
         }
 
@@ -120,10 +125,47 @@ namespace KnightOnline.Client.Gameplay.Player
                 return;
 
             _lastServerSnapshotSequence = snapshot.ServerSequence;
-            _authoritativePosition = new Vector2(
+            var serverPosition = new Vector2(
                 snapshot.PositionX,
                 snapshot.PositionY);
+
+            // Preferred path: compare with where we predicted ourselves when
+            // that input was sent, then shift the current position by the
+            // error. Normal latency therefore causes no pull-back (B6).
+            if (_prediction.TryReconcile(snapshot.AcknowledgedSequence,
+                    serverPosition, out Vector2 correction))
+            {
+                _hasAuthoritativePosition = false;
+                if (correction.magnitude <= _positionTolerance)
+                    return;
+                if (correction.magnitude >= _hardCorrectionDistance)
+                {
+                    _rigidbody.position += correction;
+                    _pendingCorrection = Vector2.zero;
+                    return;
+                }
+                _pendingCorrection += correction;
+                return;
+            }
+
+            // No matching prediction (e.g. first snapshot after a map change):
+            // fall back to steering toward the absolute server position.
+            _authoritativePosition = serverPosition;
             _hasAuthoritativePosition = true;
+        }
+
+        private void ApplyPendingCorrection()
+        {
+            if (_pendingCorrection == Vector2.zero || _rigidbody == null)
+                return;
+
+            float fraction = Mathf.Clamp01(
+                _softCorrectionSpeed * Time.fixedUnscaledDeltaTime);
+            Vector2 step = _pendingCorrection * fraction;
+            if (_pendingCorrection.sqrMagnitude < 0.0001f)
+                step = _pendingCorrection;
+            _rigidbody.position += step;
+            _pendingCorrection -= step;
         }
 
         private void ReconcileAuthoritativePosition()
@@ -155,9 +197,13 @@ namespace KnightOnline.Client.Gameplay.Player
             Vector2 position = new(value.X, value.Y);
             _rigidbody.position = position;
             _rigidbody.linearVelocity = Vector2.zero;
+            // Position was set exactly above; no absolute steering needed (it
+            // would pull a player who starts moving before the first ack).
             _authoritativePosition = position;
-            _hasAuthoritativePosition = true;
+            _hasAuthoritativePosition = false;
             _hasSentMovement = false;
+            _prediction.Clear();
+            _pendingCorrection = Vector2.zero;
         }
 
         public void SetMovementEnabled(bool enabled)

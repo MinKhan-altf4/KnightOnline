@@ -5,7 +5,10 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "GUID:b7acf244c2040604794eb304c8e5e750",
-        "GUID:58fe6eb53de9d3145b839116a16256b0"
+        "GUID:58fe6eb53de9d3145b839116a16256b0",
+        "GUID:211bbda2191a6ec4d805702e7df11c46",
+        "GUID:fa3f5e3dc4263ff4ba3dd17bdc9b0845",
+        "GUID:51a36a34d55b8154da11253627c09266"
     ],
     "includePlatforms": [
         "Editor"
