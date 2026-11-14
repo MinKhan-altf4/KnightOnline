@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Headless load-test bot (World_Simulation_P1_Design §8). Shares the wire
+       contract with the client and server by compiling Shared/Packets. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>KnightOnline.Bot</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../KnightClient/Assets/_Project/Scripts/Shared/**/*.cs" />
+  </ItemGroup>
+
+</Project>

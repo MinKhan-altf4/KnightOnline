@@ -6,6 +6,7 @@ on:
       - "KnightServer/**"
       - "KnightServer.Tests/**"
       - "KnightServer.IntegrationTests/**"
+      - "KnightBot/**"
       - "KnightClient/Assets/_Project/Scripts/Shared/**"
       - ".github/workflows/server-ci.yml"
   pull_request:
@@ -13,6 +14,7 @@ on:
       - "KnightServer/**"
       - "KnightServer.Tests/**"
       - "KnightServer.IntegrationTests/**"
+      - "KnightBot/**"
       - "KnightClient/Assets/_Project/Scripts/Shared/**"
       - ".github/workflows/server-ci.yml"
 
@@ -61,6 +63,7 @@ jobs:
         run: |
           dotnet build KnightServer.Tests/KnightServer.Tests.csproj --configuration Release --no-restore
           dotnet build KnightServer.IntegrationTests/KnightServer.IntegrationTests.csproj --configuration Release --no-restore
+          dotnet build KnightBot/KnightBot.csproj --configuration Release
 
       - name: Unit tests
         env:
