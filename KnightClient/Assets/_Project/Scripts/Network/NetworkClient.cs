@@ -81,7 +81,8 @@ namespace KnightOnline.Client.Network
                 await _tcpClient.ConnectAsync(_settings.Host, _settings.Port);
                 _stream = _tcpClient.GetStream();
                 _ = ReceiveLoopAsync(_cts.Token);
-                await SendPacketAsync(PacketType.ConnectRequest, new ConnectRequestPacket("1.0.0"));
+                await SendPacketAsync(PacketType.ConnectRequest, new ConnectRequestPacket(
+                    Application.version, PacketProtocol.Version));
             }
             catch (Exception ex)
             {

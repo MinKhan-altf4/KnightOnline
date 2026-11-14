@@ -3,37 +3,83 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using KnightOnline.Client.Shared.Packets;
 using KnightOnline.Server.Players;
 
 namespace KnightOnline.Server.Networking;
 
-/// <param name="anonymousTimeout">
-/// How long a connection may stay without an attached account before it is
-/// closed, so idle TCP connections cannot hold transport capacity (B4).
-/// Null or <see cref="Timeout.InfiniteTimeSpan"/> disables the limit.
-/// </param>
-public sealed class ClientConnection(
-    TcpClient tcpClient,
-    PacketDispatcher dispatcher,
-    int maximumPacketSize,
-    TimeSpan? anonymousTimeout = null) : IAsyncDisposable
+/// <summary>
+/// One TCP client. Reads packets on <see cref="RunAsync"/> and writes through a
+/// bounded FIFO queue drained by a single writer task, so a broadcast or the
+/// world tick never awaits the network (see World_Simulation_P1_Design §4).
+/// </summary>
+public sealed class ClientConnection : IAsyncDisposable
 {
-    private readonly NetworkStream _stream = tcpClient.GetStream();
-    private readonly SemaphoreSlim _sendLock = new(1, 1);
-    private readonly TimeSpan _anonymousTimeout =
-        anonymousTimeout ?? Timeout.InfiniteTimeSpan;
+    public const int DefaultSendQueueCapacity = 256;
+    private static readonly TimeSpan FlushTimeout = TimeSpan.FromSeconds(2);
+
+    private readonly TcpClient _tcpClient;
+    private readonly PacketDispatcher _dispatcher;
+    private readonly int _maximumPacketSize;
+    private readonly NetworkStream _stream;
+    private readonly Channel<byte[]> _sendQueue;
+    private readonly Task _writerTask;
+    private readonly CancellationTokenSource _writerCancellation = new();
+    private readonly TimeSpan _anonymousTimeout;
     private long _anonymousSinceTimestamp = Stopwatch.GetTimestamp();
     private int _disposeState;
+    private int _handshakeCompleted;
+
+    /// <param name="anonymousTimeout">
+    /// How long a connection may stay without an attached account before it is
+    /// closed, so idle TCP connections cannot hold transport capacity (B4).
+    /// Null or <see cref="Timeout.InfiniteTimeSpan"/> disables the limit.
+    /// </param>
+    /// <param name="sendQueueCapacity">
+    /// Maximum queued outgoing packets. A broadcast that finds the queue full
+    /// closes the connection as a slow consumer.
+    /// </param>
+    public ClientConnection(
+        TcpClient tcpClient,
+        PacketDispatcher dispatcher,
+        int maximumPacketSize,
+        TimeSpan? anonymousTimeout = null,
+        int sendQueueCapacity = DefaultSendQueueCapacity)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(sendQueueCapacity, 1);
+        _tcpClient = tcpClient;
+        _dispatcher = dispatcher;
+        _maximumPacketSize = maximumPacketSize;
+        _anonymousTimeout = anonymousTimeout ?? Timeout.InfiniteTimeSpan;
+        _stream = tcpClient.GetStream();
+        RemoteAddress = (tcpClient.Client.RemoteEndPoint as IPEndPoint)?
+            .Address.ToString() ?? "unknown";
+        _sendQueue = Channel.CreateBounded<byte[]>(
+            new BoundedChannelOptions(sendQueueCapacity)
+            {
+                SingleReader = true,
+                SingleWriter = false,
+                FullMode = BoundedChannelFullMode.Wait,
+            });
+        _writerTask = Task.Run(RunWriterAsync);
+    }
 
     public PlayerSession? PlayerSession { get; private set; }
     public Guid ConnectionId { get; } = Guid.NewGuid();
     public string? AccountKey { get; private set; }
     public Guid AccountSessionGeneration { get; private set; }
     public bool IsGuest { get; private set; }
-    public string RemoteAddress { get; } =
-        (tcpClient.Client.RemoteEndPoint as IPEndPoint)?
-            .Address.ToString() ?? "unknown";
+    public string RemoteAddress { get; }
+
+    /// <summary>True once a supported ConnectRequest was accepted (B10).</summary>
+    public bool HasCompletedHandshake =>
+        Volatile.Read(ref _handshakeCompleted) == 1;
+
+    public bool IsClosed => Volatile.Read(ref _disposeState) != 0;
+
+    public void MarkHandshakeCompleted() =>
+        Interlocked.Exchange(ref _handshakeCompleted, 1);
 
     public bool TryAttachAccount(
         string accountKey,
@@ -111,7 +157,7 @@ public sealed class ClientConnection(
                 if (envelope == null)
                     break;
 
-                await dispatcher.DispatchAsync(
+                await _dispatcher.DispatchAsync(
                     this,
                     envelope,
                     cancellationToken);
@@ -144,46 +190,116 @@ public sealed class ClientConnection(
         ForcedDisconnectReason reason,
         string message)
     {
-        try
-        {
-            await SendAsync(
+        // Never wait for queue space here: a stuck client must still be closed.
+        if (!TryEnqueue(
                 PacketType.ForcedDisconnect,
-                new ForcedDisconnectPacket(reason, message));
-        }
-        catch (Exception exception)
+                new ForcedDisconnectPacket(reason, message)))
         {
-            // Closing the transport is still required if delivery fails.
             Console.WriteLine(
-                $"[Network][Warning] Forced-disconnect packet delivery failed: " +
-                $"{exception.GetType().Name}: {exception.Message}");
+                "[Network][Warning] Forced-disconnect packet could not be " +
+                $"queued for {ConnectionId}; closing anyway.");
         }
-        finally
-        {
-            await DisposeAsync();
-        }
+
+        await CloseAfterFlushAsync();
     }
 
+    /// <summary>
+    /// Queues a packet, waiting for queue space (backpressure). Use from the
+    /// connection's own request handlers. Throws
+    /// <see cref="ObjectDisposedException"/> if the connection is closed.
+    /// </summary>
     public async Task SendAsync<T>(
         PacketType packetType,
         T payload,
         CancellationToken cancellationToken = default)
     {
+        byte[] frame = Serialize(packetType, payload);
+        try
+        {
+            await _sendQueue.Writer.WriteAsync(frame, cancellationToken);
+        }
+        catch (ChannelClosedException)
+        {
+            throw new ObjectDisposedException(nameof(ClientConnection));
+        }
+    }
+
+    /// <summary>
+    /// Queues a packet without waiting. Use for broadcasts and the world tick.
+    /// A full queue means the client cannot keep up: it is closed as a slow
+    /// consumer and false is returned.
+    /// </summary>
+    public bool TryEnqueue<T>(PacketType packetType, T payload)
+    {
+        if (IsClosed)
+            return false;
+
+        if (_sendQueue.Writer.TryWrite(Serialize(packetType, payload)))
+            return true;
+
+        if (!IsClosed)
+        {
+            Console.WriteLine(
+                "[Network][Warning] Closing slow consumer " +
+                $"{ConnectionId} ({RemoteAddress}): send queue full at " +
+                $"{packetType}.");
+            _ = DisposeAsync().AsTask();
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Stops accepting packets, lets the writer deliver what is queued (up to
+    /// <see cref="FlushTimeout"/>), then closes the socket.
+    /// </summary>
+    public async Task CloseAfterFlushAsync()
+    {
+        _sendQueue.Writer.TryComplete();
+        try
+        {
+            await _writerTask.WaitAsync(FlushTimeout);
+        }
+        catch (TimeoutException)
+        {
+            // Client is not reading; close without waiting further.
+        }
+
+        await DisposeAsync();
+    }
+
+    private static byte[] Serialize<T>(PacketType packetType, T payload)
+    {
         string payloadJson = JsonSerializer.Serialize(payload);
         string envelopeJson = JsonSerializer.Serialize(
             new PacketEnvelope(packetType, payloadJson));
-        byte[] bytes = Encoding.UTF8.GetBytes(envelopeJson);
+        byte[] body = Encoding.UTF8.GetBytes(envelopeJson);
+        var frame = new byte[sizeof(int) + body.Length];
+        BitConverter.GetBytes(body.Length).CopyTo(frame, 0);
+        body.CopyTo(frame, sizeof(int));
+        return frame;
+    }
 
-        await _sendLock.WaitAsync(cancellationToken);
+    private async Task RunWriterAsync()
+    {
+        CancellationToken token = _writerCancellation.Token;
         try
         {
-            await _stream.WriteAsync(
-                BitConverter.GetBytes(bytes.Length),
-                cancellationToken);
-            await _stream.WriteAsync(bytes, cancellationToken);
+            while (await _sendQueue.Reader.WaitToReadAsync(token))
+            {
+                while (_sendQueue.Reader.TryRead(out byte[]? frame))
+                    await _stream.WriteAsync(frame, token);
+            }
         }
-        finally
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            _sendLock.Release();
+            // Connection disposed.
+        }
+        catch (Exception exception) when (
+            exception is IOException or ObjectDisposedException or SocketException)
+        {
+            // Client went away; the read loop or dispose cleans up.
+            _ = DisposeAsync().AsTask();
         }
     }
 
@@ -230,7 +346,7 @@ public sealed class ClientConnection(
             return null;
 
         int length = BitConverter.ToInt32(lengthBuffer, 0);
-        if (length <= 0 || length > maximumPacketSize)
+        if (length <= 0 || length > _maximumPacketSize)
             throw new InvalidDataException($"Invalid packet length: {length}.");
 
         var payloadBuffer = new byte[length];
@@ -267,7 +383,11 @@ public sealed class ClientConnection(
         if (Interlocked.Exchange(ref _disposeState, 1) != 0)
             return;
 
+        _sendQueue.Writer.TryComplete();
+        _writerCancellation.Cancel();
         await _stream.DisposeAsync();
-        tcpClient.Dispose();
+        _tcpClient.Dispose();
+        // _writerCancellation is intentionally not disposed: the writer task
+        // may still observe its token while unwinding.
     }
 }

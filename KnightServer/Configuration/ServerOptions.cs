@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using KnightOnline.Client.Shared.Packets;
 
 namespace KnightOnline.Server.Configuration;
 
@@ -68,6 +69,12 @@ public sealed class ServerOptions
         if (Network.MaximumPacketBytes is < 1024 or > 1024 * 1024)
             throw new InvalidDataException(
                 "Network.MaximumPacketBytes must be between 1 KB and 1 MB.");
+        if (Network.MinimumProtocolVersion < 1 ||
+            Network.MinimumProtocolVersion > Network.MaximumProtocolVersion ||
+            Network.MaximumProtocolVersion > PacketProtocol.Version)
+            throw new InvalidDataException(
+                "Network protocol range must satisfy 1 <= minimum <= maximum <= " +
+                $"{PacketProtocol.Version}.");
         if (Network.AnonymousConnectionTimeoutSeconds is < 5 or > 3600)
             throw new InvalidDataException(
                 "Network.AnonymousConnectionTimeoutSeconds must be between 5 and 3600.");
@@ -453,6 +460,12 @@ public sealed class NetworkOptions
     /// The client reconnects on demand when the player presses login/play.
     /// </summary>
     public int AnonymousConnectionTimeoutSeconds { get; set; } = 120;
+
+    /// <summary>Oldest client protocol accepted (see PacketProtocol).</summary>
+    public int MinimumProtocolVersion { get; set; } = PacketProtocol.Version;
+
+    /// <summary>Newest client protocol accepted.</summary>
+    public int MaximumProtocolVersion { get; set; } = PacketProtocol.Version;
 }
 
 public sealed class CapacityOptions

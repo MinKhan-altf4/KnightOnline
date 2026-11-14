@@ -61,8 +61,9 @@ public sealed class AuthenticationRateLimiter
             if (attemptWindow.Removed)
             {
                 // Lost a race with the sweeper; count against a fresh window.
-                attemptWindow = _windows.GetOrAdd(key, _ => new AttemptWindow(utcNow));
-                return TryCount(attemptWindow, utcNow);
+                AttemptWindow fresh =
+                    _windows.GetOrAdd(key, _ => new AttemptWindow(utcNow));
+                return TryCount(fresh, utcNow);
             }
 
             return TryCountLocked(attemptWindow, utcNow);

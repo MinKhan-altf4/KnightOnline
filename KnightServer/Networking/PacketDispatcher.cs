@@ -9,11 +9,18 @@ public sealed class PacketDispatcher
     private readonly IReadOnlyDictionary<PacketType, IPacketHandler> _handlers;
     private readonly IActiveAccountLeaseStore _accountSessions;
     private readonly IServerClock _clock;
+    private readonly bool _requireHandshake;
 
+    /// <param name="requireHandshake">
+    /// When true, only <see cref="PacketType.ConnectRequest"/> is accepted until
+    /// the connection completed a supported handshake (B10). Production sets
+    /// it; narrow unit tests may leave it off.
+    /// </param>
     public PacketDispatcher(
         IEnumerable<IPacketHandler> handlers,
         IActiveAccountLeaseStore accountSessions,
-        IServerClock clock)
+        IServerClock clock,
+        bool requireHandshake = false)
     {
         var handlerMap = new Dictionary<PacketType, IPacketHandler>();
 
@@ -29,6 +36,7 @@ public sealed class PacketDispatcher
         _handlers = handlerMap;
         _accountSessions = accountSessions;
         _clock = clock;
+        _requireHandshake = requireHandshake;
     }
 
     public async Task DispatchAsync(
@@ -36,6 +44,16 @@ public sealed class PacketDispatcher
         PacketEnvelope envelope,
         CancellationToken cancellationToken)
     {
+        if (_requireHandshake &&
+            envelope.Type != PacketType.ConnectRequest &&
+            !connection.HasCompletedHandshake)
+        {
+            Console.WriteLine(
+                $"[Security][Warning] Rejected packet {envelope.Type} from " +
+                $"{connection.RemoteAddress}: handshake not completed.");
+            return;
+        }
+
         if (!_handlers.TryGetValue(envelope.Type, out IPacketHandler? handler))
         {
             Console.WriteLine(

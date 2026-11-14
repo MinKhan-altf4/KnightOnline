@@ -4,7 +4,9 @@
     "bindAddress": "127.0.0.1",
     "port": 7777,
     "maximumPacketBytes": 65536,
-    "anonymousConnectionTimeoutSeconds": 120
+    "anonymousConnectionTimeoutSeconds": 120,
+    "minimumProtocolVersion": 2,
+    "maximumProtocolVersion": 2
   },
   "capacity": {
     "maximumActiveAccounts": 500,

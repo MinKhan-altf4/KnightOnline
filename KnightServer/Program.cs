@@ -157,7 +157,9 @@ public static class Program
         [
             new ConnectPacketHandler(
                 accountIdentities,
-                options.Authentication.DevelopmentBypassEnabled),
+                options.Authentication.DevelopmentBypassEnabled,
+                options.Network.MinimumProtocolVersion,
+                options.Network.MaximumProtocolVersion),
             new CreateGuestPacketHandler(
                 authentication,
                 accountSessions,
@@ -240,7 +242,8 @@ public static class Program
                 clock),
         ],
             accountSessions,
-            clock);
+            clock,
+            requireHandshake: true);
 
         ObserveBackgroundTask(
             RunMonsterRespawnLoopAsync(
@@ -342,26 +345,13 @@ public static class Program
     /// </summary>
     private static async Task RejectServerFullAsync(ClientConnection connection)
     {
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        try
-        {
-            await connection.SendAsync(
-                PacketType.ConnectResponse,
-                new ConnectResponsePacket(
-                    ConnectResult.ServerFull,
-                    "Máy chủ hiện đã đầy. Vui lòng thử lại sau."),
-                deadline.Token);
-        }
-        catch (Exception exception) when (
-            exception is IOException or SocketException or
-                OperationCanceledException or ObjectDisposedException)
-        {
-            // Expected: the client may already be gone.
-        }
-        finally
-        {
-            await connection.DisposeAsync();
-        }
+        connection.TryEnqueue(
+            PacketType.ConnectResponse,
+            new ConnectResponsePacket(
+                ConnectResult.ServerFull,
+                "Máy chủ hiện đã đầy. Vui lòng thử lại sau."));
+        // Flush is bounded (2 s) inside CloseAfterFlushAsync.
+        await connection.CloseAfterFlushAsync();
     }
 
     private static ICharacterCreationCatalog CreateCharacterCatalog(
@@ -519,7 +509,7 @@ public static class Program
                 if (snapshot == null)
                     continue;
 
-                await connections.BroadcastToMapAsync(
+                connections.BroadcastToMap(
                     snapshot.MapDefinitionId,
                     PacketType.MonsterRespawned,
                     new MonsterRespawnedPacket(ToPacket(snapshot)));

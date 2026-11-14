@@ -63,7 +63,7 @@ public sealed class AttackMonsterPacketHandler(
         if (snapshot == null)
             return;
 
-        await connections.BroadcastToMapAsync(
+        connections.BroadcastToMap(
             snapshot.MapDefinitionId,
             PacketType.MonsterHealthChanged,
             new MonsterHealthChangedPacket(
@@ -73,7 +73,7 @@ public sealed class AttackMonsterPacketHandler(
 
         if (result.WasKilled)
         {
-            await connections.BroadcastToMapAsync(
+            connections.BroadcastToMap(
                 snapshot.MapDefinitionId,
                 PacketType.MonsterDied,
                 new MonsterDiedPacket(result.MonsterId));

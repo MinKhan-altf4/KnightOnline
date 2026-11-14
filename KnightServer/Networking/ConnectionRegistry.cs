@@ -87,29 +87,28 @@ public sealed class ConnectionRegistry
             _capacity.Count,
             _maximumConnections);
 
-    public async Task BroadcastAsync<T>(PacketType packetType, T payload)
+    /// <summary>
+    /// Non-blocking: queues on every connection; slow consumers are closed by
+    /// <see cref="ClientConnection.TryEnqueue{T}"/>. Returns the number queued.
+    /// </summary>
+    public int Broadcast<T>(PacketType packetType, T payload)
     {
+        int delivered = 0;
         foreach (ClientConnection connection in _connections.Keys)
         {
-            try
-            {
-                await connection.SendAsync(packetType, payload);
-            }
-            catch (Exception exception)
-            {
-                // The connection's receive loop owns disposal/removal.
-                Console.WriteLine(
-                    $"[Network][Warning] Broadcast delivery failed: " +
-                    $"{exception.GetType().Name}: {exception.Message}");
-            }
+            if (connection.TryEnqueue(packetType, payload))
+                delivered++;
         }
+        return delivered;
     }
 
-    public async Task BroadcastToMapAsync<T>(
+    /// <summary>Non-blocking broadcast to players on one map.</summary>
+    public int BroadcastToMap<T>(
         string mapDefinitionId,
         PacketType packetType,
         T payload)
     {
+        int delivered = 0;
         foreach (ClientConnection connection in _connections.Keys)
         {
             if (!string.Equals(
@@ -118,16 +117,9 @@ public sealed class ConnectionRegistry
                     StringComparison.Ordinal))
                 continue;
 
-            try
-            {
-                await connection.SendAsync(packetType, payload);
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(
-                    $"[Network][Warning] Map broadcast delivery failed: " +
-                    $"{exception.GetType().Name}: {exception.Message}");
-            }
+            if (connection.TryEnqueue(packetType, payload))
+                delivered++;
         }
+        return delivered;
     }
 }
