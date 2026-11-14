@@ -36,7 +36,7 @@ public static class Program
         ServerOptions options = ServerOptions.Load(settingsPath);
 
         DbContextOptions<KnightDbContext> databaseOptions =
-            await ConfigureDatabaseAsync();
+            await ConfigureDatabaseAsync(options.Persistence);
         if (args.Contains(
                 ResetDevelopmentAccountsArgument,
                 StringComparer.OrdinalIgnoreCase))
@@ -65,6 +65,9 @@ public static class Program
             clock,
             mapCatalog);
         await characterRepository.ClearSessionFencesAfterProcessRestartAsync();
+        var sessionPersistence = new SessionPersistenceGate(
+            options.Persistence.MaximumConcurrentSessionWrites,
+            options.Persistence.SessionWriteAttempts);
         await characterRepository.EnsureAccountExistsAsync(
             options.Characters.DevelopmentAccountKey);
 
@@ -274,6 +277,7 @@ public static class Program
                 activePlayers,
                 accountSessions,
                 characterRepository,
+                sessionPersistence,
                 clock,
                 movementResolver,
                 TimeSpan.FromSeconds(5)),
@@ -286,7 +290,8 @@ public static class Program
         var listener = new TcpListener(
             IPAddress.Parse(options.Network.BindAddress),
             options.Network.Port);
-        var runtime = new ServerRuntime(characterRepository, movementResolver);
+        var runtime = new ServerRuntime(characterRepository, movementResolver,
+            sessionPersistence);
         listener.Start();
         Console.WriteLine($"[Server] Listening on port {options.Network.Port}.");
         Console.WriteLine(
@@ -419,20 +424,27 @@ public static class Program
                     // movement input left them.
                     playerSession.AdvancePosition(
                         clock.UtcNow, runtime.MovementResolver);
-                    await runtime.Characters.SaveSessionSnapshotAsync(
-                        playerAccountKey,
-                        playerSession.CharacterId,
-                        connection.AccountSessionGeneration,
-                        playerSession.MapDefinitionId,
-                        playerSession.SpawnPointId,
-                        playerSession.Position.X,
-                        playerSession.Position.Y,
-                        CancellationToken.None);
-                    await runtime.Characters.ReleaseSessionAsync(
-                        playerAccountKey,
-                        playerSession.CharacterId,
-                        connection.AccountSessionGeneration,
-                        CancellationToken.None);
+                    Guid generation = connection.AccountSessionGeneration;
+                    // Bounded + retried: a mass disconnect must not exhaust
+                    // database connections.
+                    await runtime.SessionPersistence.RunAsync(
+                        "disconnect snapshot save",
+                        token => runtime.Characters.SaveSessionSnapshotAsync(
+                            playerAccountKey,
+                            playerSession.CharacterId,
+                            generation,
+                            playerSession.MapDefinitionId,
+                            playerSession.SpawnPointId,
+                            playerSession.Position.X,
+                            playerSession.Position.Y,
+                            token));
+                    await runtime.SessionPersistence.RunAsync(
+                        "disconnect character release",
+                        token => runtime.Characters.ReleaseSessionAsync(
+                            playerAccountKey,
+                            playerSession.CharacterId,
+                            generation,
+                            token));
                 }
             }
             catch (Exception exception)
@@ -456,7 +468,8 @@ public static class Program
 
     private sealed record ServerRuntime(
         CharacterRepository Characters,
-        IWorldMovementResolver MovementResolver);
+        IWorldMovementResolver MovementResolver,
+        SessionPersistenceGate SessionPersistence);
 
     private static async Task RunMonsterRespawnLoopAsync(
         MonsterService monsterService,
@@ -535,6 +548,7 @@ public static class Program
         ActivePlayerRegistry activePlayers,
         IActiveAccountLeaseStore accountSessions,
         CharacterRepository characters,
+        SessionPersistenceGate sessionPersistence,
         IServerClock clock,
         IWorldMovementResolver movementResolver,
         TimeSpan tickInterval)
@@ -555,18 +569,26 @@ public static class Program
                         clock.UtcNow))
                     continue;
 
+                // The connection may have closed after the ownership check;
+                // its own cleanup saves the final position.
+                if (connection.IsClosed)
+                    continue;
+
                 try
                 {
                     session.AdvancePosition(clock.UtcNow, movementResolver);
-                    await characters.SaveSessionSnapshotAsync(
-                        accountKey,
-                        session.CharacterId,
-                        connection.AccountSessionGeneration,
-                        session.MapDefinitionId,
-                        session.SpawnPointId,
-                        session.Position.X,
-                        session.Position.Y,
-                        CancellationToken.None);
+                    Guid generation = connection.AccountSessionGeneration;
+                    await sessionPersistence.RunAsync(
+                        "periodic snapshot save",
+                        token => characters.SaveSessionSnapshotAsync(
+                            accountKey,
+                            session.CharacterId,
+                            generation,
+                            session.MapDefinitionId,
+                            session.SpawnPointId,
+                            session.Position.X,
+                            session.Position.Y,
+                            token));
                 }
                 catch (Exception exception)
                 {
@@ -665,11 +687,12 @@ public static class Program
     }
 
     private static async Task<DbContextOptions<KnightDbContext>>
-        ConfigureDatabaseAsync()
+        ConfigureDatabaseAsync(PersistenceOptions persistence)
     {
         var configuration = DatabaseConfiguration.Build();
-        string connectionString =
-            DatabaseConfiguration.GetRequiredConnectionString(configuration);
+        string connectionString = DatabaseConfiguration.ApplyPoolLimit(
+            DatabaseConfiguration.GetRequiredConnectionString(configuration),
+            persistence.MaximumPoolSize);
         var databaseOptions = new DbContextOptionsBuilder<KnightDbContext>()
             .UseNpgsql(connectionString)
             .Options;

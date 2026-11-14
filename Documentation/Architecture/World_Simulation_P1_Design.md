@@ -160,7 +160,7 @@ Trước khi ghép fragment JSON (`WorldSnapshotJson`), tick có snapshot p95 �
 
 **Việc cần làm theo thứ tự:**
 1. ~~Dead reckoning (mục 12.2)~~ đã làm, xem 12.4.
-2. Giới hạn số thao tác DB song song khi ngắt kết nối/lưu snapshot, gom lưu snapshot thành batch, có retry cho lỗi transient.
+2. ~~Giới hạn số thao tác DB song song khi ngắt kết nối/lưu snapshot, retry cho lỗi transient~~ đã làm, xem 12.5. Gom lưu snapshot thành batch vẫn còn để ngỏ.
 3. Đo lại với bot chạy trên máy khác server.
 
 ### 12.4 Dead reckoning (protocol 3)
@@ -199,6 +199,17 @@ Trước khi ghép fragment JSON (`WorldSnapshotJson`), tick có snapshot p95 �
 **Nguyên nhân lỗi persistence đã xác định:** `53300: remaining connection slots are reserved for roles with the SUPERUSER attribute`. PostgreSQL hết `max_connections` khi hàng trăm kết nối game đóng cùng lúc, vì mỗi lần cleanup mở một kết nối DB riêng đồng thời. Lần này 4/750 lần cleanup thất bại. Cách sửa: giới hạn số thao tác DB đồng thời khi ngắt kết nối (semaphore) và retry có backoff cho lỗi transient.
 
 Ở N=500 thực tế, chi phí còn lại mỗi tick snapshot: chọn hiển thị 17 ms, đóng gói và đưa vào hàng đợi 9 ms, dựng JSON 4 ms, diff 5 ms. Bước tiếp theo nếu cần: chạy phần việc theo từng người quan sát song song trên nhiều nhân (tracker độc lập; cache fragment JSON cần thread-safe), và chuyển sang định dạng nhị phân.
+
+### 12.5 Giới hạn kết nối database (14-11-2026)
+
+- Nguyên nhân: SQLSTATE 53300. Pool Npgsql mặc định cho phép 100 kết nối, nhiều hơn số slot PostgreSQL dành cho role thường (`max_connections` 100 trừ slot superuser).
+- `persistence.maximumPoolSize` (mặc định 40) được áp vào chuỗi kết nối nếu chuỗi chưa ghi rõ `Maximum Pool Size`. Khi dồn tải, Npgsql xếp hàng chờ thay vì PostgreSQL từ chối.
+- `SessionPersistenceGate` bao các thao tác lưu snapshot/giải phóng nhân vật khi ngắt kết nối và vòng lưu định kỳ:
+  - tối đa `persistence.maximumConcurrentSessionWrites` (16) thao tác đồng thời;
+  - retry `persistence.sessionWriteAttempts` (4) lần có backoff cho lỗi transient (53300, 53400, 57P03, 40001, 40P01, Npgsql transient, timeout).
+  - Chỉ bao các thao tác lặp lại an toàn.
+- Vòng lưu định kỳ bỏ qua kết nối đã đóng; cleanup của chính kết nối đó lưu vị trí cuối.
+- **Đo lại (21:51–21:55):** 50/200/500 bot vào thế giới đủ, **0 lỗi persistence, 0 lần phải retry, 0 cảnh báo "snapshot rejected"** (trước: 4/750 lỗi). Tick quá ngân sách giảm còn 215 lần, chỉ ở bậc 500 bot dùng chung CPU với server.
 
 ## 13. Rollout và rollback
 

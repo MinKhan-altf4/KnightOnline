@@ -164,6 +164,11 @@
     "deadReckoningErrorThreshold": 0.25,
     "deadReckoningRefreshMilliseconds": 1000
   },
+  "persistence": {
+    "maximumPoolSize": 40,
+    "maximumConcurrentSessionWrites": 16,
+    "sessionWriteAttempts": 4
+  },
   "mapDefinitions": [
     {
       "definitionId": "tutorial_map_01",

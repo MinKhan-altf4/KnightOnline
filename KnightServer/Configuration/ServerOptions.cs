@@ -16,6 +16,7 @@ public sealed class ServerOptions
     public CombatOptions Combat { get; set; } = new();
     public ProgressionOptions Progression { get; set; } = new();
     public WorldOptions World { get; set; } = new();
+    public PersistenceOptions Persistence { get; set; } = new();
     public List<MapDefinitionOptions> MapDefinitions { get; set; } = [];
     public List<NpcDefinitionOptions> NpcDefinitions { get; set; } = [];
     public List<PortalDefinitionOptions> PortalDefinitions { get; set; } = [];
@@ -170,6 +171,16 @@ public sealed class ServerOptions
             throw new InvalidDataException(
                 "Guest.MaximumLevel cannot exceed Progression.MaximumLevel.");
         }
+        if (Persistence.MaximumPoolSize is < 5 or > 500)
+            throw new InvalidDataException(
+                "Persistence.MaximumPoolSize must be between 5 and 500.");
+        if (Persistence.MaximumConcurrentSessionWrites < 1 ||
+            Persistence.MaximumConcurrentSessionWrites > Persistence.MaximumPoolSize)
+            throw new InvalidDataException(
+                "Persistence.MaximumConcurrentSessionWrites must be between 1 and MaximumPoolSize.");
+        if (Persistence.SessionWriteAttempts is < 1 or > 10)
+            throw new InvalidDataException(
+                "Persistence.SessionWriteAttempts must be between 1 and 10.");
         if (World.TickMilliseconds <= 0)
             throw new InvalidDataException("World.TickMilliseconds must be positive.");
         if (World.SimulationTickMilliseconds is < 10 or > 1000)
@@ -484,6 +495,26 @@ public sealed class NetworkOptions
 
     /// <summary>Newest client protocol accepted.</summary>
     public int MaximumProtocolVersion { get; set; } = PacketProtocol.Version;
+}
+
+/// <summary>
+/// Database connection budget. PostgreSQL rejects connections beyond
+/// max_connections (default 100, minus slots reserved for superusers), so the
+/// Npgsql pool must stay below it and queue instead.
+/// </summary>
+public sealed class PersistenceOptions
+{
+    /// <summary>
+    /// Npgsql "Maximum Pool Size" applied when the connection string does not
+    /// set one explicitly. Keep below the server's max_connections.
+    /// </summary>
+    public int MaximumPoolSize { get; set; } = 40;
+
+    /// <summary>Concurrent session save/release operations (disconnect bursts).</summary>
+    public int MaximumConcurrentSessionWrites { get; set; } = 16;
+
+    /// <summary>Attempts for a session write that hits a transient failure.</summary>
+    public int SessionWriteAttempts { get; set; } = 4;
 }
 
 public sealed class CapacityOptions
