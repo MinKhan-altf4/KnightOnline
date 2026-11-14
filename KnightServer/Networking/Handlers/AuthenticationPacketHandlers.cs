@@ -7,6 +7,7 @@ using KnightOnline.Server.Configuration;
 using KnightOnline.Server.Players;
 using KnightOnline.Server.Time;
 using KnightOnline.Server.Persistence;
+using KnightOnline.Server.World;
 
 namespace KnightOnline.Server.Networking.Handlers;
 
@@ -133,12 +134,17 @@ public sealed class ResumeAccountPacketHandler(
     }
 }
 
+/// <param name="accountLoginRateLimiter">
+/// Separate, stricter limiter keyed by username so the generic device/IP
+/// limit cannot be used to try many passwords on one account (B8).
+/// </param>
 public sealed class LoginPacketHandler(
     AccountAuthenticationService authentication,
     IActiveAccountLeaseStore accountSessions,
     AuthenticationRateLimiter rateLimiter,
     IServerClock clock,
-    AuthenticationOptions options) : IPacketHandler
+    AuthenticationOptions options,
+    AuthenticationRateLimiter accountLoginRateLimiter) : IPacketHandler
 {
     public PacketType PacketType => PacketType.LoginRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.Anonymous;
@@ -173,7 +179,7 @@ public sealed class LoginPacketHandler(
                 cancellationToken);
             return;
         }
-        if (!AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(rateLimiter, clock, "login-account",
+        if (!AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(accountLoginRateLimiter, clock, "login-account",
                 request.Username.Trim().ToUpperInvariant()) ||
             !AuthenticationIdentityRateLimit.TryAcquireIdentityLimit(rateLimiter, clock, "login-device",
                 request.DeviceId))
@@ -220,7 +226,8 @@ public sealed class LeaveAccountSessionPacketHandler(
     IActiveAccountLeaseStore accountSessions,
     ActivePlayerRegistry activePlayers,
     CharacterRepository characters,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    IWorldMovementResolver movementResolver) : IPacketHandler
 {
     public PacketType PacketType =>
         PacketType.LeaveAccountSessionRequest;
@@ -235,6 +242,7 @@ public sealed class LeaveAccountSessionPacketHandler(
         if (connection.PlayerSession != null)
         {
             PlayerSession session = connection.PlayerSession!;
+            session.AdvancePosition(clock.UtcNow, movementResolver);
             if (!await characters.SaveSessionSnapshotAsync(
                     connection.AccountKey!, session.CharacterId,
                     connection.AccountSessionGeneration,

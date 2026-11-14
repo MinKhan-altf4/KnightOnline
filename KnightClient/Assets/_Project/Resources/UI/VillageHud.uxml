@@ -25,7 +25,7 @@
                 </ui:VisualElement>
                 <ui:VisualElement class="card-footer">
                     <ui:VisualElement class="footer-dot" />
-                    <ui:Label text="Hãy khám phá làng để bắt đầu" class="footer-text" />
+                    <ui:Label name="quest-notice" text="Hãy khám phá làng để bắt đầu" class="footer-text" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
@@ -41,5 +41,12 @@
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:Button name="function-menu-toggle" text="⌃" class="function-menu-toggle" />
+    </ui:VisualElement>
+    <ui:VisualElement name="connection-lost-overlay" class="connection-lost-overlay">
+        <ui:VisualElement class="connection-lost-dialog">
+            <ui:Label text="MẤT KẾT NỐI" class="connection-lost-title" />
+            <ui:Label name="connection-lost-message" text="Bạn bị mất kết nối máy chủ." class="connection-lost-message" />
+            <ui:Button name="connection-lost-return" text="Về màn hình đăng nhập" class="connection-lost-button" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

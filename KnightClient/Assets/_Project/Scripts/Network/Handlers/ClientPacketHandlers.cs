@@ -99,7 +99,8 @@ namespace KnightOnline.Client.Network.Handlers
         {
             var packet = JsonSerializer.Deserialize<UsePortalResponsePacket>(payload);
             if (packet != null)
-                _events.Publish(new PortalUseResultEvent((byte)packet.Result));
+                _events.Publish(new PortalUseResultEvent(
+                    packet.RequestId, (byte)packet.Result));
         }
     }
 

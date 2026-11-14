@@ -27,6 +27,9 @@ namespace KnightOnline.Client.Network
         private NetworkSettings _settings;
         private IReadOnlyDictionary<PacketType, IClientPacketHandler> _packetHandlers;
         private IDisposable _connectionResultSubscription;
+        private IDisposable _npcResultSubscription;
+        private IDisposable _portalResultSubscription;
+        private readonly PendingIntentRequests _pendingIntents = new();
         private bool _suppressNextDisconnectEvent;
         private long _movementSequence;
         public bool IsConnected =>
@@ -59,6 +62,12 @@ namespace KnightOnline.Client.Network
                         if (result.Result != ConnectionOutcome.Success)
                             _suppressNextDisconnectEvent = true;
                     });
+            _npcResultSubscription =
+                _eventBus.Subscribe<NpcInteractionResultEvent>(
+                    result => _pendingIntents.Complete(result.RequestId));
+            _portalResultSubscription =
+                _eventBus.Subscribe<PortalUseResultEvent>(
+                    result => _pendingIntents.Complete(result.RequestId));
         }
 
         public async UniTask ConnectAsync()
@@ -119,14 +128,20 @@ namespace KnightOnline.Client.Network
 
         public UniTask SendListNpcsRequestAsync() => SendPacketAsync(
             PacketType.ListNpcsRequest, new ListNpcsRequestPacket());
+        // B7: repeated clicks/retries of an unanswered intent reuse its
+        // RequestId so server idempotency sees one command, not several.
         public UniTask SendInteractNpcRequestAsync(string npcDefinitionId) =>
             SendPacketAsync(PacketType.InteractNpcRequest,
-                new InteractNpcRequestPacket(Guid.NewGuid(), npcDefinitionId));
+                new InteractNpcRequestPacket(
+                    _pendingIntents.GetOrCreate($"npc:{npcDefinitionId}"),
+                    npcDefinitionId));
         public UniTask SendListPortalsRequestAsync() => SendPacketAsync(
             PacketType.ListPortalsRequest, new ListPortalsRequestPacket());
         public UniTask SendUsePortalRequestAsync(string portalDefinitionId) =>
             SendPacketAsync(PacketType.UsePortalRequest,
-                new UsePortalRequestPacket(Guid.NewGuid(), portalDefinitionId));
+                new UsePortalRequestPacket(
+                    _pendingIntents.GetOrCreate($"portal:{portalDefinitionId}"),
+                    portalDefinitionId));
 
         public UniTask SendAttackMonsterRequestAsync(int monsterId) =>
             SendPacketAsync(
@@ -369,6 +384,8 @@ namespace KnightOnline.Client.Network
             _stream = null;
             _tcpClient?.Dispose();
             _tcpClient = null;
+            // A new connection is a new server session; old intents are void.
+            _pendingIntents.Clear();
             if (_suppressNextDisconnectEvent)
             {
                 _suppressNextDisconnectEvent = false;
@@ -381,6 +398,8 @@ namespace KnightOnline.Client.Network
         private void OnDestroy()
         {
             _connectionResultSubscription?.Dispose();
+            _npcResultSubscription?.Dispose();
+            _portalResultSubscription?.Dispose();
             Disconnect();
         }
 

@@ -37,6 +37,7 @@ public sealed class PostgresAuthenticationIntegrationTests
         Assert.False(converted.Account!.IsGuest);
 
         AuthenticationResult login = await service.LoginAsync(
+            Guid.NewGuid(),
             username,
             password,
             deviceB,
@@ -45,6 +46,7 @@ public sealed class PostgresAuthenticationIntegrationTests
         Assert.True(login.IsSuccess);
 
         AuthenticationResult rotated = await service.ResumeAsync(
+            Guid.NewGuid(),
             login.Account!.RefreshToken,
             deviceB,
             CancellationToken.None);
@@ -54,6 +56,7 @@ public sealed class PostgresAuthenticationIntegrationTests
             rotated.Account!.RefreshToken);
 
         AuthenticationResult replay = await service.ResumeAsync(
+            Guid.NewGuid(),
             login.Account.RefreshToken,
             deviceB,
             CancellationToken.None);
@@ -63,6 +66,7 @@ public sealed class PostgresAuthenticationIntegrationTests
             replay.Failure);
 
         AuthenticationResult familyRevoked = await service.ResumeAsync(
+            Guid.NewGuid(),
             rotated.Account.RefreshToken,
             deviceB,
             CancellationToken.None);
@@ -103,12 +107,14 @@ public sealed class PostgresAuthenticationIntegrationTests
         Assert.True(registered.IsSuccess);
 
         AuthenticationResult loginA = await service.LoginAsync(
+            Guid.NewGuid(),
             username,
             password,
             deviceA,
             null,
             CancellationToken.None);
         AuthenticationResult loginB = await service.LoginAsync(
+            Guid.NewGuid(),
             username,
             password,
             deviceB,
@@ -140,6 +146,7 @@ public sealed class PostgresAuthenticationIntegrationTests
             new AuthTokenProtector(),
             new PasswordHasher(),
             TimeSpan.FromDays(30),
+            TimeSpan.FromMinutes(10),
             clock);
 
     private sealed class MutableClock(DateTime utcNow) : IServerClock

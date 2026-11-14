@@ -1,0 +1,25 @@
+{
+    "name": "KnightOnline.Client.UI.Tests.EditMode",
+    "rootNamespace": "KnightOnline.Client.UI.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "GUID:b7acf244c2040604794eb304c8e5e750",
+        "GUID:58fe6eb53de9d3145b839116a16256b0"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

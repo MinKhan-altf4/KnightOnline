@@ -24,7 +24,7 @@ namespace KnightOnline.Client.Data.Events
     public readonly struct PortalListReceivedEvent : IGameEvent
     { public readonly IReadOnlyList<PortalSnapshotData> Portals; public readonly float MinimumX, MaximumX, MinimumY, MaximumY; public PortalListReceivedEvent(IReadOnlyList<PortalSnapshotData> portals, float minimumX, float maximumX, float minimumY, float maximumY) { Portals = portals; MinimumX = minimumX; MaximumX = maximumX; MinimumY = minimumY; MaximumY = maximumY; } }
     public readonly struct PortalUseResultEvent : IGameEvent
-    { public readonly byte Result; public PortalUseResultEvent(byte result) => Result = result; }
+    { public readonly Guid RequestId; public readonly byte Result; public PortalUseResultEvent(Guid requestId, byte result) { RequestId = requestId; Result = result; } }
     public readonly struct InventoryChangedEvent : IStickyGameEvent
     { public readonly IReadOnlyList<string> ItemDefinitionIds; public InventoryChangedEvent(IReadOnlyList<string> ids) => ItemDefinitionIds = ids; }
 }

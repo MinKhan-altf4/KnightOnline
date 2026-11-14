@@ -147,6 +147,70 @@
     font-size: 11px;
 }
 
+.connection-lost-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.connection-lost-overlay--visible {
+    display: flex;
+}
+
+.connection-lost-dialog {
+    width: 460px;
+    max-width: 90%;
+    padding: 24px;
+    align-items: center;
+    background-color: rgba(9, 17, 29, 0.97);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(232, 171, 69);
+    border-right-color: rgb(232, 171, 69);
+    border-bottom-color: rgb(232, 171, 69);
+    border-left-color: rgb(232, 171, 69);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+.connection-lost-title {
+    color: rgb(255, 150, 70);
+    font-size: 22px;
+    -unity-font-style: bold;
+    margin-bottom: 10px;
+}
+
+.connection-lost-message {
+    color: rgb(230, 236, 245);
+    font-size: 16px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    margin-bottom: 18px;
+}
+
+.connection-lost-button {
+    min-width: 220px;
+    height: 40px;
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.footer-text--warning {
+    color: rgb(255, 150, 70);
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
 .function-menu-anchor {
     position: absolute;
     left: 0;

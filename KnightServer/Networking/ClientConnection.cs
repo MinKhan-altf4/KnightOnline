@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -7,13 +8,22 @@ using KnightOnline.Server.Players;
 
 namespace KnightOnline.Server.Networking;
 
+/// <param name="anonymousTimeout">
+/// How long a connection may stay without an attached account before it is
+/// closed, so idle TCP connections cannot hold transport capacity (B4).
+/// Null or <see cref="Timeout.InfiniteTimeSpan"/> disables the limit.
+/// </param>
 public sealed class ClientConnection(
     TcpClient tcpClient,
     PacketDispatcher dispatcher,
-    int maximumPacketSize) : IAsyncDisposable
+    int maximumPacketSize,
+    TimeSpan? anonymousTimeout = null) : IAsyncDisposable
 {
     private readonly NetworkStream _stream = tcpClient.GetStream();
     private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly TimeSpan _anonymousTimeout =
+        anonymousTimeout ?? Timeout.InfiniteTimeSpan;
+    private long _anonymousSinceTimestamp = Stopwatch.GetTimestamp();
     private int _disposeState;
 
     public PlayerSession? PlayerSession { get; private set; }
@@ -54,6 +64,9 @@ public sealed class ClientConnection(
         AccountKey = null;
         AccountSessionGeneration = Guid.Empty;
         IsGuest = false;
+        // Logged out back to the entry screen: the anonymous budget restarts.
+        Interlocked.Exchange(ref _anonymousSinceTimestamp,
+            Stopwatch.GetTimestamp());
         return true;
     }
 
@@ -92,7 +105,8 @@ public sealed class ClientConnection(
             while (!cancellationToken.IsCancellationRequested)
             {
                 PacketEnvelope? envelope =
-                    await ReadEnvelopeAsync(cancellationToken);
+                    await ReadEnvelopeWithAnonymousTimeoutAsync(
+                        cancellationToken);
 
                 if (envelope == null)
                     break;
@@ -172,6 +186,41 @@ public sealed class ClientConnection(
             _sendLock.Release();
         }
     }
+
+    private async Task<PacketEnvelope?> ReadEnvelopeWithAnonymousTimeoutAsync(
+        CancellationToken cancellationToken)
+    {
+        if (AccountKey != null || _anonymousTimeout == Timeout.InfiniteTimeSpan)
+            return await ReadEnvelopeAsync(cancellationToken);
+
+        TimeSpan remaining = _anonymousTimeout - Stopwatch.GetElapsedTime(
+            Interlocked.Read(ref _anonymousSinceTimestamp));
+        if (remaining <= TimeSpan.Zero)
+        {
+            LogAnonymousTimeout();
+            return null;
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken);
+        timeout.CancelAfter(remaining);
+        try
+        {
+            return await ReadEnvelopeAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+            when (!cancellationToken.IsCancellationRequested)
+        {
+            LogAnonymousTimeout();
+            return null;
+        }
+    }
+
+    private void LogAnonymousTimeout() =>
+        Console.WriteLine(
+            "[Network][Info] Closing unauthenticated connection " +
+            $"{ConnectionId} after {_anonymousTimeout.TotalSeconds:0}s " +
+            "without login.");
 
     private async Task<PacketEnvelope?> ReadEnvelopeAsync(
         CancellationToken cancellationToken)

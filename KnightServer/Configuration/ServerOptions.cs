@@ -65,8 +65,12 @@ public sealed class ServerOptions
                 "are implemented.");
         if (Network.Port is <= 0 or > 65535)
             throw new InvalidDataException("Network.Port must be between 1 and 65535.");
-        if (Network.MaximumPacketBytes <= 0)
-            throw new InvalidDataException("Network.MaximumPacketBytes must be positive.");
+        if (Network.MaximumPacketBytes is < 1024 or > 1024 * 1024)
+            throw new InvalidDataException(
+                "Network.MaximumPacketBytes must be between 1 KB and 1 MB.");
+        if (Network.AnonymousConnectionTimeoutSeconds is < 5 or > 3600)
+            throw new InvalidDataException(
+                "Network.AnonymousConnectionTimeoutSeconds must be between 5 and 3600.");
         if (Capacity.MaximumActiveAccounts <= 0 ||
             Capacity.MaximumTransportConnections <
                 Capacity.MaximumActiveAccounts)
@@ -85,6 +89,9 @@ public sealed class ServerOptions
             Authentication.AttemptWindowSeconds <= 0)
             throw new InvalidDataException(
                 "Authentication rate-limit values must be positive.");
+        if (Authentication.MaximumLoginAttemptsPerAccount is < 1 or > 100)
+            throw new InvalidDataException(
+                "Authentication.MaximumLoginAttemptsPerAccount must be between 1 and 100.");
         if (!Authentication.IpRateLimitEnabled && !isDevelopment)
             throw new InvalidDataException(
                 "IP rate limiting may be disabled only in Development.");
@@ -440,6 +447,12 @@ public sealed class NetworkOptions
     public string BindAddress { get; set; } = "127.0.0.1";
     public int Port { get; set; }
     public int MaximumPacketBytes { get; set; }
+
+    /// <summary>
+    /// Seconds a TCP connection may stay without login before it is closed.
+    /// The client reconnects on demand when the player presses login/play.
+    /// </summary>
+    public int AnonymousConnectionTimeoutSeconds { get; set; } = 120;
 }
 
 public sealed class CapacityOptions
@@ -455,6 +468,12 @@ public sealed class AuthenticationOptions
     public int RefreshTokenLifetimeDays { get; set; } = 30;
     public int AuthenticationReceiptLifetimeMinutes { get; set; } = 60;
     public int MaximumAttemptsPerWindow { get; set; } = 10;
+
+    /// <summary>
+    /// Password attempts allowed per username in one window, independent of
+    /// device/IP (B8). Keep low: this is the brute-force guard per account.
+    /// </summary>
+    public int MaximumLoginAttemptsPerAccount { get; set; } = 10;
     public int AttemptWindowSeconds { get; set; } = 60;
     public int HeartbeatIntervalSeconds { get; set; } = 5;
     public int SessionLeaseTtlSeconds { get; set; } = 20;

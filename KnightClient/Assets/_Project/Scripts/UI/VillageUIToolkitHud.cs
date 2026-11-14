@@ -17,11 +17,14 @@ namespace KnightOnline.Client.UI
         private PanelSettings _panelSettings;
         private IDisposable _mapSubscription;
         private IDisposable _questSubscription;
+        private IDisposable _portalSubscription;
         private Label _mapName;
         private Label _questTitle;
         private Label _questDescription;
         private Label _progressText;
         private Label _statusLabel;
+        private Label _noticeLabel;
+        private string _defaultNotice;
         private VisualElement _progressFill;
         private VisualElement _details;
         private Button _collapseButton;
@@ -30,6 +33,13 @@ namespace KnightOnline.Client.UI
         private VisualElement _functionMenuToggle;
         private VisualElement _logoutButton;
         private bool _collapsed;
+
+        /// <summary>UI Toolkit root, for sibling views on the same document.</summary>
+        public VisualElement Root => _document != null ? _document.rootVisualElement : null;
+        private string _authoritativeMapId;
+        private string _authoritativeStepId = HudPresentation.StepTalkToMother;
+        private int _authoritativeProgress;
+        private int _authoritativeRequired = 20;
 
         public void Initialize(IEventBus events, CharacterData character,
             InGameMenuView menuView)
@@ -68,6 +78,8 @@ namespace KnightOnline.Client.UI
             _questDescription = root.Q<Label>("quest-description");
             _progressText = root.Q<Label>("progress-text");
             _statusLabel = root.Q<Label>("status-label");
+            _noticeLabel = root.Q<Label>("quest-notice");
+            _defaultNotice = _noticeLabel?.text;
             _progressFill = root.Q<VisualElement>("progress-fill");
             _details = root.Q<VisualElement>("quest-details");
             _questCard = root.Q<VisualElement>("quest-card");
@@ -79,12 +91,44 @@ namespace KnightOnline.Client.UI
             _collapseButton.clicked += ToggleDetails;
             menuView?.Initialize(root, SetQuestCardVisible, tree.name);
 
-            SetMapName(character?.CurrentMapDefinitionId);
-            SetQuest("talk_to_mother", 0, 20);
+            _authoritativeMapId = character?.CurrentMapDefinitionId;
+            RenderMapName(_authoritativeMapId);
+            RenderQuest(_authoritativeStepId, _authoritativeProgress,
+                _authoritativeRequired);
             _mapSubscription = events.Subscribe<MapTransitionedEvent>(
-                value => SetMapName(value.MapId));
+                OnMapTransitioned);
             _questSubscription = events.Subscribe<TutorialProgressChangedEvent>(
-                value => SetQuest(value.StepId, value.Progress, value.Required));
+                OnTutorialProgressChanged);
+            _portalSubscription = events.Subscribe<PortalUseResultEvent>(
+                OnPortalUseResult);
+        }
+
+        private void OnMapTransitioned(MapTransitionedEvent value)
+        {
+            _authoritativeMapId = value.MapId;
+            RenderMapName(value.MapId);
+            ShowNotice(null);
+        }
+
+        private void OnTutorialProgressChanged(TutorialProgressChangedEvent value)
+        {
+            _authoritativeStepId = value.StepId;
+            _authoritativeProgress = value.Progress;
+            _authoritativeRequired = value.Required;
+            RenderQuest(value.StepId, value.Progress, value.Required);
+            ShowNotice(null);
+        }
+
+        private void OnPortalUseResult(PortalUseResultEvent value) =>
+            ShowNotice(HudPresentation.PortalResultMessage(value.Result));
+
+        /// <summary>Shows a warning in the card footer; null restores the hint.</summary>
+        private void ShowNotice(string message)
+        {
+            if (_noticeLabel == null) return;
+            bool hasMessage = !string.IsNullOrEmpty(message);
+            _noticeLabel.text = hasMessage ? message : _defaultNotice;
+            _noticeLabel.EnableInClassList("footer-text--warning", hasMessage);
         }
 
         private void LogMissingMenuElements(VisualTreeAsset tree)
@@ -101,61 +145,48 @@ namespace KnightOnline.Client.UI
                 this);
         }
 
-        private void SetMapName(string mapId)
+        private void RenderMapName(string mapId)
         {
-            if (_mapName == null) return;
-            _mapName.text = mapId switch
-            {
-                "tutorial_map_01" => "LÀNG TÂN THỦ",
-                "wolf_field_01" => "BÃI SÓI",
-                "safe_zone_01" => "SAFE ZONE 1",
-                _ => string.IsNullOrWhiteSpace(mapId) ? "KHU VỰC" : mapId,
-            };
+            if (_mapName != null)
+                _mapName.text = HudPresentation.MapDisplayName(mapId);
         }
 
-        private void SetQuest(string stepId, int progress, int required)
+        private void RenderQuest(string stepId, int progress, int required)
         {
             if (_questTitle == null) return;
-            required = Mathf.Max(1, required);
-            progress = Mathf.Clamp(progress, 0, required);
-            float percent = (float)progress / required * 100f;
-
-            switch (stepId)
-            {
-                case "talk_to_mother":
-                    _questTitle.text = "LỜI NHẮN CỦA MẸ";
-                    _questDescription.text = "Tìm Mẹ trong làng và nhận nhiệm vụ đầu tiên.";
-                    _statusLabel.text = "MỚI";
-                    break;
-                case "hunt_20_wolves":
-                    _questTitle.text = "BẦY SÓI NGOÀI BÌA LÀNG";
-                    _questDescription.text = "Qua cổng đến Bãi Sói và hạ gục 20 Wolf.";
-                    _statusLabel.text = "ĐANG LÀM";
-                    break;
-                case "return_to_mother":
-                    _questTitle.text = "TRỞ VỀ GẶP MẸ";
-                    _questDescription.text = "Đã đủ số Wolf. Quay về làng để nhận thưởng.";
-                    _statusLabel.text = "HOÀN THÀNH MỤC TIÊU";
-                    break;
-                case "depart_for_safe_zone_01":
-                    _questTitle.text = "LÊN ĐƯỜNG";
-                    _questDescription.text = "Nhiệm vụ tân thủ hoàn tất. Cổng Safe Zone 1 đang chờ.";
-                    _statusLabel.text = "ĐÃ XONG";
-                    progress = required;
-                    percent = 100f;
-                    break;
-                default:
-                    _questTitle.text = "HÀNH TRÌNH TÂN THỦ";
-                    _questDescription.text = stepId;
-                    _statusLabel.text = "NHIỆM VỤ";
-                    break;
-            }
-
-            _progressText.text = stepId == "talk_to_mother"
-                ? "CHƯA NHẬN"
-                : $"{progress:00} / {required:00}";
-            _progressFill.style.width = Length.Percent(percent);
+            QuestCardModel model =
+                HudPresentation.DescribeQuest(stepId, progress, required);
+            _questTitle.text = model.Title;
+            _questDescription.text = model.Description;
+            _statusLabel.text = model.Status;
+            _progressText.text = model.ProgressText;
+            _progressFill.style.width = Length.Percent(model.ProgressRatio * 100f);
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Dev-only preview API used by HudDebugPanel. It renders values without
+        // changing the cached authoritative state, so Restore always returns
+        // to what the server last sent.
+        public string DebugAuthoritativeSummary =>
+            $"map={_authoritativeMapId ?? "-"} | step={_authoritativeStepId} " +
+            $"({_authoritativeProgress}/{_authoritativeRequired})";
+
+        public void DebugPreviewQuest(string stepId, int progress, int required) =>
+            RenderQuest(stepId, progress, required);
+
+        public void DebugPreviewMap(string mapId) => RenderMapName(mapId);
+
+        public void DebugPreviewPortalResult(byte result) =>
+            ShowNotice(HudPresentation.PortalResultMessage(result));
+
+        public void DebugRestoreAuthoritative()
+        {
+            RenderMapName(_authoritativeMapId);
+            RenderQuest(_authoritativeStepId, _authoritativeProgress,
+                _authoritativeRequired);
+            ShowNotice(null);
+        }
+#endif
 
         private void ToggleDetails()
         {
@@ -174,6 +205,7 @@ namespace KnightOnline.Client.UI
         {
             _mapSubscription?.Dispose();
             _questSubscription?.Dispose();
+            _portalSubscription?.Dispose();
             if (_collapseButton != null)
                 _collapseButton.clicked -= ToggleDetails;
             if (_panelSettings != null)

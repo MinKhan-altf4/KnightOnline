@@ -10,6 +10,7 @@ using KnightOnline.Server.Networking;
 using KnightOnline.Server.Networking.Handlers;
 using KnightOnline.Server.Monsters;
 using KnightOnline.Server.Persistence;
+using KnightOnline.Server.Persistence.Entities;
 using KnightOnline.Server.Players;
 using KnightOnline.Server.Progression;
 using KnightOnline.Server.World;
@@ -40,14 +41,13 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
         TutorialDefinitionOptions definition = options.TutorialDefinitions.Single();
         var service = new StarterTutorialService(database.Options, definition,
             new ConfiguredExperienceCurve(options.Progression),
-            new ConfiguredMapCatalog(options.MapDefinitions),
             new FixedClock(InitialUtc));
 
         TutorialCommandResult accepted = await service.InteractWithQuestNpcAsync(
             Guid.NewGuid(), characterId, CancellationToken.None);
         Assert.Equal(StarterTutorialOutcome.QuestAccepted, accepted.Outcome);
         Assert.Equal(definition.ReturnMapDefinitionId, accepted.MapDefinitionId);
-        await service.PersistPortalTransitionAsync(characterId,
+        await MoveCharacterAsync(database.Options, characterId,
             definition.QuestMapDefinitionId, definition.QuestSpawnPointId,
             -7f, 0f, CancellationToken.None);
 
@@ -70,7 +70,7 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
                 definition.QuestMapDefinitionId, CancellationToken.None);
         }
         Assert.Equal(StarterTutorialOutcome.ReadyToTurnIn, progress.Outcome);
-        await service.PersistPortalTransitionAsync(characterId,
+        await MoveCharacterAsync(database.Options, characterId,
             definition.ReturnMapDefinitionId, definition.ReturnSpawnPointId,
             0f, 0f, CancellationToken.None);
 
@@ -126,6 +126,11 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
         await connection.ReadPayloadAsync<SelectCharacterResponsePacket>(
             PacketType.SelectCharacterResponse);
 
+        // The default spawn is outside the mother's interaction range.
+        NpcDefinitionOptions mother = options.NpcDefinitions.Single(value =>
+            value.DefinitionId == definition.QuestNpcDefinitionId);
+        connection.TeleportPlayer(mother.MapDefinitionId, mother.PositionX,
+            mother.PositionY, clock.UtcNow);
         await connection.SendAsync(PacketType.InteractNpcRequest,
             new InteractNpcRequestPacket(Guid.NewGuid(),
                 definition.QuestNpcDefinitionId));
@@ -151,8 +156,7 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
         Assert.Equal(definition.QuestMapDefinitionId, wolfField.MapDefinitionId);
 
         var service = new StarterTutorialService(database.Options, definition,
-            new ConfiguredExperienceCurve(options.Progression),
-            new ConfiguredMapCatalog(options.MapDefinitions), clock);
+            new ConfiguredExperienceCurve(options.Progression), clock);
         for (int index = 0; index < definition.RequiredKillCount; index++)
             await service.RecordKillAsync(created.Character.CharacterId,
                 Guid.NewGuid(), definition.RequiredMonsterDefinitionId,
@@ -895,6 +899,25 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
     private static CharacterOptions LoadCharacterOptions() =>
         LoadServerOptions().Characters;
 
+    // Replaces the removed StarterTutorialService.PersistPortalTransitionAsync:
+    // places the character directly so service-level tests can skip the wire
+    // portal flow (covered by the TCP test).
+    private static async Task MoveCharacterAsync(
+        DbContextOptions<KnightDbContext> options, int characterId,
+        string mapDefinitionId, string spawnPointId, float x, float y,
+        CancellationToken cancellationToken)
+    {
+        await using var db = new KnightDbContext(options);
+        CharacterEntity character = await db.Characters.SingleAsync(
+            value => value.Id == characterId, cancellationToken);
+        character.CurrentMapDefinitionId = mapDefinitionId;
+        character.CurrentSpawnPointId = spawnPointId;
+        character.PositionX = x;
+        character.PositionY = y;
+        character.Version++;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     private static ServerOptions LoadServerOptions() =>
         ServerOptions.Load(
             Path.Combine(AppContext.BaseDirectory, "serverSettings.json"));
@@ -1014,7 +1037,6 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
                 context.DatabaseOptions,
                 tutorial,
                 new ConfiguredExperienceCurve(serverOptions.Progression),
-                new ConfiguredMapCatalog(serverOptions.MapDefinitions),
                 clock);
             var dispatcher = new PacketDispatcher(
                 [
@@ -1042,13 +1064,16 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
                         tutorial, tutorialService,
                         new ConfiguredExperienceCurve(serverOptions.Progression),
                         new CharacterStatsPipeline(serverOptions.Characters),
-                        clock),
+                        clock,
+                        movementResolver),
                     new ListPortalsPacketHandler(serverOptions.PortalDefinitions,
                         serverOptions.MapDefinitions),
                     new UsePortalPacketHandler(serverOptions.PortalDefinitions,
                         tutorialService,
+                        context.Repository,
                         new ConfiguredMapCatalog(serverOptions.MapDefinitions),
-                        clock),
+                        clock,
+                        movementResolver),
                 ],
                 leases,
                 clock);

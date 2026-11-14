@@ -136,6 +136,10 @@ public static class Program
             options.Authentication.MaximumAttemptsPerWindow,
             TimeSpan.FromSeconds(
                 options.Authentication.AttemptWindowSeconds));
+        var accountLoginRateLimiter = new AuthenticationRateLimiter(
+            options.Authentication.MaximumLoginAttemptsPerAccount,
+            TimeSpan.FromSeconds(
+                options.Authentication.AttemptWindowSeconds));
         IAccountIdentityProvider accountIdentities =
             new DevelopmentAccountIdentityProvider(
                 options.Characters.DevelopmentAccountKey);
@@ -171,12 +175,14 @@ public static class Program
                 accountSessions,
                 authenticationRateLimiter,
                 clock,
-                options.Authentication),
+                options.Authentication,
+                accountLoginRateLimiter),
             new LeaveAccountSessionPacketHandler(
                 accountSessions,
                 activePlayers,
                 characterRepository,
-                clock),
+                clock,
+                movementResolver),
             new AccountSessionHeartbeatPacketHandler(
                 accountSessions,
                 clock),
@@ -202,11 +208,13 @@ public static class Program
             new ListNpcsPacketHandler(options.NpcDefinitions),
             new InteractNpcPacketHandler(options.NpcDefinitions,
                 starterTutorial, starterTutorialService,
-                experienceCurve, characterStatsPipeline, clock),
+                experienceCurve, characterStatsPipeline, clock,
+                movementResolver),
             new ListPortalsPacketHandler(options.PortalDefinitions,
                 options.MapDefinitions),
             new UsePortalPacketHandler(options.PortalDefinitions,
-                starterTutorialService, characterRepository, mapCatalog, clock),
+                starterTutorialService, characterRepository, mapCatalog, clock,
+                movementResolver),
             new SelectCharacterPacketHandler(
                 characterRepository,
                 activePlayers,
@@ -250,6 +258,7 @@ public static class Program
                 accountSessions,
                 characterRepository,
                 clock,
+                movementResolver,
                 TimeSpan.FromSeconds(5)),
             "character-snapshot-loop");
         ObserveBackgroundTask(
@@ -260,30 +269,59 @@ public static class Program
         var listener = new TcpListener(
             IPAddress.Parse(options.Network.BindAddress),
             options.Network.Port);
-        var runtime = new ServerRuntime(characterRepository);
+        var runtime = new ServerRuntime(characterRepository, movementResolver);
         listener.Start();
         Console.WriteLine($"[Server] Listening on port {options.Network.Port}.");
         Console.WriteLine(
             $"[Monster] Loaded {monsterService.GetSnapshots().Count} monster instance(s).");
 
+        var anonymousTimeout = TimeSpan.FromSeconds(
+            options.Network.AnonymousConnectionTimeoutSeconds);
         while (true)
         {
-            TcpClient tcpClient = await listener.AcceptTcpClientAsync();
-            var connection = new ClientConnection(
-                tcpClient,
-                packetDispatcher,
-                options.Network.MaximumPacketBytes);
+            // B2: nothing a single client does may escape this loop, otherwise
+            // the whole server stops accepting connections.
+            TcpClient tcpClient;
+            try
+            {
+                tcpClient = await listener.AcceptTcpClientAsync();
+            }
+            catch (SocketException exception)
+            {
+                Console.WriteLine(
+                    $"[Network][Warning] Accept failed: {exception.SocketErrorCode}.");
+                continue;
+            }
+
+            ClientConnection connection;
+            try
+            {
+                connection = new ClientConnection(
+                    tcpClient,
+                    packetDispatcher,
+                    options.Network.MaximumPacketBytes,
+                    anonymousTimeout);
+            }
+            catch (Exception exception) when (
+                exception is IOException or SocketException or
+                    InvalidOperationException or ObjectDisposedException)
+            {
+                // The client reset before the stream could be opened.
+                Console.WriteLine(
+                    "[Network][Warning] Dropped connection during accept: " +
+                    $"{exception.GetType().Name}.");
+                tcpClient.Dispose();
+                continue;
+            }
+
             if (!connections.TryAdd(connection))
             {
                 Console.WriteLine(
                     "[Capacity][Warning] Rejected transport connection: " +
                     "server transport capacity reached.");
-                await connection.SendAsync(
-                    PacketType.ConnectResponse,
-                    new ConnectResponsePacket(
-                        ConnectResult.ServerFull,
-                        "Máy chủ hiện đã đầy. Vui lòng thử lại sau."));
-                await connection.DisposeAsync();
+                ObserveBackgroundTask(
+                    RejectServerFullAsync(connection),
+                    "reject-server-full");
                 continue;
             }
             ObserveBackgroundTask(
@@ -295,6 +333,34 @@ public static class Program
                     clock,
                     runtime),
                 "client-connection");
+        }
+    }
+
+    /// <summary>
+    /// Tells a client the server is full, off the accept loop and with a short
+    /// deadline so a slow or resetting client cannot block or crash accept.
+    /// </summary>
+    private static async Task RejectServerFullAsync(ClientConnection connection)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        try
+        {
+            await connection.SendAsync(
+                PacketType.ConnectResponse,
+                new ConnectResponsePacket(
+                    ConnectResult.ServerFull,
+                    "Máy chủ hiện đã đầy. Vui lòng thử lại sau."),
+                deadline.Token);
+        }
+        catch (Exception exception) when (
+            exception is IOException or SocketException or
+                OperationCanceledException or ObjectDisposedException)
+        {
+            // Expected: the client may already be gone.
+        }
+        finally
+        {
+            await connection.DisposeAsync();
         }
     }
 
@@ -345,6 +411,10 @@ public static class Program
                 if (connection.PlayerSession is { } playerSession &&
                     connection.AccountKey is { } playerAccountKey)
                 {
+                    // B5: persist where the player is now, not where the last
+                    // movement input left them.
+                    playerSession.AdvancePosition(
+                        clock.UtcNow, runtime.MovementResolver);
                     await runtime.Characters.SaveSessionSnapshotAsync(
                         playerAccountKey,
                         playerSession.CharacterId,
@@ -380,7 +450,9 @@ public static class Program
         }
     }
 
-    private sealed record ServerRuntime(CharacterRepository Characters);
+    private sealed record ServerRuntime(
+        CharacterRepository Characters,
+        IWorldMovementResolver MovementResolver);
 
     private static async Task RunMonsterRespawnLoopAsync(
         MonsterService monsterService,
@@ -460,6 +532,7 @@ public static class Program
         IActiveAccountLeaseStore accountSessions,
         CharacterRepository characters,
         IServerClock clock,
+        IWorldMovementResolver movementResolver,
         TimeSpan tickInterval)
     {
         using var timer = new PeriodicTimer(tickInterval);
@@ -480,6 +553,7 @@ public static class Program
 
                 try
                 {
+                    session.AdvancePosition(clock.UtcNow, movementResolver);
                     await characters.SaveSessionSnapshotAsync(
                         accountKey,
                         session.CharacterId,

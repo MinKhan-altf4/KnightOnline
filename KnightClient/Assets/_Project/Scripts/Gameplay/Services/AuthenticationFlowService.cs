@@ -32,6 +32,7 @@ namespace KnightOnline.Client.Gameplay.Services
         private bool _isManualLogin;
         private bool _isAuthenticated;
         private bool _isReconnectingForRequest;
+        private bool _isLoadingVisible;
         private string _registrationVerifier;
         private string _registrationUsername;
         private string _registrationPassword;
@@ -510,9 +511,17 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void OnServerDisconnected(ServerDisconnectedEvent result)
         {
+            bool wasAuthenticated = _isAuthenticated;
+            bool requestInFlight = _isLoadingVisible || _isReconnectingForRequest;
             _isAuthenticated = false;
             StopHeartbeat();
             HideLoading();
+            // The server closes connections that idle on the entry screen
+            // without logging in. Login/Play/Continue reconnect on demand, so
+            // a quiet close with no request in flight needs no warning.
+            if (!wasAuthenticated && !result.IsForced && !requestInFlight)
+                return;
+
             PublishEntry("Bạn bị mất kết nối máy chủ");
             if (result.IsForced)
             {
@@ -722,6 +731,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void PublishLoading(string message)
         {
+            _isLoadingVisible = true;
             _events.Publish(new AuthenticationLoadingEvent(
                 true,
                 0f,
@@ -730,6 +740,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void PublishLoading(string message, float remainingSeconds)
         {
+            _isLoadingVisible = true;
             _events.Publish(new AuthenticationLoadingEvent(
                 true,
                 remainingSeconds,
@@ -784,6 +795,7 @@ namespace KnightOnline.Client.Gameplay.Services
 
         private void HideLoading()
         {
+            _isLoadingVisible = false;
             _events.Publish(new AuthenticationLoadingEvent(
                 false,
                 0f,

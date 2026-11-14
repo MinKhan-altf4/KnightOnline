@@ -36,7 +36,8 @@ public sealed class InteractNpcPacketHandler(
     StarterTutorialService service,
     IExperienceCurve experienceCurve,
     CharacterStatsPipeline statsPipeline,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    IWorldMovementResolver movementResolver) : IPacketHandler
 {
     public PacketType PacketType => PacketType.InteractNpcRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.CharacterSelected;
@@ -60,6 +61,10 @@ public sealed class InteractNpcPacketHandler(
         if (!string.Equals(npc.MapDefinitionId, session.MapDefinitionId,
                 StringComparison.OrdinalIgnoreCase))
         { await Respond(NpcInteractionResult.WrongMap, request.RequestId, ""); return; }
+        // The server has no world tick yet: bring the position up to now
+        // before the range check, otherwise a walking player is judged by the
+        // position of their last movement input.
+        session.AdvancePosition(clock.UtcNow, movementResolver);
         if (Vector2.Distance(session.Position,
                 new Vector2(npc.PositionX, npc.PositionY)) > npc.InteractionRange)
         { await Respond(NpcInteractionResult.OutOfRange, request.RequestId, ""); return; }
@@ -169,7 +174,8 @@ public sealed class UsePortalPacketHandler(
     StarterTutorialService tutorialService,
     CharacterRepository characters,
     IMapCatalog maps,
-    IServerClock clock) : IPacketHandler
+    IServerClock clock,
+    IWorldMovementResolver movementResolver) : IPacketHandler
 {
     public PacketType PacketType => PacketType.UsePortalRequest;
     public PacketAccessLevel RequiredAccess => PacketAccessLevel.CharacterSelected;
@@ -186,6 +192,8 @@ public sealed class UsePortalPacketHandler(
                 request.PortalDefinitionId, StringComparison.OrdinalIgnoreCase));
         if (request != null && request.RequestId != Guid.Empty)
         {
+            // See InteractNpcPacketHandler: advance before the range check.
+            session.AdvancePosition(clock.UtcNow, movementResolver);
             if (portal == null) status = PortalUseResult.PortalNotFound;
             else if (!string.Equals(portal.SourceMapDefinitionId,
                          session.MapDefinitionId,

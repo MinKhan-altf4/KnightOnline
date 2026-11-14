@@ -119,7 +119,8 @@ namespace KnightOnline.Client.UI
             _questText.outlineColor = Color.black;
             _questText.outlineWidth = 0.18f;
             _questText.textWrappingMode = TextWrappingModes.Normal;
-            _questText.text = "Nhiệm vụ: Hãy nói chuyện với Mẹ";
+            _questText.text = HudPresentation.DescribeQuest(
+                HudPresentation.StepTalkToMother, 0, 1).SummaryLine;
         }
 
         private void OnMapTransitioned(MapTransitionedEvent value) =>
@@ -127,27 +128,17 @@ namespace KnightOnline.Client.UI
 
         private void OnPortalUseResult(PortalUseResultEvent value)
         {
-            if (_questText == null || value.Result == 0)
+            string message = HudPresentation.PortalResultMessage(value.Result);
+            if (_questText == null || message == null)
                 return;
-            _questText.text = value.Result switch
-            {
-                6 => "Safe Zone 1 yêu cầu nhân vật đạt level 2.",
-                4 => "Hãy bước vào chính giữa cổng dịch chuyển.",
-                _ => "Hiện chưa thể sử dụng cổng này.",
-            };
+            _questText.text = message;
             _questText.color = new Color(1f, 0.55f, 0.25f);
         }
 
         private void SetMapName(string mapId)
         {
             EnsureQuestLabel();
-            string displayName = mapId switch
-            {
-                "tutorial_map_01" => "LÀNG TÂN THỦ",
-                "wolf_field_01" => "BÃI SÓI",
-                "safe_zone_01" => "SAFE ZONE 1",
-                _ => string.IsNullOrWhiteSpace(mapId) ? "KHU VỰC" : mapId,
-            };
+            string displayName = HudPresentation.MapDisplayName(mapId);
             if (_mapNameText != null)
                 _mapNameText.text = displayName;
             TMP_Text minimapName = GameObject.Find("ZoneNameText")?
@@ -163,15 +154,8 @@ namespace KnightOnline.Client.UI
         {
             EnsureQuestLabel();
             _questText.color = Color.white;
-            _questText.text = value.StepId switch
-            {
-                "talk_to_mother" => "Nhiệm vụ: Hãy nói chuyện với Mẹ",
-                "hunt_20_wolves" =>
-                    $"Nhiệm vụ: Tiêu diệt Wolf ({value.Progress}/{value.Required})",
-                "return_to_mother" => "Nhiệm vụ: Qua cổng về gặp Mẹ",
-                "depart_for_safe_zone_01" => "Đã hoàn thành: Lên đường tới Safe Zone 1",
-                _ => $"Nhiệm vụ: {value.StepId}",
-            };
+            _questText.text = HudPresentation.DescribeQuest(
+                value.StepId, value.Progress, value.Required).SummaryLine;
         }
 
         private void OnDisconnected(ServerDisconnectedEvent gameEvent)
@@ -222,64 +206,56 @@ namespace KnightOnline.Client.UI
             if (_characterData == null)
                 return;
 
-            if (_levelText != null)
-                _levelText.text = $"Lv.{_characterData.Level}";
-
-            SetResourceBar(
-                _healthText,
-                _healthFill,
+            RenderPlayerStatus(
+                _characterData.Level,
                 _characterData.CurrentHp,
                 _characterData.MaxHp,
-                "HP");
-            SetResourceBar(
-                _manaText,
-                _manaFill,
                 _characterData.CurrentMana,
                 _characterData.MaxMana,
-                "MP");
-
-            long experienceToNext = Math.Max(
-                0,
-                _characterData.ExperienceToNextLevel);
-            long experienceIntoLevel = Math.Clamp(
                 _characterData.ExperienceIntoLevel,
-                0,
-                experienceToNext);
-            if (_experienceText != null)
-            {
-                double percentage = experienceToNext > 0
-                    ? experienceIntoLevel * 100d / experienceToNext
-                    : 100d;
-                _experienceText.text = experienceToNext > 0
-                    ? $"EXP {percentage:F1}%"
-                    : "EXP MAX";
-            }
-            if (_experienceFill != null)
-            {
-                _experienceFill.fillAmount = experienceToNext > 0
-                    ? (float)experienceIntoLevel / experienceToNext
-                    : 1f;
-            }
+                _characterData.ExperienceToNextLevel);
         }
 
-        private static void SetResourceBar(
-            TMP_Text label,
-            Image fill,
-            int currentValue,
-            int maximumValue,
-            string prefix)
+        private void RenderPlayerStatus(int level, int currentHp, int maxHp,
+            int currentMana, int maxMana, long experienceIntoLevel,
+            long experienceToNextLevel)
         {
-            int safeMaximum = Math.Max(0, maximumValue);
-            int safeCurrent = Math.Clamp(currentValue, 0, safeMaximum);
-            if (label != null)
-                label.text = $"{prefix} {safeCurrent:N0}/{safeMaximum:N0}";
-            if (fill != null)
-            {
-                fill.fillAmount = safeMaximum > 0
-                    ? (float)safeCurrent / safeMaximum
-                    : 0f;
-            }
+            if (_levelText != null)
+                _levelText.text = HudPresentation.LevelLabel(level);
+
+            ApplyBar(_healthText, _healthFill,
+                HudPresentation.ResourceBar("HP", currentHp, maxHp));
+            ApplyBar(_manaText, _manaFill,
+                HudPresentation.ResourceBar("MP", currentMana, maxMana));
+            ApplyBar(_experienceText, _experienceFill,
+                HudPresentation.ExperienceBar(
+                    experienceIntoLevel, experienceToNextLevel));
         }
+
+        private static void ApplyBar(TMP_Text label, Image fill, HudBarModel bar)
+        {
+            if (label != null)
+                label.text = bar.Label;
+            if (fill != null)
+                fill.fillAmount = bar.Fill;
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// Dev-only: renders arbitrary values without touching CharacterData
+        /// or the vitals sequence, so a later server event always wins.
+        /// </summary>
+        public void DebugPreviewPlayerStatus(int level, int currentHp, int maxHp,
+            int currentMana, int maxMana, long experienceIntoLevel,
+            long experienceToNextLevel) =>
+            RenderPlayerStatus(level, currentHp, maxHp, currentMana, maxMana,
+                experienceIntoLevel, experienceToNextLevel);
+
+        /// <summary>Dev-only: re-renders the last authoritative values.</summary>
+        public void DebugRestoreAuthoritativeStatus() => RefreshPlayerStatus();
+
+        public CharacterData DebugCharacterData => _characterData;
+#endif
 
 #if UNITY_EDITOR
         private void OnValidate()

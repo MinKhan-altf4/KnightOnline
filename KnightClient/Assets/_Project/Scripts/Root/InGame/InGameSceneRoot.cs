@@ -60,7 +60,14 @@ namespace KnightOnline.Client.Core.Bootstrap
             var villageHud = new GameObject("VillageUIToolkitHud")
                 .AddComponent<VillageUIToolkitHud>();
             villageHud.Initialize(_events, _character, _menuView);
-            FindAnyObjectByType<InGameHUD>()?.SetQuestCardVisible(false);
+            villageHud.gameObject.AddComponent<InGameConnectionLostView>()
+                .Initialize(villageHud.Root, _events, _player);
+            InGameHUD playerHud = FindAnyObjectByType<InGameHUD>();
+            playerHud?.SetQuestCardVisible(false);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            new GameObject("HudDebugPanel").AddComponent<HudDebugPanel>()
+                .Initialize(villageHud, playerHud);
+#endif
             ApplyMapPresentation(_character.CurrentMapDefinitionId);
             RequestMapPresentation();
         }

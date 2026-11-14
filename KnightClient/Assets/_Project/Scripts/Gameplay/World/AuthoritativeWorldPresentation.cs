@@ -11,6 +11,11 @@ namespace KnightOnline.Client.Gameplay.World
 {
     public sealed class AuthoritativeWorldPresentation : MonoBehaviour
     {
+        // Mirrors Shared PortalUseResult.OutOfRange; Gameplay does not reference
+        // the protocol assembly (CORE-22), the event only carries the byte.
+        private const byte PortalResultOutOfRange = 4;
+        private const float PortalRetryDelaySeconds = 0.4f;
+
         private readonly List<GameObject> _npcObjects = new();
         private readonly List<GameObject> _portalObjects = new();
         private readonly List<GameObject> _boundaryObjects = new();
@@ -168,8 +173,21 @@ namespace KnightOnline.Client.Gameplay.World
 
         private void OnPortalUseResult(PortalUseResultEvent value)
         {
-            if (value.Result != 0)
-                _transitionPending = false;
+            if (value.Result == 0)
+                return;
+
+            _transitionPending = false;
+            // Out of range: the player is probably still walking in, so retry
+            // shortly while they stay inside. Other rejections (level, quest)
+            // will not change by standing still: require leaving and
+            // re-entering to avoid spamming the server.
+            bool retryWhileInside = value.Result == PortalResultOutOfRange;
+            foreach (GameObject portal in _portalObjects)
+            {
+                if (portal != null &&
+                    portal.TryGetComponent(out PortalTriggerRelay relay))
+                    relay.Rearm(!retryWhileInside, PortalRetryDelaySeconds);
+            }
         }
 
         private GameObject CreateLabel(string label, float x, float y, Color color,
@@ -223,26 +241,61 @@ namespace KnightOnline.Client.Gameplay.World
         }
     }
 
+    /// <summary>
+    /// Sends one portal request when the player is inside the trigger, then
+    /// waits for the server. On rejection the presentation re-arms it.
+    /// </summary>
     public sealed class PortalTriggerRelay : MonoBehaviour
     {
         private Action _entered;
-        private bool _fired;
-        private bool _enabled = true;
+        private bool _armed = true;
+        private bool _requireExit;
+        private float _retryAt;
+
         public void Initialize(Action entered) => _entered = entered;
+
         public void SetEnabled(bool enabled)
         {
-            _enabled = enabled;
-            _fired = !enabled;
+            _armed = enabled;
+            _requireExit = false;
         }
+
+        public void Rearm(bool requireExit, float delaySeconds)
+        {
+            _armed = true;
+            _requireExit = requireExit;
+            _retryAt = Time.unscaledTime + Mathf.Max(0f, delaySeconds);
+        }
+
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (_enabled && !_fired &&
-                other.GetComponentInParent<PlayerController>() != null)
-            {
-                _fired = true;
-                _entered?.Invoke();
-            }
+            if (!IsPlayer(other)) return;
+            _requireExit = false;
+            TryFire();
         }
+
+        private void OnTriggerStay2D(Collider2D other)
+        {
+            if (IsPlayer(other))
+                TryFire();
+        }
+
+        private void OnTriggerExit2D(Collider2D other)
+        {
+            if (IsPlayer(other))
+                _requireExit = false;
+        }
+
+        private void TryFire()
+        {
+            if (!_armed || _requireExit || Time.unscaledTime < _retryAt)
+                return;
+            _armed = false;
+            _entered?.Invoke();
+        }
+
+        private static bool IsPlayer(Collider2D other) =>
+            other.GetComponentInParent<PlayerController>() != null;
     }
 
     public sealed class WorldClickRelay : MonoBehaviour
