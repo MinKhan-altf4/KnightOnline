@@ -8,9 +8,10 @@ namespace KnightOnline.Client.Shared.Packets
     /// History:
     ///   1 - implicit (ConnectRequest without ProtocolVersion).
     ///   2 - P1: handshake required, WorldEntitiesSnapshot, tick snapshots.
+    ///   3 - Dead reckoning: remote player Speed; Moved sent only on change.
     /// </summary>
     public static class PacketProtocol
     {
-        public const int Version = 2;
+        public const int Version = 3;
     }
 }

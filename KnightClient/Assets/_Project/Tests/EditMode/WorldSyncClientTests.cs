@@ -53,43 +53,52 @@ namespace KnightOnline.Client.UI.Tests
             Assert.IsFalse(prediction.TryReconcile(3, Vector2.one, out _));
         }
 
-        // ---- InterpolationBuffer -----------------------------------------
+        // ---- DeadReckoningTrack -----------------------------------------
 
         [Test]
-        public void Interpolation_LerpsBetweenSamples()
+        public void DeadReckoning_ExtrapolatesAlongDirection()
         {
-            var buffer = new InterpolationBuffer();
-            buffer.Add(0.0, Vector2.zero);
-            buffer.Add(0.1, new Vector2(1, 0));
+            var track = new DeadReckoningTrack(Vector2.zero, Vector2.right, 4f, 10.0);
 
-            Assert.IsTrue(buffer.TrySample(0.05, out Vector2 position));
-            Assert.AreEqual(0.5f, position.x, 1e-4f);
+            Assert.AreEqual(2f, track.Predict(10.5).x, 1e-4f);
         }
 
         [Test]
-        public void Interpolation_ClampsOutsideRange()
+        public void DeadReckoning_StandingStill_StaysPut()
         {
-            var buffer = new InterpolationBuffer();
-            buffer.Add(1.0, Vector2.zero);
-            buffer.Add(1.1, new Vector2(1, 0));
+            var track = new DeadReckoningTrack(Vector2.one, Vector2.zero, 4f, 0.0);
 
-            buffer.TrySample(0.0, out Vector2 before);
-            buffer.TrySample(5.0, out Vector2 after);
-
-            Assert.AreEqual(Vector2.zero, before);
-            Assert.AreEqual(new Vector2(1, 0), after);
+            Assert.AreEqual(Vector2.one, track.Predict(100.0));
         }
 
         [Test]
-        public void Interpolation_AfterIdle_DoesNotGlideAcrossIdlePeriod()
+        public void DeadReckoning_CapsExtrapolationWithoutUpdates()
         {
-            var buffer = new InterpolationBuffer(idleGapSeconds: 0.25);
-            buffer.Add(0.0, Vector2.zero);
-            buffer.Add(5.0, new Vector2(1, 0)); // started moving after 5 s idle
+            var track = new DeadReckoningTrack(Vector2.zero, Vector2.right, 1f, 0.0);
 
-            buffer.TrySample(4.0, out Vector2 duringIdle);
+            Assert.AreEqual((float)DeadReckoningTrack.MaximumExtrapolationSeconds,
+                track.Predict(60.0).x, 1e-4f);
+        }
 
-            Assert.AreEqual(Vector2.zero, duringIdle);
+        [Test]
+        public void DeadReckoning_UpdateReplacesState()
+        {
+            var track = new DeadReckoningTrack(Vector2.zero, Vector2.right, 4f, 0.0);
+
+            track.Set(new Vector2(1, 1), Vector2.up, 2f, 1.0);
+
+            Assert.AreEqual(new Vector2(1, 2), track.Predict(1.5));
+        }
+
+        [Test]
+        public void Smooth_ConvergesForSmallErrors_AndSnapsLargeOnes()
+        {
+            Vector2 small = DeadReckoningTrack.Smooth(Vector2.zero, new Vector2(1, 0), 1f / 60f);
+            Vector2 large = DeadReckoningTrack.Smooth(Vector2.zero, new Vector2(10, 0), 1f / 60f);
+
+            Assert.Greater(small.x, 0f);
+            Assert.Less(small.x, 1f);
+            Assert.AreEqual(new Vector2(10, 0), large);
         }
 
         // ---- RemotePlayerDirectory ----------------------------------------
@@ -100,12 +109,12 @@ namespace KnightOnline.Client.UI.Tests
             var directory = new RemotePlayerDirectory(null);
 
             Assert.IsTrue(directory.TryBeginSnapshot(10));
-            directory.Spawn(2, "Beta", 1, "warrior", Vector2.zero, Vector2.zero, 0);
+            directory.Spawn(2, "Beta", 1, "warrior", Vector2.zero, Vector2.zero, 4f, 0);
             int afterSpawn = directory.MembershipVersion;
             Assert.IsFalse(directory.TryBeginSnapshot(10));
             Assert.IsFalse(directory.TryBeginSnapshot(9));
 
-            directory.Move(2, Vector2.one, Vector2.right, 0.1);
+            directory.Move(2, Vector2.one, Vector2.right, 4f, 0.1);
             Assert.AreEqual(afterSpawn, directory.MembershipVersion);
 
             directory.Despawn(2);

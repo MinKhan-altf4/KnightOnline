@@ -14,11 +14,14 @@ namespace KnightOnline.Client.Shared.Packets
         public float Y { get; }
         public float DirectionX { get; }
         public float DirectionY { get; }
+        /// <summary>World units per second along Direction (protocol 3).</summary>
+        public float Speed { get; }
 
         public RemotePlayerSpawnPacket(int characterId, string name, int level,
             string classDefinitionId, float x, float y, float directionX,
-            float directionY)
+            float directionY, float speed)
         {
+            Speed = speed;
             CharacterId = characterId;
             Name = name;
             Level = level;
@@ -30,7 +33,11 @@ namespace KnightOnline.Client.Shared.Packets
         }
     }
 
-    /// <summary>Position/direction change of an already spawned player.</summary>
+    /// <summary>
+    /// Authoritative movement state of an already spawned player. Protocol 3:
+    /// sent only when the client's extrapolation (position + direction *
+    /// speed * elapsed) would be wrong, plus a periodic correction.
+    /// </summary>
     public sealed class RemotePlayerMovePacket
     {
         public int CharacterId { get; }
@@ -38,10 +45,12 @@ namespace KnightOnline.Client.Shared.Packets
         public float Y { get; }
         public float DirectionX { get; }
         public float DirectionY { get; }
+        public float Speed { get; }
 
         public RemotePlayerMovePacket(int characterId, float x, float y,
-            float directionX, float directionY)
+            float directionX, float directionY, float speed)
         {
+            Speed = speed;
             CharacterId = characterId;
             X = x;
             Y = y;

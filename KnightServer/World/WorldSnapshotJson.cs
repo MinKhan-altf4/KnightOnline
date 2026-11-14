@@ -70,7 +70,8 @@ public sealed class WorldSnapshotJson
         ",\"X\":" + Number(player.Position.X) +
         ",\"Y\":" + Number(player.Position.Y) +
         ",\"DirectionX\":" + Number(player.Direction.X) +
-        ",\"DirectionY\":" + Number(player.Direction.Y) + "}";
+        ",\"DirectionY\":" + Number(player.Direction.Y) +
+        ",\"Speed\":" + Number(player.Speed) + "}";
 
     private static string SpawnFragment(WorldPlayerState player) =>
         "{\"CharacterId\":" + player.CharacterId.ToString(CultureInfo.InvariantCulture) +
@@ -80,7 +81,8 @@ public sealed class WorldSnapshotJson
         ",\"X\":" + Number(player.Position.X) +
         ",\"Y\":" + Number(player.Position.Y) +
         ",\"DirectionX\":" + Number(player.Direction.X) +
-        ",\"DirectionY\":" + Number(player.Direction.Y) + "}";
+        ",\"DirectionY\":" + Number(player.Direction.Y) +
+        ",\"Speed\":" + Number(player.Speed) + "}";
 
     /// <summary>Finite, invariant, at most 3 decimals ("1.5", "-0.333", "0").</summary>
     public static string Number(float value)

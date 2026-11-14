@@ -24,11 +24,16 @@ public sealed class WorldSimulationBenchmarkTests(ITestOutputHelper output)
 {
     private const int Ticks = 200; // 10 s of simulated time at 20 Hz
 
+    /// <param name="directionChangeEveryTicks">
+    /// Average ticks between a player's direction changes: 2 = every input
+    /// (worst case), 40 = about every 2 s with 30% of changes being a stop.
+    /// </param>
     [Theory]
-    [InlineData(50)]
-    [InlineData(200)]
-    [InlineData(500)]
-    public async Task TickCost_WithPlayersOnOneMap(int players)
+    [InlineData(50, 2)]
+    [InlineData(200, 2)]
+    [InlineData(500, 2)]
+    [InlineData(500, 40)]
+    public async Task TickCost_WithPlayersOnOneMap(int players, int directionChangeEveryTicks)
     {
         if (Environment.GetEnvironmentVariable("KNIGHTONLINE_RUN_BENCHMARKS") != "1")
             return;
@@ -82,6 +87,8 @@ public sealed class WorldSimulationBenchmarkTests(ITestOutputHelper output)
                     MaximumVisiblePlayers: 100));
 
             var tickMs = new List<double>();
+            double selectMs = 0, trackMs = 0, buildMs = 0, enqueueMs = 0;
+            int snapshotTicks = 0;
             var snapshotTickMs = new List<double>();
             long sequence = 0;
             for (int tick = 0; tick < Ticks; tick++)
@@ -90,12 +97,17 @@ public sealed class WorldSimulationBenchmarkTests(ITestOutputHelper output)
                 if (tick % 2 == 0)
                 {
                     sequence++;
+                    double changeChance = 2.0 / directionChangeEveryTicks;
                     foreach (PlayerSession session in sessions)
                     {
+                        if (tick > 0 && random.NextDouble() >= changeChance)
+                            continue;
                         double angle = random.NextDouble() * Math.PI * 2;
-                        session.TrySetMovement(
-                            new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle)),
-                            sequence, clock.UtcNow, resolver);
+                        Vector2 direction = directionChangeEveryTicks > 2 &&
+                                            random.NextDouble() < 0.3
+                            ? Vector2.Zero
+                            : new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle));
+                        session.TrySetMovement(direction, sequence, clock.UtcNow, resolver);
                     }
                 }
 
@@ -104,7 +116,14 @@ public sealed class WorldSimulationBenchmarkTests(ITestOutputHelper output)
                 double elapsed = result.Elapsed.TotalMilliseconds;
                 tickMs.Add(elapsed);
                 if (result.EntitySnapshotsQueued > 0)
+                {
                     snapshotTickMs.Add(elapsed);
+                    snapshotTicks++;
+                    selectMs += result.Phases.SelectVisible.TotalMilliseconds;
+                    trackMs += result.Phases.TrackDelta.TotalMilliseconds;
+                    buildMs += result.Phases.BuildJson.TotalMilliseconds;
+                    enqueueMs += result.Phases.Enqueue.TotalMilliseconds;
+                }
                 // Give the writer tasks and draining clients real time, like
                 // the 50 ms PeriodicTimer would.
                 await Task.Delay(5);
@@ -114,12 +133,14 @@ public sealed class WorldSimulationBenchmarkTests(ITestOutputHelper output)
             int closed = connections.Count(connection => connection.IsClosed);
             double simulatedSeconds = Ticks * 0.05;
             output.WriteLine(
-                $"players={players} ticks={Ticks} " +
+                $"players={players} change/{directionChangeEveryTicks}t ticks={Ticks} " +
                 $"tick p50={Percentile(tickMs, 0.5):0.00}ms p95={Percentile(tickMs, 0.95):0.00}ms " +
                 $"max={tickMs.Max():0.00}ms | snapshot ticks p95={Percentile(snapshotTickMs, 0.95):0.00}ms " +
                 $"| sent {bytesReceived / 1024.0 / simulatedSeconds:0.0} KiB/s total, " +
                 $"{bytesReceived / 1024.0 / simulatedSeconds / players:0.00} KiB/s per player " +
-                $"| slow consumers closed={closed}");
+                $"| slow consumers closed={closed} | avg per snapshot tick: " +
+                $"select {selectMs / Math.Max(1, snapshotTicks):0.0} track {trackMs / Math.Max(1, snapshotTicks):0.0} " +
+                $"build {buildMs / Math.Max(1, snapshotTicks):0.0} enqueue {enqueueMs / Math.Max(1, snapshotTicks):0.0} ms");
 
             Assert.Equal(0, closed);
         }

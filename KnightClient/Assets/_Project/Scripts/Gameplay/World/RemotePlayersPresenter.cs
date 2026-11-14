@@ -6,15 +6,13 @@ namespace KnightOnline.Client.Gameplay.World
 {
     /// <summary>
     /// Shows other players from <see cref="RemotePlayerDirectory"/>: a simple
-    /// marker plus name label, positioned by interpolation a fixed delay behind
-    /// real time (World_Simulation_P1_Design §7). Purely visual: no colliders,
-    /// no input, no authority.
+    /// marker plus name label. Protocol 3: each frame the authoritative state is
+    /// extrapolated to "now" (dead reckoning) and the view is smoothed toward
+    /// it, so corrections do not pop. Purely visual: no colliders, no input,
+    /// no authority.
     /// </summary>
     public sealed class RemotePlayersPresenter : MonoBehaviour
     {
-        /// <summary>Two 10 Hz snapshots of buffer to absorb jitter.</summary>
-        public const double InterpolationDelaySeconds = 0.1;
-
         private readonly Dictionary<int, Transform> _views = new();
         private readonly List<int> _removeBuffer = new();
         private RemotePlayerDirectory _directory;
@@ -38,15 +36,16 @@ namespace KnightOnline.Client.Gameplay.World
                 _seenMembershipVersion = _directory.MembershipVersion;
             }
 
-            double renderTime =
-                Time.realtimeSinceStartupAsDouble - InterpolationDelaySeconds;
+            double now = Time.realtimeSinceStartupAsDouble;
+            float deltaTime = Time.deltaTime;
             foreach (RemotePlayerState player in _directory.Players)
             {
-                if (_views.TryGetValue(player.CharacterId, out Transform view) &&
-                    player.Positions.TrySample(renderTime, out Vector2 position))
-                {
-                    view.position = new Vector3(position.x, position.y, 0f);
-                }
+                if (!_views.TryGetValue(player.CharacterId, out Transform view))
+                    continue;
+                Vector2 target = player.Track.Predict(now);
+                Vector2 shown = DeadReckoningTrack.Smooth(
+                    view.position, target, deltaTime);
+                view.position = new Vector3(shown.x, shown.y, 0f);
             }
         }
 
@@ -75,8 +74,8 @@ namespace KnightOnline.Client.Gameplay.World
         {
             var root = new GameObject($"RemotePlayer_{player.CharacterId}");
             root.transform.SetParent(transform, false);
-            if (player.Positions.TrySample(double.MaxValue, out Vector2 start))
-                root.transform.position = new Vector3(start.x, start.y, 0f);
+            Vector2 start = player.Track.Predict(Time.realtimeSinceStartupAsDouble);
+            root.transform.position = new Vector3(start.x, start.y, 0f);
 
             var marker = new GameObject("Marker");
             marker.transform.SetParent(root.transform, false);

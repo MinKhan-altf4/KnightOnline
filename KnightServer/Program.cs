@@ -253,7 +253,11 @@ public static class Program
                 TimeSpan.FromMilliseconds(options.World.SimulationTickMilliseconds),
                 options.World.EntitySnapshotEveryTicks,
                 options.World.AoiCellSize,
-                options.World.MaximumVisiblePlayers));
+                options.World.MaximumVisiblePlayers,
+                new DeadReckoningSettings(
+                    options.World.DeadReckoningErrorThreshold,
+                    TimeSpan.FromMilliseconds(
+                        options.World.DeadReckoningRefreshMilliseconds))));
         ObserveBackgroundTask(worldSimulation.RunAsync(), "world-simulation");
         ObserveBackgroundTask(
             RunMonsterRespawnLoopAsync(

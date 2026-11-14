@@ -67,9 +67,9 @@ Mỗi bước build/test xanh và commit riêng.
 
 | PacketType | Hướng | Nội dung |
 |---|---|---|
-| `WorldEntitiesSnapshot = 52` | S→C | `ServerTick`, `ServerTimeUtc`, `Spawned[]` (`CharacterId`, `Name`, `Level`, `ClassDefinitionId`, `X`, `Y`), `Moved[]` (`CharacterId`, `X`, `Y`, `DirectionX`, `DirectionY`), `Despawned[]` (`CharacterId`) |
+| `WorldEntitiesSnapshot = 52` | S→C | `ServerTick`, `ServerTimeUtc`, `Spawned[]` (`CharacterId`, `Name`, `Level`, `ClassDefinitionId`, `X`, `Y`, `DirectionX`, `DirectionY`, `Speed`), `Moved[]` (`CharacterId`, `X`, `Y`, `DirectionX`, `DirectionY`, `Speed`), `Despawned[]` (`CharacterId`) |
 
-- Chỉ gửi khi có ít nhất một thay đổi. Người chơi đứng yên không tạo `Moved`.
+- Chỉ gửi khi có ít nhất một thay đổi. Từ protocol 3, `Moved` chỉ gửi theo quy tắc dead reckoning (mục 12.4).
 - Spawn được gửi khi B vào AOI của A, khi A đổi map hoặc vừa vào thế giới. Despawn khi B rời AOI, đổi map hoặc thoát game.
 - Không gửi dữ liệu nhạy cảm (account, HP chính xác của người khác). Tên hiển thị là dữ liệu công khai trong game.
 
@@ -79,7 +79,7 @@ TCP giữ thứ tự. Client bỏ snapshot có `ServerTick` ≤ tick đã áp d�
 
 ## 7. Client
 
-- **Remote player:** `RemotePlayerPresenter` tạo đối tượng hiển thị (sprite + tên) cho mỗi `Spawned`. Vị trí nội suy trễ `100 ms` theo `ServerTimeUtc` giữa hai mẫu gần nhất; mất mẫu thì đứng ở mẫu cuối, không ngoại suy quá 200 ms.
+- **Remote player:** `RemotePlayersPresenter` tạo đối tượng hiển thị (sprite + tên) cho mỗi `Spawned`. Protocol 2 dùng nội suy trễ 100 ms; protocol 3 thay bằng ngoại suy (dead reckoning) cộng làm mượt (mục 12.4).
 - **Own prediction:** client lưu lịch sử vị trí dự đoán theo `ClientSequence` đã gửi. Khi snapshot báo `AcknowledgedClientSequence = n`, sai số = `vị trí server − vị trí dự đoán tại n`. Sai số > ngưỡng thì cộng dồn sai số vào vị trí hiện tại (mượt nếu nhỏ, snap nếu ≥ ngưỡng cứng). Như vậy không còn kéo về vị trí cũ một RTT (B6).
 - Gameplay không phụ thuộc packet: handler map packet → event `RemotePlayersChangedEvent` trong `Data/Events`.
 
@@ -159,9 +159,46 @@ Trước khi ghép fragment JSON (`WorldSnapshotJson`), tick có snapshot p95 �
   - **Rủi ro:** người chơi có thể mất vị trí lưu cuối cùng (tối đa một chu kỳ snapshot).
 
 **Việc cần làm theo thứ tự:**
-1. Dead reckoning (mục 12.2) để giảm tick và băng thông.
+1. ~~Dead reckoning (mục 12.2)~~ đã làm, xem 12.4.
 2. Giới hạn số thao tác DB song song khi ngắt kết nối/lưu snapshot, gom lưu snapshot thành batch, có retry cho lỗi transient.
 3. Đo lại với bot chạy trên máy khác server.
+
+### 12.4 Dead reckoning (protocol 3)
+
+**Hợp đồng:**
+- `RemotePlayerSpawnPacket` và `RemotePlayerMovePacket` có thêm `Speed`.
+- Client ngoại suy `vị trí + hướng × tốc độ × (thời gian từ lúc nhận)`, tối đa 2 giây, và làm mượt hiển thị về vị trí ngoại suy (exponential smoothing, snap nếu lệch ≥ 3 đơn vị).
+- Server chỉ gửi `Moved` khi:
+  1. hướng hoặc tốc độ đổi;
+  2. vị trí thật lệch khỏi ngoại suy quá `world.deadReckoningErrorThreshold` (0,25);
+  3. người đang di chuyển và đã quá `world.deadReckoningRefreshMilliseconds` (1000) kể từ lần gửi trước.
+- Người đứng yên không phát sinh packet.
+- Hướng gửi đi là **hướng hiệu dụng**: nếu tick vừa rồi người chơi gần như không đi được (bị tường/quái chặn), server báo hướng bằng 0 để client không ngoại suy xuyên tường.
+
+**Tối ưu tick đi kèm:**
+- Chia người chơi vào lưới ô AOI một lần mỗi tick; mỗi người chỉ duyệt 9 ô lân cận.
+- Giới hạn số người hiển thị bằng cách sắp xếp chỉ số theo khoá float, có hysteresis 2 đơn vị cho người đang hiển thị để giảm spawn/despawn ở biên.
+- `WorldTickResult.Phases` đo thời gian từng giai đoạn.
+
+**Benchmark sau thay đổi:**
+
+| Kịch bản | Tick có snapshot p95 | Gửi / người |
+|---|---|---|
+| 500 người, đổi hướng mỗi input (xấu nhất) | 74 ms (trước: 168) | 150 KiB/s |
+| 500 người, đổi hướng khoảng mỗi 2 s, 30% đứng yên | **39 ms** | **45 KiB/s** |
+| 200 người, xấu nhất | 25 ms | 149 KiB/s |
+
+**Bot load test sau thay đổi** (21:31–21:35, cùng cấu hình như 12.3; bot đổi hướng trung bình mỗi 0,5 s nên tiết kiệm ít hơn kịch bản thực tế):
+
+| Bot | Vào thế giới | Move ack RTT p95 | Nhận tổng (protocol 2 → 3) | Tick quá ngân sách |
+|---|---|---|---|---|
+| 50 | 50/50 | 1,3 ms | 2,7 → 1,3 MiB/s | 0 |
+| 200 | 200/200 | 3,3 ms | 21 → 9,0 MiB/s | 0 |
+| 500 | 500/500 | 6,0 ms | 39 → 23,6 MiB/s | 294 (trước: 480), bắt đầu từ 381 người (trước: ~290), p50 trong các tick vượt 53 ms (trước: 111) |
+
+**Nguyên nhân lỗi persistence đã xác định:** `53300: remaining connection slots are reserved for roles with the SUPERUSER attribute`. PostgreSQL hết `max_connections` khi hàng trăm kết nối game đóng cùng lúc, vì mỗi lần cleanup mở một kết nối DB riêng đồng thời. Lần này 4/750 lần cleanup thất bại. Cách sửa: giới hạn số thao tác DB đồng thời khi ngắt kết nối (semaphore) và retry có backoff cho lỗi transient.
+
+Ở N=500 thực tế, chi phí còn lại mỗi tick snapshot: chọn hiển thị 17 ms, đóng gói và đưa vào hàng đợi 9 ms, dựng JSON 4 ms, diff 5 ms. Bước tiếp theo nếu cần: chạy phần việc theo từng người quan sát song song trên nhiều nhân (tracker độc lập; cache fragment JSON cần thread-safe), và chuyển sang định dạng nhị phân.
 
 ## 13. Rollout và rollback
 

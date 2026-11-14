@@ -35,7 +35,7 @@ namespace KnightOnline.Client.Network.Handlers
                     continue;
                 _directory.Spawn(spawn.CharacterId, spawn.Name, spawn.Level,
                     spawn.ClassDefinitionId, new Vector2(spawn.X, spawn.Y),
-                    new Vector2(spawn.DirectionX, spawn.DirectionY), now);
+                    new Vector2(spawn.DirectionX, spawn.DirectionY), spawn.Speed, now);
             }
 
             foreach (RemotePlayerMovePacket move in packet.Moved)
@@ -43,7 +43,7 @@ namespace KnightOnline.Client.Network.Handlers
                 if (!IsFinite(move.X, move.Y))
                     continue;
                 _directory.Move(move.CharacterId, new Vector2(move.X, move.Y),
-                    new Vector2(move.DirectionX, move.DirectionY), now);
+                    new Vector2(move.DirectionX, move.DirectionY), move.Speed, now);
             }
         }
 

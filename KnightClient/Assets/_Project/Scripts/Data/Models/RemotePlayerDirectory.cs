@@ -9,20 +9,20 @@ namespace KnightOnline.Client.Data.Models
     public sealed class RemotePlayerState
     {
         public RemotePlayerState(int characterId, string name, int level,
-            string classDefinitionId)
+            string classDefinitionId, DeadReckoningTrack track)
         {
             CharacterId = characterId;
             Name = name;
             Level = level;
             ClassDefinitionId = classDefinitionId;
+            Track = track;
         }
 
         public int CharacterId { get; }
         public string Name { get; }
         public int Level { get; }
         public string ClassDefinitionId { get; }
-        public Vector2 Direction { get; internal set; }
-        public InterpolationBuffer Positions { get; } = new();
+        public DeadReckoningTrack Track { get; }
     }
 
     /// <summary>
@@ -64,25 +64,20 @@ namespace KnightOnline.Client.Data.Models
 
         public void Spawn(int characterId, string name, int level,
             string classDefinitionId, Vector2 position, Vector2 direction,
-            double receivedAt)
+            float speed, double receivedAt)
         {
-            var state = new RemotePlayerState(characterId, name, level,
-                classDefinitionId)
-            {
-                Direction = direction,
-            };
-            state.Positions.Add(receivedAt, position);
-            _players[characterId] = state;
+            _players[characterId] = new RemotePlayerState(characterId, name,
+                level, classDefinitionId,
+                new DeadReckoningTrack(position, direction, speed, receivedAt));
             MembershipVersion++;
         }
 
         public void Move(int characterId, Vector2 position, Vector2 direction,
-            double receivedAt)
+            float speed, double receivedAt)
         {
             if (!_players.TryGetValue(characterId, out RemotePlayerState state))
                 return; // move before spawn: ignore, the next spawn is complete
-            state.Direction = direction;
-            state.Positions.Add(receivedAt, position);
+            state.Track.Set(position, direction, speed, receivedAt);
         }
 
         public void Despawn(int characterId)

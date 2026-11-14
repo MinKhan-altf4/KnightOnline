@@ -135,6 +135,32 @@ public sealed class WorldSimulationTests
     }
 
     [Fact]
+    public async Task BlockedPlayer_IsReportedAsStopped()
+    {
+        var clock = new MutableClock(Start);
+        var registry = new ActivePlayerRegistry();
+        await using Player a = await Player.CreateAsync(1, "Alpha", "map", Vector2.Zero);
+        await using Player b = await Player.CreateAsync(2, "Beta", "map", new Vector2(3, 0));
+        a.Join(registry);
+        b.Join(registry);
+        var world = new WorldSimulation(registry, new BlockingResolver(), clock,
+            new WorldSimulationSettings(TimeSpan.FromMilliseconds(50), 1, 16f, 100));
+        world.Tick();
+        await a.ReadSnapshotAsync();
+        await b.ReadSnapshotAsync();
+
+        // Beta pushes against a wall: input direction set, position unchanged.
+        b.Session.TrySetMovement(Vector2.UnitX, 1, clock.UtcNow, new BlockingResolver());
+        clock.UtcNow = clock.UtcNow.AddMilliseconds(50);
+        world.Tick();
+        clock.UtcNow = clock.UtcNow.AddMilliseconds(50);
+        world.Tick();
+
+        // Clients must not extrapolate Beta through the wall.
+        Assert.True(await a.TryReadNoSnapshotAsync());
+    }
+
+    [Fact]
     public async Task OtherMap_And_NotYetInWorld_AreInvisible()
     {
         var clock = new MutableClock(Start);
@@ -261,11 +287,32 @@ public sealed class WorldSimulationTests
                 envelope.Payload)!;
         }
 
+        /// <summary>True when nothing arrives within a short window.</summary>
+        public async Task<bool> TryReadNoSnapshotAsync()
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+            try
+            {
+                int read = await _stream.ReadAsync(new byte[1], timeout.Token);
+                return read == 0;
+            }
+            catch (OperationCanceledException)
+            {
+                return true;
+            }
+        }
+
         public async ValueTask DisposeAsync()
         {
             _client.Dispose();
             await Connection.DisposeAsync();
         }
+    }
+
+    private sealed class BlockingResolver : IWorldMovementResolver
+    {
+        public Vector2 Resolve(string mapDefinitionId, Vector2 start,
+            Vector2 desiredEnd) => start;
     }
 
     private sealed class MutableClock(DateTime utcNow) : IServerClock

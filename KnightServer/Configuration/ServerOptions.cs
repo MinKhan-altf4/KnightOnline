@@ -180,6 +180,13 @@ public sealed class ServerOptions
                 "World.EntitySnapshotEveryTicks must be between 1 and 100.");
         if (!float.IsFinite(World.AoiCellSize) || World.AoiCellSize < 1f)
             throw new InvalidDataException("World.AoiCellSize must be at least 1.");
+        if (!float.IsFinite(World.DeadReckoningErrorThreshold) ||
+            World.DeadReckoningErrorThreshold is < 0.01f or > 5f)
+            throw new InvalidDataException(
+                "World.DeadReckoningErrorThreshold must be between 0.01 and 5.");
+        if (World.DeadReckoningRefreshMilliseconds is < 100 or > 10000)
+            throw new InvalidDataException(
+                "World.DeadReckoningRefreshMilliseconds must be between 100 and 10000.");
         if (World.MaximumVisiblePlayers is < 1 or > 1000)
             throw new InvalidDataException(
                 "World.MaximumVisiblePlayers must be between 1 and 1000.");
@@ -623,6 +630,15 @@ public sealed class WorldOptions
 
     /// <summary>Upper bound of other players sent to one client.</summary>
     public int MaximumVisiblePlayers { get; set; } = 100;
+
+    /// <summary>
+    /// Dead reckoning: resend a player's movement when the client's
+    /// extrapolation would be off by more than this many world units.
+    /// </summary>
+    public float DeadReckoningErrorThreshold { get; set; } = 0.25f;
+
+    /// <summary>Correction resend interval for moving players.</summary>
+    public int DeadReckoningRefreshMilliseconds { get; set; } = 1000;
 }
 
 public sealed class MapDefinitionOptions

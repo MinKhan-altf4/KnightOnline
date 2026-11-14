@@ -5,8 +5,8 @@
     "port": 7777,
     "maximumPacketBytes": 65536,
     "anonymousConnectionTimeoutSeconds": 120,
-    "minimumProtocolVersion": 2,
-    "maximumProtocolVersion": 2
+    "minimumProtocolVersion": 3,
+    "maximumProtocolVersion": 3
   },
   "capacity": {
     "maximumActiveAccounts": 500,
@@ -160,7 +160,9 @@
     "simulationTickMilliseconds": 50,
     "entitySnapshotEveryTicks": 2,
     "aoiCellSize": 16,
-    "maximumVisiblePlayers": 100
+    "maximumVisiblePlayers": 100,
+    "deadReckoningErrorThreshold": 0.25,
+    "deadReckoningRefreshMilliseconds": 1000
   },
   "mapDefinitions": [
     {
