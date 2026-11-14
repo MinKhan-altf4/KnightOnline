@@ -136,7 +136,32 @@ Trước khi ghép fragment JSON (`WorldSnapshotJson`), tick có snapshot p95 �
   1. **Dead reckoning:** chỉ gửi `Moved` khi hướng đổi hoặc sai lệch so với ngoại suy vượt ngưỡng, kèm một lần hiệu chỉnh mỗi giây. Client ngoại suy bằng hướng × tốc độ. Đây là thay đổi giao thức (protocol 3).
   2. Bỏ JSON lồng trong envelope (payload đang bị escape lần hai), chuyển sang định dạng nhị phân. Thay đổi giao thức lớn, cần ADR.
   3. Giảm `world.maximumVisiblePlayers` hoặc tần suất snapshot theo khoảng cách (gần 10 Hz, xa 2–5 Hz).
-- Bot load test qua luồng đăng nhập thật nằm ở `KnightBot`. Kết quả sẽ bổ sung khi có database thử riêng.
+### 12.3 Bot load test qua luồng thật (14-11-2026, 21:18–21:22)
+
+**Cấu hình:**
+- Server Release (commit `69b7d9e`), database riêng `knightonline_loadtest`.
+- Bot và server chạy **cùng một máy dev**, trên cùng map tutorial, mỗi bot đổi hướng ngẫu nhiên và gửi input 10 Hz.
+- Mỗi bậc chạy 60 giây sau khi khởi động xong bot cuối.
+
+| Bot | Vào thế giới | Thời gian vào game p95 | Move ack RTT p50 / p95 / max | Nhận tổng |
+|---|---|---|---|---|
+| 50 | 50/50 | 579 ms (khởi động lạnh) | 0,6 / 1,2 / 67 ms | 2,7 MiB/s |
+| 200 | 200/200 | 25 ms | 0,7 / 2,4 / 29 ms | 21 MiB/s |
+| 500 | 500/500 | 20 ms | 0,9 / 3,8 / 31 ms | 39 MiB/s |
+
+- Không có bot nào lỗi. Các request ghi database (tạo guest, tạo nhân vật, chọn nhân vật) có p95 ≤ 13 ms ở mọi bậc.
+- **Tick quá ngân sách:** 480 lần, bắt đầu khi có khoảng 290 người trong thế giới. Trong các tick vượt: p50 111 ms, p95 129 ms, tối đa 262 ms. Khớp với benchmark ở mục 12.1; bot dùng chung CPU nên con số bi quan hơn server thật.
+- **Lỗi persistence khi ngắt kết nối hàng loạt:**
+  - 3 lần "Session snapshot cleanup failed: transient failure" và 3 lần "snapshot rejected: generation no longer owns" trên 750 lần ngắt.
+  - Xảy ra khi hàng trăm kết nối đóng cùng lúc ở cuối mỗi bậc.
+  - Nghi do cạn pool kết nối PostgreSQL (Npgsql mặc định 100) khi vòng lưu snapshot 5 giây chạy cùng lúc với cleanup.
+  - Log đã được sửa để in đủ exception cho lần đo sau.
+  - **Rủi ro:** người chơi có thể mất vị trí lưu cuối cùng (tối đa một chu kỳ snapshot).
+
+**Việc cần làm theo thứ tự:**
+1. Dead reckoning (mục 12.2) để giảm tick và băng thông.
+2. Giới hạn số thao tác DB song song khi ngắt kết nối/lưu snapshot, gom lưu snapshot thành batch, có retry cho lỗi transient.
+3. Đo lại với bot chạy trên máy khác server.
 
 ## 13. Rollout và rollback
 

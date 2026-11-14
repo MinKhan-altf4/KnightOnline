@@ -45,6 +45,7 @@ public sealed class BotClient : IAsyncDisposable
     private readonly Random _random;
     private NetworkStream? _stream;
     private long _moveSequence;
+    private int _disposed;
 
     public BotClient(int index, BotOptions options, BotMetrics metrics)
     {
@@ -140,8 +141,9 @@ public sealed class BotClient : IAsyncDisposable
 
         // Letters/digits only, 3-20 chars (CharacterNamePolicy).
         string name = $"Bot{_options.RunId}{_index:0000}";
+        // Slots are 1-based (1..characters.maximumPerAccount).
         return new CreateCharacterRequestPacket(Guid.NewGuid(), _options.ServerId,
-            slotIndex: 0, name, characterClass.DefinitionId, bodyType, appearance,
+            slotIndex: 1, name, characterClass.DefinitionId, bodyType, appearance,
             catalog.CatalogVersion);
     }
 
@@ -263,7 +265,9 @@ public sealed class BotClient : IAsyncDisposable
             exception is OperationCanceledException or IOException or
                 EndOfStreamException or ObjectDisposedException)
         {
-            if (!cancellationToken.IsCancellationRequested)
+            // Only count closes the bot did not cause itself.
+            if (!cancellationToken.IsCancellationRequested &&
+                Volatile.Read(ref _disposed) == 0)
                 _metrics.RecordDisconnect(Stage);
             foreach (var waiter in _waiting.Values)
                 waiter.TrySetException(new BotFailedException(Stage, "connection closed"));
@@ -295,6 +299,7 @@ public sealed class BotClient : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        Interlocked.Exchange(ref _disposed, 1);
         _tcp.Dispose();
         await Task.CompletedTask;
     }

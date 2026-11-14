@@ -434,8 +434,8 @@ public static class Program
             catch (Exception exception)
             {
                 Console.WriteLine(
-                    $"[Persistence][Error] Session snapshot cleanup failed: " +
-                    $"{exception.GetType().Name}: {exception.Message}");
+                    $"[Persistence][Error] Session snapshot cleanup failed for " +
+                    $"connection {connection.ConnectionId}: {exception}");
             }
             if (connection.AccountKey is { } accountKey)
             {
