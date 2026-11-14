@@ -50,7 +50,8 @@ Mỗi bước build/test xanh và commit riêng.
 - Mỗi tick:
   1. Với mỗi `PlayerSession` đang trong thế giới: `AdvancePosition(now)`.
   2. Tính AOI và gửi cập nhật thực thể (mục 6) mỗi `world.entitySnapshotEveryTicks` tick (mặc định 2 → 10 Hz).
-  3. Gửi snapshot vị trí của chính người chơi nếu vị trí đổi hoặc có input mới được xác nhận (reason `Tick`).
+  3. *(Hoãn)* Snapshot vị trí riêng theo tick cho chính người chơi. Client đã nhận snapshot sau mỗi input (tối thiểu 10 Hz khi di chuyển) kèm `AcknowledgedClientSequence`, đủ cho dự đoán ở mục 7. Chỉ thêm khi có lực đẩy phía server (knockback, bị đẩy khỏi quái) cần đồng bộ lúc không có input.
+- Người chơi chỉ được tick mô phỏng và hiển thị cho người khác sau khi `EnterWorld` thành công (`PlayerSession.IsInWorld`). Nhân vật đã chọn nhưng đang tải scene thì vô hình.
 - Input di chuyển vẫn áp dụng ngay khi nhận (giữ hành vi hiện tại), tick chỉ tiến tiếp. Mọi nơi đọc vị trí (NPC, cổng, combat, lưu) đã gọi `AdvancePosition` từ P0. Tick giữ tính đúng đắn cả khi không có packet đến.
 - Thời gian tick được đo (Stopwatch). Tick vượt ngân sách sẽ ghi log Warning có số thực thể; tick không dồn bù (`PeriodicTimer` bỏ nhịp lỡ).
 - Lỗi trong một tick được bắt, ghi Error và vòng tiếp tục; một người chơi lỗi không làm dừng thế giới.

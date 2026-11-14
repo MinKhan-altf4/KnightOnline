@@ -19,6 +19,7 @@ public sealed class PlayerSession
     private long _vitalsSequence;
     private string _mapDefinitionId;
     private string _spawnPointId;
+    private int _isInWorld;
 
     public PlayerSession(
         PlayerSessionProfile profile,
@@ -177,6 +178,22 @@ public sealed class PlayerSession
         }
     }
 
+    /// <summary>
+    /// True after EnterWorld succeeded: the world tick simulates this player
+    /// and shows it to others. Selected-but-loading players are not visible.
+    /// </summary>
+    public bool IsInWorld => Volatile.Read(ref _isInWorld) == 1;
+
+    public void MarkEnteredWorld() => Interlocked.Exchange(ref _isInWorld, 1);
+
+    /// <summary>Consistent map/position/direction read for the world tick.</summary>
+    public PlayerMovementState CaptureMovementState()
+    {
+        lock (_syncRoot)
+            return new PlayerMovementState(
+                _mapDefinitionId, _position, _movementDirection);
+    }
+
     public PlayerVitalsState ApplyProgression(
         int level,
         long totalExperience,
@@ -331,6 +348,11 @@ public sealed class PlayerSession
     public void CommitAttack(DateTime utcNow, TimeSpan cooldown) =>
         NextAttackAtUtc = utcNow + cooldown;
 }
+
+public readonly record struct PlayerMovementState(
+    string MapDefinitionId,
+    Vector2 Position,
+    Vector2 Direction);
 
 public readonly record struct PlayerPositionState(
     long ServerSequence,

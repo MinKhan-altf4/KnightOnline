@@ -156,7 +156,11 @@
     "maximumMovementDeltaMilliseconds": 250,
     "playerCollisionRadius": 0.35,
     "monsterCollisionRadius": 0.5,
-    "respawnDisplacementAngularSamples": 32
+    "respawnDisplacementAngularSamples": 32,
+    "simulationTickMilliseconds": 50,
+    "entitySnapshotEveryTicks": 2,
+    "aoiCellSize": 16,
+    "maximumVisiblePlayers": 100
   },
   "mapDefinitions": [
     {

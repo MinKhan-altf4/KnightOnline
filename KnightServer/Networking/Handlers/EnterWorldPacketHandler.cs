@@ -78,6 +78,9 @@ public sealed class EnterWorldPacketHandler(
                 "World snapshot created.",
                 snapshot),
             cancellationToken);
+        // From here the world tick simulates the player and shows it to others;
+        // queued after the response so the client sees EnterWorld first.
+        session.MarkEnteredWorld();
         TutorialCommandResult tutorial = await tutorialService.GetCurrentAsync(
             session.CharacterId, cancellationToken);
         await InteractNpcPacketHandler.SendProgressAsync(connection,

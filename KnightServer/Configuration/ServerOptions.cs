@@ -172,6 +172,17 @@ public sealed class ServerOptions
         }
         if (World.TickMilliseconds <= 0)
             throw new InvalidDataException("World.TickMilliseconds must be positive.");
+        if (World.SimulationTickMilliseconds is < 10 or > 1000)
+            throw new InvalidDataException(
+                "World.SimulationTickMilliseconds must be between 10 and 1000.");
+        if (World.EntitySnapshotEveryTicks is < 1 or > 100)
+            throw new InvalidDataException(
+                "World.EntitySnapshotEveryTicks must be between 1 and 100.");
+        if (!float.IsFinite(World.AoiCellSize) || World.AoiCellSize < 1f)
+            throw new InvalidDataException("World.AoiCellSize must be at least 1.");
+        if (World.MaximumVisiblePlayers is < 1 or > 1000)
+            throw new InvalidDataException(
+                "World.MaximumVisiblePlayers must be between 1 and 1000.");
         if (World.MaximumMovementDeltaMilliseconds <= 0)
             throw new InvalidDataException(
                 "World.MaximumMovementDeltaMilliseconds must be positive.");
@@ -600,6 +611,18 @@ public sealed class WorldOptions
     public float PlayerCollisionRadius { get; set; } = 0.35f;
     public float MonsterCollisionRadius { get; set; } = 0.5f;
     public int RespawnDisplacementAngularSamples { get; set; } = 32;
+
+    /// <summary>World simulation tick (P1). 50 ms = 20 Hz.</summary>
+    public int SimulationTickMilliseconds { get; set; } = 50;
+
+    /// <summary>Send other-player deltas every N simulation ticks.</summary>
+    public int EntitySnapshotEveryTicks { get; set; } = 2;
+
+    /// <summary>Area-of-interest grid cell size in world units.</summary>
+    public float AoiCellSize { get; set; } = 16f;
+
+    /// <summary>Upper bound of other players sent to one client.</summary>
+    public int MaximumVisiblePlayers { get; set; } = 100;
 }
 
 public sealed class MapDefinitionOptions

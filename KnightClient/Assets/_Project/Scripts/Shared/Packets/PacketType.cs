@@ -54,5 +54,7 @@ namespace KnightOnline.Client.Shared.Packets
         UsePortalResponse = 49,
         MapTransitionSnapshot = 50,
         InventorySnapshot = 51,
+        // Protocol 2 (P1 world simulation).
+        WorldEntitiesSnapshot = 52,
     }
 }

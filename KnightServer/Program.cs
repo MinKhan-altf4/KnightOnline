@@ -245,6 +245,16 @@ public static class Program
             clock,
             requireHandshake: true);
 
+        var worldSimulation = new WorldSimulation(
+            activePlayers,
+            movementResolver,
+            clock,
+            new WorldSimulationSettings(
+                TimeSpan.FromMilliseconds(options.World.SimulationTickMilliseconds),
+                options.World.EntitySnapshotEveryTicks,
+                options.World.AoiCellSize,
+                options.World.MaximumVisiblePlayers));
+        ObserveBackgroundTask(worldSimulation.RunAsync(), "world-simulation");
         ObserveBackgroundTask(
             RunMonsterRespawnLoopAsync(
                 monsterService,
