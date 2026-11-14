@@ -18,7 +18,6 @@ namespace KnightOnline.Client.Gameplay.World
 
         private readonly List<GameObject> _npcObjects = new();
         private readonly List<GameObject> _portalObjects = new();
-        private readonly List<GameObject> _boundaryObjects = new();
         private IEventBus _events;
         private NetworkClient _network;
         private IDisposable _npcSubscription, _portalSubscription;
@@ -58,31 +57,14 @@ namespace KnightOnline.Client.Gameplay.World
         private void OnPortals(PortalListReceivedEvent value)
         {
             ClearObjects(_portalObjects);
-            ClearObjects(_boundaryObjects);
             _awaitingPortalRefresh = false;
-            CreateMapBoundary(value.MinimumX, value.MaximumX,
-                value.MinimumY, value.MaximumY);
             foreach (PortalSnapshotData portal in value.Portals)
                 CreatePortal(portal);
         }
 
-        private void CreateMapBoundary(float minimumX, float maximumX,
-            float minimumY, float maximumY)
-        {
-            if (minimumX >= maximumX || minimumY >= maximumY) return;
-            var boundary = new GameObject("AuthoritativeMapBoundary");
-            boundary.transform.SetParent(transform, false);
-            var edge = boundary.AddComponent<EdgeCollider2D>();
-            edge.points = new[]
-            {
-                new Vector2(minimumX, minimumY),
-                new Vector2(maximumX, minimumY),
-                new Vector2(maximumX, maximumY),
-                new Vector2(minimumX, maximumY),
-                new Vector2(minimumX, minimumY),
-            };
-            _boundaryObjects.Add(boundary);
-        }
+        // No physics boundary: a collider at the edge stopped the player box
+        // half a unit before the server's center clamp and caused wall jitter.
+        // PlayerController applies the server rule (WalkableBounds) instead.
 
         private void CreatePortal(PortalSnapshotData portal)
         {
@@ -166,7 +148,6 @@ namespace KnightOnline.Client.Gameplay.World
         private void OnMapTransitioned(MapTransitionedEvent value)
         {
             ClearObjects(_portalObjects);
-            ClearObjects(_boundaryObjects);
             _awaitingPortalRefresh = true;
             _transitionPending = false;
         }
@@ -227,7 +208,6 @@ namespace KnightOnline.Client.Gameplay.World
             _portalResultSubscription?.Dispose();
             ClearObjects(_npcObjects);
             ClearObjects(_portalObjects);
-            ClearObjects(_boundaryObjects);
             if (_portalDiscSprite != null)
             {
                 Destroy(_portalDiscSprite.texture);

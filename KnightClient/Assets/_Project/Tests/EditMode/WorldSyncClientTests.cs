@@ -53,6 +53,46 @@ namespace KnightOnline.Client.UI.Tests
             Assert.IsFalse(prediction.TryReconcile(3, Vector2.one, out _));
         }
 
+        // ---- WalkableBounds -------------------------------------------------
+
+        [Test]
+        public void Bounds_ClampCenterLikeServer()
+        {
+            var bounds = new WalkableBounds(new Vector2(-10, -6), new Vector2(10, 6));
+
+            Assert.AreEqual(new Vector2(10, -6), bounds.Clamp(new Vector2(12, -9)));
+        }
+
+        [Test]
+        public void Bounds_StopAtEdge_ButSlideAlongIt()
+        {
+            var bounds = new WalkableBounds(new Vector2(-10, -6), new Vector2(10, 6));
+
+            Vector2 velocity = bounds.LimitVelocity(new Vector2(10, 0), new Vector2(4, 4), 0.02f);
+
+            Assert.AreEqual(0f, velocity.x);
+            Assert.AreEqual(4f, velocity.y);
+        }
+
+        [Test]
+        public void Bounds_LimitLastStepToReachEdgeExactly()
+        {
+            var bounds = new WalkableBounds(new Vector2(-10, -6), new Vector2(10, 6));
+
+            Vector2 velocity = bounds.LimitVelocity(new Vector2(9.95f, 0), new Vector2(4, 0), 0.02f);
+
+            Assert.AreEqual(2.5f, velocity.x, 1e-3f); // 0.05 units in 0.02 s
+        }
+
+        [Test]
+        public void Bounds_MovingAwayFromEdge_IsUnchanged()
+        {
+            var bounds = new WalkableBounds(new Vector2(-10, -6), new Vector2(10, 6));
+
+            Assert.AreEqual(new Vector2(-4, 0),
+                bounds.LimitVelocity(new Vector2(10, 0), new Vector2(-4, 0), 0.02f));
+        }
+
         // ---- DeadReckoningTrack -----------------------------------------
 
         [Test]

@@ -43,6 +43,8 @@ namespace KnightOnline.Client.Gameplay.Player
         private long _lastServerSnapshotSequence;
         private readonly MovementPrediction _prediction = new();
         private Vector2 _pendingCorrection;
+        private IDisposable _boundsSubscription;
+        private WalkableBounds? _bounds;
 
         /// <summary>Ưu tiên MoveSpeed từ CharacterData; fallback về giá trị Inspector.</summary>
         private float MoveSpeed => _characterData?.MoveSpeed ?? _defaultMoveSpeed;
@@ -75,6 +77,11 @@ namespace KnightOnline.Client.Gameplay.Player
                     OnPositionSnapshot);
             _mapTransitionSubscription = _eventBus?.Subscribe<MapTransitionedEvent>(
                 OnMapTransitioned);
+            // The portal list carries the authoritative map bounds.
+            _boundsSubscription = _eventBus?.Subscribe<PortalListReceivedEvent>(
+                value => _bounds = new WalkableBounds(
+                    new Vector2(value.MinimumX, value.MinimumY),
+                    new Vector2(value.MaximumX, value.MaximumY)));
         }
 
         private void Update()
@@ -111,12 +118,22 @@ namespace KnightOnline.Client.Gameplay.Player
         {
             // Dynamic body: set velocity trực tiếp thay vì MovePosition.
             // Linear Drag = 10 đảm bảo player dừng ngay khi thả phím.
-            _rigidbody.linearVelocity = _movementEnabled
+            Vector2 velocity = _movementEnabled
                 ? _currentDirection * MoveSpeed
                 : Vector2.zero;
 
             ApplyPendingCorrection();
             ReconcileAuthoritativePosition();
+
+            // Same edge rule as the server: clamp the center and never step
+            // past it, sliding along the edge instead of pushing into it.
+            if (_bounds is WalkableBounds bounds)
+            {
+                _rigidbody.position = bounds.Clamp(_rigidbody.position);
+                velocity = bounds.LimitVelocity(
+                    _rigidbody.position, velocity, Time.fixedDeltaTime);
+            }
+            _rigidbody.linearVelocity = velocity;
         }
 
         private void OnPositionSnapshot(PlayerPositionSnapshotEvent snapshot)
@@ -202,6 +219,7 @@ namespace KnightOnline.Client.Gameplay.Player
             _authoritativePosition = position;
             _hasAuthoritativePosition = false;
             _hasSentMovement = false;
+            _bounds = null; // new map: wait for its portal list
             _prediction.Clear();
             _pendingCorrection = Vector2.zero;
         }
@@ -225,6 +243,7 @@ namespace KnightOnline.Client.Gameplay.Player
         {
             _positionSnapshotSubscription?.Dispose();
             _mapTransitionSubscription?.Dispose();
+            _boundsSubscription?.Dispose();
         }
     }
 }
