@@ -79,6 +79,45 @@ namespace KnightOnline.Client.UI.Tests
             Assert.AreEqual(6, DirectionalCharacterSprites.DirectionIndex(Vector2.zero, 6));
         }
 
+        [TestCase("walking_south_strip6", "walking", 0)]
+        [TestCase("standing_north-east_strip1", "standing", 3)]
+        [TestCase("hero_walking_south-west", "walking", 7)]
+        [TestCase("hero_standing_east", "standing", 2)]
+        [TestCase("Hero_Walking_North-West_strip8", "walking", 5)]
+        public void SheetName_IsParsed(string fileName, string move, int direction)
+        {
+            Assert.IsTrue(DirectionalCharacterSprites.TryParseSheetName(
+                fileName, "Hero", out string parsedMove, out int parsedDirection));
+            Assert.AreEqual(move, parsedMove);
+            Assert.AreEqual(direction, parsedDirection);
+        }
+
+        [TestCase("readme")]
+        [TestCase("hero_south")]
+        [TestCase("walking_up")]
+        public void SheetName_RejectsUnknown(string fileName)
+        {
+            Assert.IsFalse(DirectionalCharacterSprites.TryParseSheetName(
+                fileName, "Hero", out _, out _));
+        }
+
+        [TestCase(0.0, 0)]
+        [TestCase(0.099, 0)]
+        [TestCase(0.1, 1)]
+        [TestCase(0.55, 5)]
+        [TestCase(0.6, 0)]   // loops after 6 frames
+        [TestCase(1.25, 0)]
+        public void FrameAt_LoopsAtFrameTime(double elapsed, int expected)
+        {
+            Assert.AreEqual(expected, DirectionalCharacterSprites.FrameAt(elapsed, 6, 0.1f));
+        }
+
+        [Test]
+        public void FrameAt_SingleFrame_IsAlwaysZero()
+        {
+            Assert.AreEqual(0, DirectionalCharacterSprites.FrameAt(12.3, 1, 0.1f));
+        }
+
         // ---- WalkableBounds -------------------------------------------------
 
         [Test]

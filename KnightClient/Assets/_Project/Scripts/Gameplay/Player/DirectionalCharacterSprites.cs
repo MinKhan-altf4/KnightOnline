@@ -1,14 +1,27 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace KnightOnline.Client.Gameplay.Player
 {
     /// <summary>
-    /// Eight facing sprites of one character, loaded from
-    /// Resources/Characters/&lt;name&gt;/&lt;name&gt;_standing_&lt;direction&gt;.png
-    /// (PixelDoll "generic" export; mirrored directions are pre-flipped).
+    /// All animation frames of one PixelDoll character, loaded from
+    /// Resources/Characters/&lt;Name&gt;/. Accepted file names (PixelDoll
+    /// "generic" export can be dropped in unchanged):
+    /// <code>
+    ///   walking_south_strip6.png      (PixelDoll generic)
+    ///   hero_walking_south.png        (character prefix, any frame count)
+    /// </code>
+    /// Each file is a horizontal strip of square cells (frames = width/height).
+    /// "standing" must exist for all 8 directions; other moves are optional
+    /// and fall back to standing for a missing direction. Mirrored directions
+    /// come pre-flipped from PixelDoll.
     /// </summary>
     public sealed class DirectionalCharacterSprites
     {
+        public const string Standing = "standing";
+        public const string Walking = "walking";
+
         /// <summary>PixelDoll row order: index 0 = south, then clockwise on screen.</summary>
         public static readonly string[] DirectionIds =
         {
@@ -18,10 +31,6 @@ namespace KnightOnline.Client.Gameplay.Player
 
         public const int South = 0;
 
-        private readonly Sprite[] _sprites;
-
-        private DirectionalCharacterSprites(Sprite[] sprites) => _sprites = sprites;
-
         /// <summary>PixelDoll cell size and feet pivot (export.bakedCell/bakedPivot).</summary>
         public const float CellPixels = 128f;
         public static readonly Vector2 FeetPivot = new(64f / 128f, 1f - 116f / 128f);
@@ -29,69 +38,117 @@ namespace KnightOnline.Client.Gameplay.Player
         /// <summary>Must match PixelCharacterImporter.PixelsPerUnit.</summary>
         public const float PixelsPerUnit = 64f;
 
-        private static readonly System.Collections.Generic.Dictionary<string, DirectionalCharacterSprites>
-            Cache = new();
+        private static readonly Dictionary<string, DirectionalCharacterSprites> Cache = new();
 
-        /// <summary>Returns null (with a warning) if any direction is missing.</summary>
+        // move -> direction -> frames
+        private readonly Dictionary<string, Sprite[][]> _moves;
+
+        private DirectionalCharacterSprites(Dictionary<string, Sprite[][]> moves) =>
+            _moves = moves;
+
+        public bool HasMove(string move) => _moves.ContainsKey(move);
+
+        /// <summary>Returns null (with a warning) if "standing" is incomplete.</summary>
         public static DirectionalCharacterSprites Load(string characterName)
         {
             if (Cache.TryGetValue(characterName, out DirectionalCharacterSprites cached))
                 return cached;
 
-            var sprites = new Sprite[DirectionIds.Length];
-            for (int index = 0; index < DirectionIds.Length; index++)
+            string folder = $"Characters/{characterName}";
+            Texture2D[] textures = Resources.LoadAll<Texture2D>(folder);
+            var moves = new Dictionary<string, Sprite[][]>(StringComparer.OrdinalIgnoreCase);
+            foreach (Texture2D texture in textures)
             {
-                string path = $"Characters/{characterName}/" +
-                              $"{characterName.ToLowerInvariant()}_standing_{DirectionIds[index]}";
-                sprites[index] = LoadSprite(path);
-                if (sprites[index] == null)
+                if (!TryParseSheetName(texture.name, characterName, out string move,
+                        out int direction))
+                    continue;
+                if (!moves.TryGetValue(move, out Sprite[][] directions))
                 {
-                    Object[] found = Resources.LoadAll($"Characters/{characterName}");
-                    Debug.LogWarning(
-                        $"[Character] Missing sprite Resources/{path}.png " +
-                        $"(Resources/Characters/{characterName} contains {found.Length} " +
-                        $"object(s): {string.Join(", ", System.Array.ConvertAll(found, o => $"{o.name}:{o.GetType().Name}"))})");
-                    return null;
+                    directions = new Sprite[DirectionIds.Length][];
+                    moves.Add(move, directions);
                 }
+                directions[direction] = SliceStrip(texture);
             }
 
-            var set = new DirectionalCharacterSprites(sprites);
+            if (!moves.TryGetValue(Standing, out Sprite[][] standing) ||
+                Array.Exists(standing, frames => frames == null || frames.Length == 0))
+            {
+                Debug.LogWarning(
+                    $"[Character] Resources/{folder} needs '{Standing}' for all 8 directions " +
+                    $"(found {textures.Length} texture(s): " +
+                    $"{string.Join(", ", Array.ConvertAll(textures, t => t.name))}).");
+                return null;
+            }
+
+            // Optional moves: a missing direction reuses standing.
+            foreach (Sprite[][] directions in moves.Values)
+            {
+                for (int index = 0; index < directions.Length; index++)
+                    directions[index] ??= standing[index];
+            }
+
+            var set = new DirectionalCharacterSprites(moves);
             Cache[characterName] = set;
+            Debug.Log($"[Character] Loaded {characterName}: " +
+                      string.Join(", ", Describe(moves)));
             return set;
         }
 
-        /// <summary>
-        /// Sprite import settings can be missing (texture imported before the
-        /// importer rule existed, or reset by hand), so fall back to building the
-        /// sprite from the texture with the same pivot and scale.
-        /// </summary>
-        private static Sprite LoadSprite(string path)
+        /// <summary>Frames of <paramref name="move"/> facing a direction (standing if absent).</summary>
+        public Sprite[] Frames(string move, int directionIndex)
         {
-            Sprite sprite = Resources.Load<Sprite>(path);
-            if (sprite != null)
-                return sprite;
-
-            Sprite[] subSprites = Resources.LoadAll<Sprite>(path);
-            if (subSprites.Length > 0)
-                return subSprites[0];
-
-            Texture2D texture = Resources.Load<Texture2D>(path);
-            if (texture == null)
-                return null;
-
-            texture.filterMode = FilterMode.Point;
-            Debug.Log($"[Character] Built sprite from texture Resources/{path} " +
-                      "(import settings were not Sprite).");
-            return Sprite.Create(texture,
-                new Rect(0f, 0f, texture.width, texture.height),
-                FeetPivot,
-                PixelsPerUnit * texture.width / CellPixels,
-                0,
-                SpriteMeshType.FullRect);
+            int direction = ((directionIndex % 8) + 8) % 8;
+            if (!_moves.TryGetValue(move, out Sprite[][] directions))
+                directions = _moves[Standing];
+            return directions[direction];
         }
 
-        public Sprite Get(int directionIndex) =>
-            _sprites[((directionIndex % 8) + 8) % 8];
+        public Sprite Get(int directionIndex) => Frames(Standing, directionIndex)[0];
+
+        /// <summary>
+        /// Parses "walking_south_strip6", "hero_walking_south" or
+        /// "hero_standing_north-east" into move and direction index.
+        /// </summary>
+        public static bool TryParseSheetName(string fileName, string characterName,
+            out string move, out int direction)
+        {
+            move = null;
+            direction = -1;
+            if (string.IsNullOrWhiteSpace(fileName))
+                return false;
+
+            string name = fileName.ToLowerInvariant();
+            int strip = name.LastIndexOf("_strip", StringComparison.Ordinal);
+            if (strip > 0)
+                name = name.Substring(0, strip);
+            string prefix = characterName.ToLowerInvariant() + "_";
+            if (name.StartsWith(prefix, StringComparison.Ordinal))
+                name = name.Substring(prefix.Length);
+
+            // Longest direction ids first so "south-east" wins over "east".
+            for (int length = 10; length >= 4; length--)
+            {
+                for (int index = 0; index < DirectionIds.Length; index++)
+                {
+                    string id = DirectionIds[index];
+                    if (id.Length != length || !name.EndsWith("_" + id, StringComparison.Ordinal))
+                        continue;
+                    move = name.Substring(0, name.Length - id.Length - 1);
+                    direction = index;
+                    return move.Length > 0;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Frame to show after <paramref name="elapsedSeconds"/> of a looping move.</summary>
+        public static int FrameAt(double elapsedSeconds, int frameCount, float frameSeconds)
+        {
+            if (frameCount <= 1 || frameSeconds <= 0f || elapsedSeconds <= 0)
+                return 0;
+            long frame = (long)Math.Floor(elapsedSeconds / frameSeconds);
+            return (int)(frame % frameCount);
+        }
 
         /// <summary>
         /// Maps a movement vector (world space, +y = north) to one of the 8
@@ -107,6 +164,31 @@ namespace KnightOnline.Client.Gameplay.Player
             float degrees = Mathf.Atan2(direction.x, -direction.y) * Mathf.Rad2Deg;
             int sector = Mathf.RoundToInt(degrees / 45f);
             return ((sector % 8) + 8) % 8;
+        }
+
+        private static Sprite[] SliceStrip(Texture2D texture)
+        {
+            texture.filterMode = FilterMode.Point;
+            int cell = texture.height;
+            int count = Mathf.Max(1, texture.width / cell);
+            var frames = new Sprite[count];
+            for (int index = 0; index < count; index++)
+            {
+                frames[index] = Sprite.Create(texture,
+                    new Rect(index * cell, 0f, cell, cell),
+                    FeetPivot,
+                    PixelsPerUnit * cell / CellPixels,
+                    0,
+                    SpriteMeshType.FullRect);
+                frames[index].name = $"{texture.name}_{index}";
+            }
+            return frames;
+        }
+
+        private static IEnumerable<string> Describe(Dictionary<string, Sprite[][]> moves)
+        {
+            foreach (KeyValuePair<string, Sprite[][]> move in moves)
+                yield return $"{move.Key} ({move.Value[South].Length} frame(s))";
         }
     }
 }
