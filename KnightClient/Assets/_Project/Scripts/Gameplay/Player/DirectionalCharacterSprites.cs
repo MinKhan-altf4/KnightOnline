@@ -133,13 +133,24 @@ namespace KnightOnline.Client.Gameplay.Player
                     string id = DirectionIds[index];
                     if (id.Length != length || !name.EndsWith("_" + id, StringComparison.Ordinal))
                         continue;
-                    move = name.Substring(0, name.Length - id.Length - 1);
+                    move = NormalizeMove(name.Substring(0, name.Length - id.Length - 1));
                     direction = index;
                     return move.Length > 0;
                 }
             }
             return false;
         }
+
+        /// <summary>
+        /// Maps PixelDoll preset names to the moves the game plays
+        /// ("walk" preset -> "walking", "idle" -> "standing").
+        /// </summary>
+        public static string NormalizeMove(string move) => move switch
+        {
+            "walk" => Walking,
+            "idle" => Standing,
+            _ => move,
+        };
 
         /// <summary>Frame to show after <paramref name="elapsedSeconds"/> of a looping move.</summary>
         public static int FrameAt(double elapsedSeconds, int frameCount, float frameSeconds)

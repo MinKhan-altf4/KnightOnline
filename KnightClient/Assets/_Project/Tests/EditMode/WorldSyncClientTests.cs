@@ -84,6 +84,8 @@ namespace KnightOnline.Client.UI.Tests
         [TestCase("hero_walking_south-west", "walking", 7)]
         [TestCase("hero_standing_east", "standing", 2)]
         [TestCase("Hero_Walking_North-West_strip8", "walking", 5)]
+        [TestCase("walk_east_strip8", "walking", 2)]
+        [TestCase("idle_south_strip1", "standing", 0)]
         public void SheetName_IsParsed(string fileName, string move, int direction)
         {
             Assert.IsTrue(DirectionalCharacterSprites.TryParseSheetName(
