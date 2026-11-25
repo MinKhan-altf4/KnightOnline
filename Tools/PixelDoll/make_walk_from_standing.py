@@ -14,7 +14,9 @@ Covered directions (8 frames, sin/cos phase, 1 px body dip near contact):
                         for both legs the thigh bends gradually out of the
                         body (no seam, +/-3 px at the knee) and the shin
                         swings +/-14 deg about the knee (swing leg bends up
-                        to 22 deg). The far leg moves 75% and is 93% bright.
+                        to 22 deg). The far leg moves 75% and is a flat
+                        shadow shape (outer outline only), as in pixel-art
+                        walk cycles, so it reads as behind.
                         The body drops so the stance foot stays grounded.
 A hand-drawn walk_east can replace the generated one; make west from it with
 --mirror.
@@ -227,42 +229,6 @@ def diagonal_frames(img, top, foot, split_x, swing, depth, lift, axis_y):
 def darken(p, factor):
     return (round(p[0] * factor), round(p[1] * factor), round(p[2] * factor), p[3])
 
-def rotated_leg(src, hip, knee, keep_above, thigh_angle, shin_angle, tint=1.0):
-    """Rigidly rotate the source leg pixels like a 2-bone rig: the thigh band
-    (rows keep_above..knee) about the hip, the shin and foot (rows below the
-    knee) about the moved knee. Inverse mapping + nearest sample, so there are
-    no holes. Angles in radians, + = forward (toward +x, the facing side)."""
-    hx, hy = hip
-    kx, ky = knee
-    ct, st = math.cos(thigh_angle), math.sin(thigh_angle)
-    cs, ss = math.cos(shin_angle), math.sin(shin_angle)
-    # moved knee
-    dx, dy = kx - hx, ky - hy
-    kx2 = hx + dx * ct + dy * st
-    ky2 = hy - dx * st + dy * ct
-    out = blank()
-    for y in range(keep_above - 6, CELL):
-        for x in range(CELL):
-            px, py = x + 0.5, y + 0.5
-            sample = None
-            # shin first (drawn over the thigh at the knee)
-            ox, oy = px - kx2, py - ky2
-            sx = kx + ox * cs - oy * ss
-            sy = ky + ox * ss + oy * cs
-            ix, iy = int(math.floor(sx)), int(math.floor(sy))
-            if ky <= iy < CELL and 0 <= ix < CELL and src[iy][ix][3]:
-                sample = src[iy][ix]
-            else:
-                ox, oy = px - hx, py - hy
-                sx = hx + ox * ct - oy * st
-                sy = hy + ox * st + oy * ct
-                ix, iy = int(math.floor(sx)), int(math.floor(sy))
-                if keep_above <= iy < ky and 0 <= ix < CELL and src[iy][ix][3]:
-                    sample = src[iy][ix]
-            if sample is not None:
-                out[y][x] = sample if tint == 1.0 else darken(sample, tint)
-    return out
-
 def lowest_row(layer):
     for y in range(CELL - 1, -1, -1):
         if any(p[3] for p in layer[y]):
@@ -322,8 +288,30 @@ def bent_leg(src, seam, knee, knee_shift, shin_angle, tint=1.0):
                 out[y][x] = sample if tint == 1.0 else darken(sample, tint)
     return out
 
+def flat_far_leg(layer, fill, line):
+    """Far leg as a pixel-art 'behind' shape: one flat shadow fill with only
+    the outer outline, no inner muscle lines (those stacked on the near leg's
+    lines and read as extra legs)."""
+    out = blank()
+    for y in range(CELL):
+        for x in range(CELL):
+            if not layer[y][x][3]:
+                continue
+            edge = any(not (0 <= x + dx < CELL and 0 <= y + dy < CELL) or
+                       not layer[y + dy][x + dx][3]
+                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            out[y][x] = line if edge else fill
+    return out
+
+def skin_shadow(img, top):
+    """A mid-dark skin tone from the leg area, for the far leg fill."""
+    tones = [p for row in img[top:] for p in row if p[3] > 200 and sum(p[:3]) > 380]
+    tones.sort(key=lambda p: sum(p[:3]))
+    p = tones[len(tones) // 4] if tones else (190, 120, 100, 255)
+    return (p[0], p[1], p[2], 255)
+
 def side_frames_single(img, keypoints, keep_above, ground, knee_shift, shin_deg,
-                       bend_deg, far_scale, far_tint):
+                       bend_deg, far_scale):
     """Side view: one clean leg (original pixels, far foot removed) used for
     both legs. Each thigh bends gradually out of the body (no seam), each shin
     swings about its knee; the swinging leg's knee bends. The far leg moves
@@ -333,17 +321,19 @@ def side_frames_single(img, keypoints, keep_above, ground, knee_shift, shin_deg,
     knee = ((kp['RIGHT KNEE'][0] + kp['LEFT KNEE'][0]) / 2,
             (kp['RIGHT KNEE'][1] + kp['LEFT KNEE'][1]) / 2)
     src = single_leg(img, kp, keep_above)
+    far_fill, line = skin_shadow(img, keep_above), outline_color(img)
     body = blank()
     for y in range(keep_above):
         body[y] = img[y][:]
     frames = []
     for s, c in phases():
         legs = []
-        for sign, scale, tint in ((-1, far_scale, far_tint), (1, 1.0, 1.0)):
+        for sign, scale in ((-1, far_scale), (1, 1.0)):
             swing = sign * s * scale
             bend = math.radians(bend_deg * max(0.0, sign * c) * scale)
-            legs.append(bent_leg(src, keep_above, knee, knee_shift * swing,
-                                 math.radians(shin_deg * swing) - bend, tint))
+            leg = bent_leg(src, keep_above, knee, knee_shift * swing,
+                           math.radians(shin_deg * swing) - bend)
+            legs.append(flat_far_leg(leg, far_fill, line) if sign < 0 else leg)
         frame = compose(legs, body, 0)
         drop = ground - max(lowest_row(legs[0]), lowest_row(legs[1]))
         frames.append(shift(frame, drop) if drop else frame)
@@ -430,7 +420,7 @@ def main():
         elif direction == 'east':
             frames = side_frames_single(img, kp, keep_above=88, ground=115,
                                         knee_shift=3, shin_deg=14, bend_deg=22,
-                                        far_scale=0.75, far_tint=0.93)
+                                        far_scale=0.75)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
