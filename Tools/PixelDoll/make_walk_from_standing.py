@@ -420,7 +420,7 @@ def leg_tones(img, top):
     shade = darker[0] if darker else darken(base, 0.8)
     return base, shade
 
-def detail_shade(leg, line, open_top=None, dark_limit=330):
+def detail_shade(leg, line, open_top=None, dark_limit=330, keep_from=None):
     """Keep the original leg pixels (highlights, soft shading, muscle tone)
     but remove the dark interior strokes (outline-dark and deep red lines,
     channel sum < dark_limit) that split a side-view leg into two thin
@@ -439,7 +439,9 @@ def detail_shade(leg, line, open_top=None, dark_limit=330):
             if any(not opaque(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 out[y][x] = line
                 continue
-            if sum(p[:3]) >= dark_limit:
+            # the foot's small dark strokes (toes, ankle, sole) give it its
+            # shape; removing them made the foot look swollen
+            if sum(p[:3]) >= dark_limit or (keep_from is not None and y >= keep_from):
                 out[y][x] = p
                 continue
             replacement = None
@@ -460,7 +462,8 @@ def warm_darken(p, factor):
     r = min(255, round(p[0] * (factor + (1 - factor) * 0.45)))
     return (r, round(p[1] * factor), round(p[2] * factor), p[3])
 
-def side_frames_scissor(img, keypoints, keep_above, foot, stride, lift, far_scale, far_tint):
+def side_frames_scissor(img, keypoints, keep_above, foot, stride, lift, far_scale, far_tint,
+                        hide_feet_within=5.0):
     """Side view in the same style as the diagonal walk: straight legs that
     scissor in opposite phase from the hip (0 px at the seam, `stride` px at
     the foot), the swinging foot lifted a little, 1 px body dip near
@@ -473,17 +476,24 @@ def side_frames_scissor(img, keypoints, keep_above, foot, stride, lift, far_scal
     leg = single_leg(img, keypoints, keep_above)
     # Near leg keeps the original detail minus the dark inner strokes; the
     # far leg is the same detail darkened with a warm skin hue.
-    src = detail_shade(leg, line, open_top=keep_above)
+    ankle_y = max(keypoints['RIGHT LEG'][1], keypoints['LEFT LEG'][1])
+    src = detail_shade(leg, line, open_top=keep_above, keep_from=round(ankle_y) - 1)
     far_src = [[(warm_darken(p, far_tint) if p != line else p) if p[3] else p for p in row]
                for row in src]
     body = blank()
     for y in range(keep_above):
         body[y] = img[y][:]
     frames = []
+    foot_top = round(ankle_y) - 1
     for s, c in phases():
-        far = sheared(far_src, keep_above, foot, -stride * far_scale * s,
-                      lift * max(0.0, -c))
+        far_lift = lift * max(0.0, -c)
+        far = sheared(far_src, keep_above, foot, -stride * far_scale * s, far_lift)
         near = sheared(src, keep_above, foot, stride * s, lift * max(0.0, c))
+        # Feet close together: a few pixels of the far foot peeking around the
+        # near one made a single swollen foot. Hide it behind the near foot.
+        if abs(stride * s * (1 + far_scale)) < hide_feet_within:
+            for y in range(max(0, foot_top - round(far_lift)), CELL):
+                far[y] = [EMPTY] * CELL
         frames.append(compose([far, near], body, body_bob(s)))
     return frames
 
