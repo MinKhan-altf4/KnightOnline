@@ -532,6 +532,101 @@ def front_frames(img, top, knee, split_x, lift, inward, swing_in):
         frames.append(compose([left_leg, right_leg], body, 1 if abs(s) < 0.3 else 0))
     return frames
 
+# ---------------------------------------------------------------- arms
+# Arm swing and shoulder bob, applied to the standing image before the legs
+# are generated, so each walk frame starts from a body with its arms posed.
+
+def _segment_distance(px, py, a, b):
+    vx, vy = b[0] - a[0], b[1] - a[1]
+    length2 = vx * vx + vy * vy or 1.0
+    t = max(0.0, min(1.0, ((px - a[0]) * vx + (py - a[1]) * vy) / length2))
+    return math.hypot(px - (a[0] + vx * t), py - (a[1] + vy * t))
+
+def arm_mask(img, shoulder, elbow, wrist, below_shoulder=4):
+    """Opaque pixels within an arm's width of its bones, plus the hand past
+    the wrist. Rows just under the shoulder are left out so the torso edge
+    does not move."""
+    hx, hy = wrist[0] - elbow[0], wrist[1] - elbow[1]
+    norm = math.hypot(hx, hy) or 1.0
+    hand_end = (wrist[0] + hx / norm * 7, wrist[1] + hy / norm * 7)
+    mask = set()
+    for y in range(int(shoulder[1] + below_shoulder), min(CELL, int(hand_end[1] + 4))):
+        for x in range(CELL):
+            if not img[y][x][3]:
+                continue
+            px, py = x + 0.5, y + 0.5
+            # wide enough to take the arm's outer outline with it; a narrower
+            # mask left outline fragments floating where the arm used to be
+            if (_segment_distance(px, py, shoulder, elbow) <= 4.5 or
+                    _segment_distance(px, py, elbow, wrist) <= 4.5 or
+                    _segment_distance(px, py, wrist, hand_end) <= 5.0):
+                mask.add((x, y))
+    return mask, hand_end
+
+def pose_arms(img, arms):
+    """arms: list of (shoulder, elbow, wrist, dx_hand, dy_hand, dy_shoulder).
+    Each arm shears from the shoulder (dy_shoulder) to the hand (dx_hand,
+    dy_hand added). Vacated pixels take the nearest non-arm pixel on the row
+    (torso behind the arm) or become transparent outside the body."""
+    out = [row[:] for row in img]
+    for shoulder, elbow, wrist, dx_hand, dy_hand, dy_shoulder in arms:
+        if not (dx_hand or dy_hand or dy_shoulder):
+            continue
+        mask, hand_end = arm_mask(img, shoulder, elbow, wrist)
+        if not mask:
+            continue
+        span = max(1.0, hand_end[1] - shoulder[1])
+        ys = [y for _, y in mask]
+        y_min, y_max = min(ys), max(ys)
+        # 1) erase the arm, filling from the body beside it
+        centre = 64
+        for x, y in mask:
+            fill = EMPTY
+            order = sorted(range(1, 5), key=lambda d: d)
+            for d in order:
+                for nx in ((x + d, x - d) if x < centre else (x - d, x + d)):
+                    if 0 <= nx < CELL and img[y][nx][3] and (nx, y) not in mask:
+                        fill = img[y][nx]
+                        break
+                if fill is not EMPTY:
+                    break
+            out[y][x] = fill
+        # 2) draw the moved arm by inverse mapping (no holes)
+        reach = int(abs(dx_hand)) + 2
+        for y in range(max(0, y_min - 3), min(CELL, y_max + 4)):
+            t = max(0.0, min(1.0, (y + 0.5 - shoulder[1]) / span))
+            dx = dx_hand * t
+            dy = dy_shoulder + dy_hand * t
+            sy = int(round(y - dy))
+            for x in range(CELL):
+                sx = int(round(x - dx))
+                if (sx, sy) in mask:
+                    out[y][x] = img[sy][sx]
+    return out
+
+def arm_spec(kp, direction, s):
+    """Per-direction arm swing for phase s = sin(phase angle). Arms swing
+    opposite to the leg on the same side of the screen."""
+    arms = []
+    names = ('RIGHT', 'LEFT')
+    pts = {n: (kp[f'{n} SHOULDER'], kp[f'{n} ELBOW'], kp[f'{n} ARM']) for n in names}
+    screen_left, screen_right = sorted(names, key=lambda n: pts[n][0][0])
+    if direction == 'east':
+        near = max(names, key=lambda n: pts[n][2][1])        # lower wrist = near arm
+        phase = -s                                          # near leg forward when s > 0
+        arms.append((*pts[near], 2.5 * phase, 0.0, 0.0))
+    elif direction in ('south', 'north'):
+        for name, phase in ((screen_left, -s), (screen_right, s)):
+            forward, back = max(0.0, phase), max(0.0, -phase)
+            dy_hand = -2.0 * forward - 1.0 * back           # swinging toward/away: hand rises
+            dy_shoulder = -1.0 if forward > 0.6 else 0.0    # shoulder of the forward arm lifts
+            arms.append((*pts[name], 0.0, dy_hand, dy_shoulder))
+    else:
+        axis_y = 1 if direction.startswith('south') else -1
+        for name, phase in ((screen_left, -s), (screen_right, s)):
+            arms.append((*pts[name], 2.0 * phase, 1.0 * axis_y * phase, 0.0))
+    return arms
+
 # ---------------------------------------------------------------- main
 # Side views (east/west) are NOT generated: in the standing art both legs
 # overlap, so they cannot be separated cleanly. Draw walk_east by hand
@@ -572,16 +667,24 @@ def main():
         knee = round(min(kp['RIGHT KNEE'][1], kp['LEFT KNEE'][1]))
         top = round(max(hip + 4, arm + 8))          # below the hanging hands/fingers
         split_x = round((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2)
-        if direction in ('south', 'north'):
-            frames = front_frames(img, top, knee, split_x, lift=3,
-                                  inward=1, swing_in=0)
-        elif direction == 'east':
-            frames = side_frames_scissor(img, kp, keep_above=88, foot=round(foot),
-                                         stride=7, lift=3, far_scale=0.85, far_tint=0.78)
-        else:
+        def leg_frames(base):
+            if direction in ('south', 'north'):
+                return front_frames(base, top, knee, split_x, lift=3, inward=1, swing_in=0)
+            if direction == 'east':
+                return side_frames_scissor(base, kp, keep_above=88, foot=round(foot),
+                                           stride=7, lift=3, far_scale=0.85, far_tint=0.78)
             axis_y = 1 if direction.startswith('south') else -1
-            frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
-                                     lift=3, axis_y=axis_y)
+            return diagonal_frames(base, top, foot, split_x, swing=3, depth=2,
+                                   lift=3, axis_y=axis_y)
+
+        if '--no-arms' in sys.argv:
+            frames = leg_frames(img)
+        else:
+            # Each frame: pose the arms for its phase, then build its legs.
+            frames = []
+            for k, (s, c) in enumerate(phases()):
+                posed = pose_arms(img, arm_spec(kp, direction, s))
+                frames.append(leg_frames(posed)[k])
         strips[direction] = frames
     for direction, source in MIRROR.items():
         strips[direction] = [flip(f) for f in strips[source]]
