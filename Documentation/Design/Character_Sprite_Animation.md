@@ -26,17 +26,6 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
 - Không dùng Animator: 8 hướng × nhiều move sẽ cần hàng chục clip. Khi dùng Hero, Animator hiệp sĩ cũ của prefab Player bị tắt.
 - Người chơi khác dùng cùng cơ chế, với hướng lấy từ dead reckoning.
 
-## Frame bước đi hiện tại (sinh tự động)
-
-Hero chưa có frame đi vẽ tay. Bộ `walk_*_strip4.png` hiện tại do `Tools/PixelDoll/make_walk_from_standing.py` **sinh từ ảnh đứng**, dựa trên keypoint hông/gối/chân trong `manifest.json`:
-
-- **Hướng ngang:** nhân đôi vùng chân, nghiêng ngược nhau thành bước sải, xen kẽ tư thế chân chụm có nhấc chân.
-- **Hướng chéo:** tách từng chân, sải ra hai phía, chân trước thấp hơn 2 px.
-- **Hướng trước/sau:** co gối luân phiên (cẳng chân nhấc 5 px).
-- Thân nhún 1 px ở frame chạm đất. Hướng đối xứng được lật ngang như PixelDoll.
-
-Đây là **bản tạm**: chân chuyển động nhưng cứng hơn frame vẽ thật. Khi có frame từ PixelDoll hoặc vẽ tay, chép đè các file `walk_*` là xong.
-
 ## Thêm animation bước đi
 
 1. Trong PixelDoll: mở `project.json`, thêm move `walking` (gợi ý 6–8 frame, loop, khoảng 100 ms/frame) cho 5 hướng gốc. Các hướng còn lại PixelDoll tự lật.
