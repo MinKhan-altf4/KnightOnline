@@ -28,13 +28,12 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
 
 ## Frame bước đi hiện tại (sinh tự động)
 
-Hero chưa có frame đi vẽ tay. Bộ `walk_*_strip8.png` hiện tại (8 frame, chu kỳ 0,8 giây) do `Tools/PixelDoll/make_walk_from_standing.py` **sinh từ ảnh đứng**, dựa trên keypoint hông/gối/chân trong `manifest.json`:
+Hero chưa có frame đi vẽ tay. Bộ `walk_*_strip4.png` hiện tại do `Tools/PixelDoll/make_walk_from_standing.py` **sinh từ ảnh đứng**, dựa trên keypoint hông/gối/chân trong `manifest.json`:
 
-- Chuyển động theo hình sin: chân sải ra, khép vào rồi đổi bên dần dần; chân đang đưa về trước được nhấc dần lên và chạm đất ở bước sải lớn nhất.
-- **Hướng ngang:** nhân đôi vùng chân, nghiêng ngược nhau (tối đa 9 px ở bàn chân), nhấc 3 px.
-- **Hướng chéo:** tách từng chân, giữ độ choãi 3 px, đung đưa thêm 4 px; chân trước thấp hơn tối đa 2 px.
-- **Hướng trước/sau:** co gối luân phiên (cẳng chân nhấc tối đa 5 px).
-- Thân nhún 1 px quanh lúc chạm đất. Hướng đối xứng được lật ngang như PixelDoll.
+- **Hướng ngang:** nhân đôi vùng chân, nghiêng ngược nhau thành bước sải, xen kẽ tư thế chân chụm có nhấc chân.
+- **Hướng chéo:** tách từng chân, sải ra hai phía, chân trước thấp hơn 2 px.
+- **Hướng trước/sau:** co gối luân phiên (cẳng chân nhấc 5 px).
+- Thân nhún 1 px ở frame chạm đất. Hướng đối xứng được lật ngang như PixelDoll.
 
 Đây là **bản tạm**: chân chuyển động nhưng cứng hơn frame vẽ thật. Khi có frame từ PixelDoll hoặc vẽ tay, chép đè các file `walk_*` là xong.
 
