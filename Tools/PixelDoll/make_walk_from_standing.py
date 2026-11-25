@@ -420,20 +420,62 @@ def leg_tones(img, top):
     shade = darker[0] if darker else darken(base, 0.8)
     return base, shade
 
+def detail_shade(leg, line, open_top=None, dark_limit=330):
+    """Keep the original leg pixels (highlights, soft shading, muscle tone)
+    but remove the dark interior strokes (outline-dark and deep red lines,
+    channel sum < dark_limit) that split a side-view leg into two thin
+    stripes at game size. Each removed pixel takes the nearest lighter
+    pixel on its row; the outer outline is redrawn."""
+    out = blank()
+    def opaque(x, y):
+        if open_top is not None and y < open_top:
+            return True
+        return 0 <= x < CELL and 0 <= y < CELL and leg[y][x][3] > 0
+    for y in range(CELL):
+        for x in range(CELL):
+            p = leg[y][x]
+            if not p[3]:
+                continue
+            if any(not opaque(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                out[y][x] = line
+                continue
+            if sum(p[:3]) >= dark_limit:
+                out[y][x] = p
+                continue
+            replacement = None
+            for step in range(1, 4):
+                for nx in (x - step, x + step):
+                    if 0 <= nx < CELL:
+                        q = leg[y][nx]
+                        if q[3] and sum(q[:3]) >= dark_limit:
+                            replacement = q
+                            break
+                if replacement:
+                    break
+            out[y][x] = replacement or p
+    return out
+
+def warm_darken(p, factor):
+    """Darken a skin pixel keeping its warm hue (red falls slower)."""
+    r = min(255, round(p[0] * (factor + (1 - factor) * 0.45)))
+    return (r, round(p[1] * factor), round(p[2] * factor), p[3])
+
 def side_frames_scissor(img, keypoints, keep_above, foot, stride, lift, far_scale, far_tint):
     """Side view in the same style as the diagonal walk: straight legs that
     scissor in opposite phase from the hip (0 px at the seam, `stride` px at
     the foot), the swinging foot lifted a little, 1 px body dip near
     contact. Both legs come from one clean leg cut from the original pixels;
-    the far leg moves `far_scale` of the near leg. Legs are re-shaded flat
-    (clean_shade) and the far leg uses the skin shadow tone."""
+    the far leg moves `far_scale` of the near leg. Legs keep the original
+    detail without the dark inner strokes (detail_shade); the far leg is
+    darkened with a warm skin hue."""
     base, shade = leg_tones(img, keep_above)
     line = outline_color(img)
     leg = single_leg(img, keypoints, keep_above)
-    src = clean_shade(leg, base, shade, line, open_top=keep_above)
-    # far leg: same shape, skin shadow tone (keeps the skin hue, unlike
-    # darkening every channel, which turned it grey-brown)
-    far_src = clean_shade(leg, shade, darken(shade, far_tint), line, open_top=keep_above)
+    # Near leg keeps the original detail minus the dark inner strokes; the
+    # far leg is the same detail darkened with a warm skin hue.
+    src = detail_shade(leg, line, open_top=keep_above)
+    far_src = [[(warm_darken(p, far_tint) if p != line else p) if p[3] else p for p in row]
+               for row in src]
     body = blank()
     for y in range(keep_above):
         body[y] = img[y][:]
@@ -525,7 +567,7 @@ def main():
                                   inward=1, swing_in=0)
         elif direction == 'east':
             frames = side_frames_scissor(img, kp, keep_above=88, foot=round(foot),
-                                         stride=7, lift=3, far_scale=0.85, far_tint=0.85)
+                                         stride=7, lift=3, far_scale=0.85, far_tint=0.78)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
