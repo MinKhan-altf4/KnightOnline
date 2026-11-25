@@ -1,4 +1,4 @@
-"""Generate a 4-frame walk cycle for a PixelDoll character from its standing
+"""Generate an 8-frame walk cycle for a PixelDoll character from its standing
 sprites, using the leg keypoints in manifest.json. Pure Python (no PIL).
 
 Side/diagonal views: the leg region is duplicated and sheared forward/back
@@ -13,13 +13,14 @@ usage (from the repository root):
   python Tools/PixelDoll/make_walk_from_standing.py       KnightClient/Assets/_Project/Resources/Characters/Hero       <pixeldoll-export>/manifest.json       KnightClient/Assets/_Project/Resources/Characters/Hero       [--preview walk_preview.png]
 """
 import json
+import math
 import os
 import struct
 import sys
 import zlib
 
 CELL = 128
-FRAMES = 4
+FRAMES = 8
 
 # ---------------------------------------------------------------- PNG I/O
 def read_png(path):
@@ -98,6 +99,11 @@ def shift(img, dy):
     return out
 
 # ---------------------------------------------------------------- poses
+# Smooth cycle: phase angle a = 2*pi*k/FRAMES. sin(a) drives the stride
+# (which leg is forward and by how much), the swinging leg is lifted with
+# max(0, +/-cos(a)) so it rises while passing and lands at full stride, and
+# the body dips 1 px around each contact.
+
 def split(img, top):
     """Body (rows above `top`) and legs (rows from `top`)."""
     body, legs = blank(), blank()
@@ -106,7 +112,15 @@ def split(img, top):
             (legs if y >= top else body)[y][x] = img[y][x]
     return body, legs
 
-def sheared(legs, top, foot, amount, lift=0):
+def split_legs(legs, top, split_x):
+    left, right = blank(), blank()
+    for y in range(top, CELL):
+        for x in range(CELL):
+            if legs[y][x][3]:
+                (left if x < split_x else right)[y][x] = legs[y][x]
+    return left, right
+
+def sheared(legs, top, foot, amount, lift=0.0):
     """Shear legs horizontally: 0 at `top`, `amount` px at the feet; lift raises the foot."""
     out = blank()
     span = max(1, foot - top)
@@ -125,93 +139,66 @@ def sheared(legs, top, foot, amount, lift=0):
                     over(out, x + dx, row, legs[y][x])
     return out
 
-def side_frames(img, top, foot, stride):
+def knee_lifted(leg, knee, lift):
+    """Front/back view: raise shin and foot (rows below the knee)."""
+    out = blank()
+    dy = round(lift)
+    for y in range(CELL):
+        for x in range(CELL):
+            if leg[y][x][3]:
+                over(out, x, y - (dy if y >= knee else 0), leg[y][x])
+    return out
+
+def compose(layers, body, bob):
+    frame = blank()
+    for layer in layers + [body]:
+        for y in range(CELL):
+            for x in range(CELL):
+                over(frame, x, y, layer[y][x])
+    return shift(frame, bob) if bob else frame
+
+def phases():
+    for k in range(FRAMES):
+        a = 2 * math.pi * k / FRAMES
+        yield math.sin(a), math.cos(a)
+
+def body_bob(s):
+    """1 px dip near full stride (contact)."""
+    return 1 if abs(s) > 0.7 else 0
+
+def side_frames(img, top, foot, stride, lift):
+    """Side view: legs overlap, so two copies scissor forward/back."""
     body, legs = split(img, top)
     frames = []
-    for phase in range(FRAMES):
-        frame = blank()
-        if phase % 2 == 0:
-            # contact: back leg then front leg on top, legs spread
-            sign = 1 if phase == 0 else -1
-            back = sheared(legs, top, foot, -stride * sign)
-            front = sheared(legs, top, foot, stride * sign)
-            layers = [back, front] if phase == 0 else [front, back]
-            for layer in layers:
-                for y in range(CELL):
-                    for x in range(CELL):
-                        over(frame, x, y, layer[y][x])
-            for y in range(CELL):
-                for x in range(CELL):
-                    over(frame, x, y, body[y][x])
-            frames.append(shift(frame, 1))       # body low on contact
-        else:
-            # passing: legs together, swinging foot lifted
-            lifted = sheared(legs, top, foot, 0, lift=3)
-            for y in range(CELL):
-                for x in range(CELL):
-                    over(frame, x, y, lifted[y][x])
-                    over(frame, x, y, body[y][x])
-            frames.append(frame)
+    for s, c in phases():
+        near = sheared(legs, top, foot, stride * s, lift * max(0.0, c))
+        far = sheared(legs, top, foot, -stride * s, lift * max(0.0, -c))
+        frames.append(compose([far, near], body, body_bob(s)))
     return frames
 
-def diagonal_frames(img, top, foot, split_x, stride):
-    """Both legs visible: shear the left and right leg in opposite directions."""
+def diagonal_frames(img, top, foot, split_x, spread, swing, lift):
+    """3/4 view: both legs visible; each keeps an outward spread and swings
+    along the walking axis (front leg lower = nearer the viewer)."""
     body, legs = split(img, top)
-    left, right = blank(), blank()
-    for y in range(top, CELL):
-        for x in range(CELL):
-            if legs[y][x][3]:
-                (left if x < split_x else right)[y][x] = legs[y][x]
+    left, right = split_legs(legs, top, split_x)
     frames = []
-    for phase in range(FRAMES):
-        frame = blank()
-        if phase % 2 == 0:
-            # legs spread outward in both contacts; the front leg (alternating)
-            # sits 2 px lower, i.e. nearer the viewer in the 3/4 view
-            front_left = phase == 0
-            layers = [sheared(left, top, foot, -stride, lift=-2 if front_left else 2),
-                      sheared(right, top, foot, stride, lift=2 if front_left else -2)]
-            for layer in layers:
-                for y in range(CELL):
-                    for x in range(CELL):
-                        over(frame, x, y, layer[y][x])
-            for y in range(CELL):
-                for x in range(CELL):
-                    over(frame, x, y, body[y][x])
-            frames.append(shift(frame, 1))
-        else:
-            # passing: the back leg (the one that swings next) lifted
-            swing = left if phase == 1 else right
-            stay = right if phase == 1 else left
-            for layer in (sheared(stay, top, foot, 0), sheared(swing, top, foot, 0, lift=3)):
-                for y in range(CELL):
-                    for x in range(CELL):
-                        over(frame, x, y, layer[y][x])
-            for y in range(CELL):
-                for x in range(CELL):
-                    over(frame, x, y, body[y][x])
-            frames.append(frame)
+    for s, c in phases():
+        left_leg = sheared(left, top, foot, -(spread + swing * s),
+                           -2 * s + lift * max(0.0, c))
+        right_leg = sheared(right, top, foot, spread - swing * s,
+                            2 * s + lift * max(0.0, -c))
+        frames.append(compose([left_leg, right_leg], body, body_bob(s)))
     return frames
 
 def front_frames(img, top, knee, split_x, lift):
+    """Front/back view: knees bend alternately."""
     body, legs = split(img, top)
+    left, right = split_legs(legs, top, split_x)
     frames = []
-    for phase in range(FRAMES):
-        frame = blank()
-        lifted_side = {0: 'left', 1: None, 2: 'right', 3: None}[phase]
-        for y in range(top, CELL):
-            for x in range(CELL):
-                p = legs[y][x]
-                if not p[3]:
-                    continue
-                side = 'left' if x < split_x else 'right'
-                # bend at the knee: only the shin and foot rise
-                dy = -lift if side == lifted_side and y >= knee else 0
-                over(frame, x, y + dy, p)
-        for y in range(CELL):
-            for x in range(CELL):
-                over(frame, x, y, body[y][x])
-        frames.append(shift(frame, 1) if lifted_side else frame)
+    for s, c in phases():
+        layers = [knee_lifted(left, knee, lift * max(0.0, s)),
+                  knee_lifted(right, knee, lift * max(0.0, -s))]
+        frames.append(compose(layers, body, 1 if abs(s) < 0.3 else 0))
     return frames
 
 # ---------------------------------------------------------------- main
@@ -234,14 +221,13 @@ def main():
         foot = max(kp['RIGHT LEG'][1], kp['LEFT LEG'][1])
         knee = round(min(kp['RIGHT KNEE'][1], kp['LEFT KNEE'][1]))
         top = round(max(hip + 4, arm + 8))          # below the hanging hands/fingers
+        split_x = round((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2)
         if direction in ('south', 'north'):
-            split_x = round((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2)
             frames = front_frames(img, top, knee, split_x, lift=5)
         elif direction == 'east':
-            frames = side_frames(img, top, foot, stride=9)
+            frames = side_frames(img, top, foot, stride=9, lift=3)
         else:
-            split_x = round((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2)
-            frames = diagonal_frames(img, top, foot, split_x, stride=6)
+            frames = diagonal_frames(img, top, foot, split_x, spread=3, swing=4, lift=3)
         strips[direction] = frames
     for direction, source in MIRROR.items():
         strips[direction] = [flip(f) for f in strips[source]]
