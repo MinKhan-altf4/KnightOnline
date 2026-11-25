@@ -30,9 +30,9 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
 
 Cả 8 hướng dùng `walk_*_strip8.png` (8 frame, chuyển động hình sin) do `Tools/PixelDoll/make_walk_from_standing.py` sinh từ ảnh đứng theo keypoint hông/gối/chân:
 
-- **Nam, Bắc:** khi đi chân khép vào đường giữa (5 px hướng Nam, 4 px hướng Bắc; chỉ lúc đứng mới dạng chân). Chân đang bước **co ngắn đều từ hông tới bàn chân** 3 px và dịch vào trong thêm 2 px. Không nhấc riêng cẳng chân, vì cẳng chân gốc chéo ra ngoài sẽ làm gối gãy sang bên.
+- **Nam, Bắc:** khi đi chỉ **đùi** nghiêng vào trong (3 px hướng Nam, 2 px hướng Bắc); từ gối xuống bàn chân giữ thẳng đứng, nên gối nằm ngay trên bàn chân (chỉ lúc đứng mới dạng chân). Chân đang bước **rút ngắn phần đùi** 3 px (gối nhô về trước, nhìn chính diện thấy gối nâng lên) và dịch vào thêm 1 px.
 - **Đông Nam, Đông Bắc** (Tây Nam, Tây Bắc lật từ đó): giữ dáng đứng, hai chân đưa ngược pha nhau dọc hướng đi.
-- **Đông** (Tây lật từ đó): hai chân trong ảnh đứng chồng khít, nên dùng **chính pixel chân gốc** làm một chân. Hai bản sao được xoay như rig 2 xương: đùi quanh hông ±20°, cẳng chân quanh gối gập tối đa 35°; chân sau tối 88%. Nét vẽ và cơ bắp giữ đúng ảnh gốc. Thân hạ xuống để chân trụ luôn chạm đất. Giữ nguyên ảnh gốc phía trên y = 88 (thân, quần lót, bàn tay che đùi).
+- **Đông** (Tây lật từ đó): ảnh đứng là một chân cộng bàn chân sau lòi ra sau mắt cá. Script **cắt bỏ bàn chân sau** theo keypoint mắt cá, vẽ lại viền chỗ cắt, rồi dùng chân đơn (pixel gốc) đó cho cả hai bên. Hai bản sao được xoay như rig 2 xương: đùi quanh hông ±20°, cẳng chân quanh gối gập tối đa 35°; chân sau tối 88%. Nét vẽ và cơ bắp giữ đúng ảnh gốc. Thân hạ xuống để chân trụ luôn chạm đất. Giữ nguyên ảnh gốc phía trên y = 88 (thân, quần lót, bàn tay che đùi).
 - Muốn vẽ tay đẹp hơn cho hướng ngang: dùng bộ mẫu `KnightClient/ArtSource/Hero/` (có README), rồi tạo Tây bằng `--mirror`.
 - Đây là bản tạm: có frame thật từ PixelDoll hoặc vẽ tay thì chép đè file `walk_*`.
 

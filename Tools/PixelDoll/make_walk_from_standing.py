@@ -2,15 +2,16 @@
 sprites, using the leg keypoints in manifest.json. Pure Python (no PIL).
 
 Covered directions (8 frames, sin/cos phase, 1 px body dip near contact):
-  south, north          feet pulled toward the centre line while walking;
-                        the stepping leg shortens evenly (no knee kink)
+  south, north          knees and feet come in toward the centre line while
+                        walking (shin vertical under the knee); the stepping
+                        thigh foreshortens so the knee rises
   south-east, north-east (and south-west, north-west mirrored)
                         natural stance kept; legs swing in opposite phase
                         along the walking axis, front leg lower/higher
   east (and west mirrored)
-                        both legs overlap in the standing art, so the merged
-                        ORIGINAL leg pixels are used as one leg: two copies
-                        rotated like a hip/knee rig (thigh +/-20 deg, knee
+                        one clean leg is cut from the ORIGINAL pixels (the
+                        far foot peeking out behind the ankle is removed) and
+                        two copies are rotated like a hip/knee rig (thigh +/-20 deg, knee
                         bend up to 35 deg), the far one darker; the body
                         drops so the stance foot stays on the ground.
 A hand-drawn walk_east can replace the generated one; make west from it with
@@ -266,21 +267,42 @@ def lowest_row(layer):
             return y
     return 0
 
-def side_frames_rigid(img, keypoints, keep_above, ground, swing_deg, bend_deg):
-    """Side view built from the ORIGINAL leg pixels (both legs overlap in the
-    source, so that merged leg is used as one leg): two copies rotated like a
-    hip/knee rig, the far one darker. Rows above `keep_above` (torso,
-    underwear, the hand over the thigh) stay as in the source. The body drops
-    so the lowest foot stays on the ground."""
+def single_leg(img, keypoints, keep_above):
+    """The side-view standing art is one leg plus the far foot peeking out
+    behind the ankle. Remove that far foot (rows between the far and near
+    ankles, right of the near ankle) and close the cut with the line colour,
+    leaving one clean leg in the original pixels."""
+    kp = keypoints
+    near, far = ('RIGHT', 'LEFT') if kp['RIGHT LEG'][1] >= kp['LEFT LEG'][1] else ('LEFT', 'RIGHT')
+    near_ankle_x, near_ankle_y = kp[f'{near} LEG']
+    far_ankle_y = kp[f'{far} LEG'][1]
+    cut_x = round(near_ankle_x + 3.5)
+    y0, y1 = round(far_ankle_y - 1), round(near_ankle_y)
+    line = outline_color(img)
+    leg = blank()
+    for y in range(keep_above, CELL):
+        leg[y] = img[y][:]
+    for y in range(y0, y1 + 1):
+        for x in range(cut_x, CELL):
+            leg[y][x] = EMPTY
+        if leg[y][cut_x - 1][3] and img[y][cut_x][3]:
+            leg[y][cut_x - 1] = line
+    return leg
+
+def side_frames_single(img, keypoints, keep_above, ground, swing_deg, bend_deg):
+    """Side view: one clean leg (original pixels, far foot removed) rotated
+    like a hip/knee rig for both legs; the far one slightly darker. Rows above
+    `keep_above` stay as in the source; the body drops so the lowest foot
+    stays on the ground."""
     kp = keypoints
     hip = ((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2,
            (kp['RIGHT HIP'][1] + kp['LEFT HIP'][1]) / 2)
     knee = ((kp['RIGHT KNEE'][0] + kp['LEFT KNEE'][0]) / 2,
             (kp['RIGHT KNEE'][1] + kp['LEFT KNEE'][1]) / 2)
-    src = blank()
+    src = single_leg(img, kp, keep_above)
     body = blank()
-    for y in range(CELL):
-        (src if y >= keep_above else body)[y] = img[y][:]
+    for y in range(keep_above):
+        body[y] = img[y][:]
     frames = []
     for s, c in phases():
         legs = []
@@ -293,18 +315,38 @@ def side_frames_rigid(img, keypoints, keep_above, ground, swing_deg, bend_deg):
         frames.append(shift(frame, drop) if drop else frame)
     return frames
 
-def front_frames(img, top, foot, split_x, lift, inward, swing_in):
-    """Front/back view: while walking the feet come in toward the centre line
-    (the wide stance is only for standing still). The stepping leg shortens
-    evenly from hip to foot and moves a little further in; lifting only the
-    shin made the knee kink outward because the source shins slant."""
+def warp_leg(leg, top, knee, inward, lift):
+    """Front/back leg warp: the thigh (top..knee) leans in by `inward` and is
+    foreshortened by `lift` px (knee coming forward reads as the knee rising);
+    from the knee down the leg is translated, staying straight and vertical
+    so the knee sits right above the foot."""
+    out = blank()
+    span = max(1, knee - top)
+    last_dest = None
+    for y in range(top, CELL):
+        t = min(1.0, (y - top) / span)
+        dx = round(inward * t)
+        dest = y - round(lift * t)
+        rows = [dest] if last_dest is None else list(range(last_dest + 1, dest + 1)) or [dest]
+        last_dest = dest
+        for x in range(CELL):
+            if leg[y][x][3]:
+                for row in rows:
+                    over(out, x + dx, row, leg[y][x])
+    return out
+
+def front_frames(img, top, knee, split_x, lift, inward, swing_in):
+    """Front/back view: knees and feet both come in toward the centre line
+    while walking (the wide stance is only for standing). The stepping leg's
+    thigh foreshortens (knee forward and up) and moves a little further in;
+    the shin stays straight under the knee."""
     body, legs = split(img, top)
     left, right = split_legs(legs, top, split_x)
     frames = []
     for s, c in phases():
         left_step, right_step = max(0.0, s), max(0.0, -s)
-        left_leg = sheared(left, top, foot, inward + swing_in * left_step, lift * left_step)
-        right_leg = sheared(right, top, foot, -(inward + swing_in * right_step), lift * right_step)
+        left_leg = warp_leg(left, top, knee, inward + swing_in * left_step, lift * left_step)
+        right_leg = warp_leg(right, top, knee, -(inward + swing_in * right_step), lift * right_step)
         frames.append(compose([left_leg, right_leg], body, 1 if abs(s) < 0.3 else 0))
     return frames
 
@@ -349,11 +391,11 @@ def main():
         top = round(max(hip + 4, arm + 8))          # below the hanging hands/fingers
         split_x = round((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2)
         if direction in ('south', 'north'):
-            frames = front_frames(img, top, foot, split_x, lift=3,
-                                  inward=5 if direction == 'south' else 4, swing_in=2)
+            frames = front_frames(img, top, knee, split_x, lift=3,
+                                  inward=3 if direction == 'south' else 2, swing_in=1)
         elif direction == 'east':
-            frames = side_frames_rigid(img, kp, keep_above=88, ground=115,
-                                       swing_deg=20, bend_deg=35)
+            frames = side_frames_single(img, kp, keep_above=88, ground=115,
+                                        swing_deg=20, bend_deg=35)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
