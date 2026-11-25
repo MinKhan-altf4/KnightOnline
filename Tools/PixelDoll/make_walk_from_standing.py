@@ -235,7 +235,7 @@ def lowest_row(layer):
             return y
     return 0
 
-def single_leg(img, keypoints, keep_above, thigh_half=3.5, shin_half=3.0):
+def single_leg(img, keypoints, keep_above, thigh_half=3.5, shin_half=3.0, centre=True):
     """Cut ONE leg out of the side-view standing art, which shows the near leg
     plus the far thigh beside it and the far foot behind the ankle. Keep only
     pixels within half a leg width of the near leg's bones (hip -> knee ->
@@ -279,7 +279,26 @@ def single_leg(img, keypoints, keep_above, thigh_half=3.5, shin_half=3.0):
             leg[y][x] = EMPTY
         if removed and 0 <= edge < CELL and leg[y][edge][3]:
             leg[y][edge] = line
-    return leg
+    if not centre:
+        return leg
+    # The far thigh sat on the facing side, so the cut leg is set back from
+    # where the pair of legs was. Move each row to the middle of the near and
+    # far bones so the walk frames line up with the standing body.
+    far_hip, far_knee, far_ankle = kp[f'{far} HIP'], kp[f'{far} KNEE'], kp[f'{far} LEG']
+
+    def far_centre_x(y):
+        a, b = (far_hip, far_knee) if y <= far_knee[1] else (far_knee, far_ankle)
+        t = 0.0 if b[1] == a[1] else max(0.0, min(1.0, (y - a[1]) / (b[1] - a[1])))
+        return a[0] + (b[0] - a[0]) * t
+
+    centred = blank()
+    for y in range(keep_above, CELL):
+        row_y = min(y, ankle[1])
+        dx = round((far_centre_x(row_y) - centre_x(row_y)) / 2)
+        for x in range(CELL):
+            if leg[y][x][3] and 0 <= x + dx < CELL:
+                centred[y][x + dx] = leg[y][x]
+    return centred
 
 def bent_leg(src, seam, knee, knee_shift, shin_angle, tint=1.0):
     """Side-view leg attached to the body without a seam: the thigh (rows
@@ -363,13 +382,17 @@ def side_frames_single(img, keypoints, keep_above, ground, knee_shift, shin_deg,
         frames.append(shift(frame, drop) if drop else frame)
     return frames
 
-def clean_shade(leg, base, shade, line, back_dx=-1):
+def clean_shade(leg, base, shade, line, back_dx=-1, open_top=None):
     """Re-shade a leg for small sizes: outer outline, one flat skin tone, and a
     1 px shadow column along the back edge (the side at `back_dx`). The
     source's vertical muscle lines are dropped: at game size they split each
     leg into two thin ones, so two legs read as four."""
     out = blank()
     def opaque(x, y):
+        # rows above `open_top` belong to the body: the leg continues into
+        # them, so the seam row gets no horizontal outline
+        if open_top is not None and y < open_top:
+            return True
         return 0 <= x < CELL and 0 <= y < CELL and leg[y][x][3] > 0
     for y in range(CELL):
         for x in range(CELL):
@@ -407,10 +430,10 @@ def side_frames_scissor(img, keypoints, keep_above, foot, stride, lift, far_scal
     base, shade = leg_tones(img, keep_above)
     line = outline_color(img)
     leg = single_leg(img, keypoints, keep_above)
-    src = clean_shade(leg, base, shade, line)
+    src = clean_shade(leg, base, shade, line, open_top=keep_above)
     # far leg: same shape, skin shadow tone (keeps the skin hue, unlike
     # darkening every channel, which turned it grey-brown)
-    far_src = clean_shade(leg, shade, darken(shade, far_tint), line)
+    far_src = clean_shade(leg, shade, darken(shade, far_tint), line, open_top=keep_above)
     body = blank()
     for y in range(keep_above):
         body[y] = img[y][:]
