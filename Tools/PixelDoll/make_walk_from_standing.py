@@ -10,10 +10,12 @@ Covered directions (8 frames, sin/cos phase, 1 px body dip near contact):
                         along the walking axis, front leg lower/higher
   east (and west mirrored)
                         one clean leg is cut from the ORIGINAL pixels (the
-                        far foot peeking out behind the ankle is removed) and
-                        two copies are rotated like a hip/knee rig (thigh +/-12 deg, knee
-                        bend up to 25 deg), the far one darker; the body
-                        drops so the stance foot stays on the ground.
+                        far foot peeking out behind the ankle is removed);
+                        for both legs the thigh bends gradually out of the
+                        body (no seam, +/-3 px at the knee) and the shin
+                        swings +/-14 deg about the knee (swing leg bends up
+                        to 22 deg). The far leg moves 75% and is 93% bright.
+                        The body drops so the stance foot stays grounded.
 A hand-drawn walk_east can replace the generated one; make west from it with
 --mirror.
 
@@ -289,14 +291,45 @@ def single_leg(img, keypoints, keep_above):
             leg[y][cut_x - 1] = line
     return leg
 
-def side_frames_single(img, keypoints, keep_above, ground, swing_deg, bend_deg):
-    """Side view: one clean leg (original pixels, far foot removed) rotated
-    like a hip/knee rig for both legs; the far one slightly darker. Rows above
-    `keep_above` stay as in the source; the body drops so the lowest foot
-    stays on the ground."""
+def bent_leg(src, seam, knee, knee_shift, shin_angle, tint=1.0):
+    """Side-view leg attached to the body without a seam: the thigh (rows
+    seam..knee) bends gradually (0 px at the seam, `knee_shift` px at the
+    knee), the shin and foot rotate rigidly about the shifted knee. Inverse
+    mapping + nearest sample, so there are no holes."""
+    kx, ky = knee
+    kx2 = kx + knee_shift
+    cs, ss = math.cos(shin_angle), math.sin(shin_angle)
+    span = max(1.0, ky - seam)
+    out = blank()
+    for y in range(seam, CELL):
+        for x in range(CELL):
+            px, py = x + 0.5, y + 0.5
+            sample = None
+            # shin: inverse-rotate about the shifted knee
+            ox, oy = px - kx2, py - ky
+            sx = kx + ox * cs - oy * ss
+            sy = ky + ox * ss + oy * cs
+            ix, iy = int(math.floor(sx)), int(math.floor(sy))
+            if ky <= iy < CELL and 0 <= ix < CELL and src[iy][ix][3]:
+                sample = src[iy][ix]
+            elif py < ky + 1:
+                # thigh: undo the gradual horizontal bend of this row
+                t = max(0.0, min(1.0, (py - seam) / span))
+                ix = int(math.floor(px - knee_shift * t))
+                if seam <= y < ky and 0 <= ix < CELL and src[y][ix][3]:
+                    sample = src[y][ix]
+            if sample is not None:
+                out[y][x] = sample if tint == 1.0 else darken(sample, tint)
+    return out
+
+def side_frames_single(img, keypoints, keep_above, ground, knee_shift, shin_deg,
+                       bend_deg, far_scale, far_tint):
+    """Side view: one clean leg (original pixels, far foot removed) used for
+    both legs. Each thigh bends gradually out of the body (no seam), each shin
+    swings about its knee; the swinging leg's knee bends. The far leg moves
+    less (`far_scale`) and is slightly darker so it reads as behind. The body
+    drops so the lowest foot stays on the ground."""
     kp = keypoints
-    hip = ((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2,
-           (kp['RIGHT HIP'][1] + kp['LEFT HIP'][1]) / 2)
     knee = ((kp['RIGHT KNEE'][0] + kp['LEFT KNEE'][0]) / 2,
             (kp['RIGHT KNEE'][1] + kp['LEFT KNEE'][1]) / 2)
     src = single_leg(img, kp, keep_above)
@@ -306,10 +339,11 @@ def side_frames_single(img, keypoints, keep_above, ground, swing_deg, bend_deg):
     frames = []
     for s, c in phases():
         legs = []
-        for sign, tint in ((-1, 0.88), (1, 1.0)):            # far leg first, slightly darker
-            thigh = math.radians(swing_deg * sign * s)
-            bend = math.radians(bend_deg * max(0.0, sign * c))
-            legs.append(rotated_leg(src, hip, knee, keep_above, thigh, thigh - bend, tint))
+        for sign, scale, tint in ((-1, far_scale, far_tint), (1, 1.0, 1.0)):
+            swing = sign * s * scale
+            bend = math.radians(bend_deg * max(0.0, sign * c) * scale)
+            legs.append(bent_leg(src, keep_above, knee, knee_shift * swing,
+                                 math.radians(shin_deg * swing) - bend, tint))
         frame = compose(legs, body, 0)
         drop = ground - max(lowest_row(legs[0]), lowest_row(legs[1]))
         frames.append(shift(frame, drop) if drop else frame)
@@ -395,7 +429,8 @@ def main():
                                   inward=1, swing_in=0)
         elif direction == 'east':
             frames = side_frames_single(img, kp, keep_above=88, ground=115,
-                                        swing_deg=12, bend_deg=25)
+                                        knee_shift=3, shin_deg=14, bend_deg=22,
+                                        far_scale=0.75, far_tint=0.93)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
