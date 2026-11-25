@@ -106,6 +106,17 @@ namespace KnightOnline.Client.Gameplay.Player
         public Sprite Get(int directionIndex) => Frames(Standing, directionIndex)[0];
 
         /// <summary>
+        /// True when <paramref name="move"/> has its own frames for this
+        /// direction (false when it falls back to standing).
+        /// </summary>
+        public bool HasOwnFrames(string move, int directionIndex)
+        {
+            int direction = ((directionIndex % 8) + 8) % 8;
+            return _moves.TryGetValue(move, out Sprite[][] directions) &&
+                   !ReferenceEquals(directions[direction], _moves[Standing][direction]);
+        }
+
+        /// <summary>
         /// Parses "walking_south_strip6", "hero_walking_south" or
         /// "hero_standing_north-east" into move and direction index.
         /// </summary>

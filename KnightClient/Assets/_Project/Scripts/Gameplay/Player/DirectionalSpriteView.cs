@@ -82,7 +82,10 @@ namespace KnightOnline.Client.Gameplay.Player
             if (_renderer.sprite != sprite)
                 _renderer.sprite = sprite;
 
-            ApplyBob(moving && _move == DirectionalCharacterSprites.Standing, elapsed);
+            // Bob stands in for missing walk frames: no walking move at all,
+            // or none drawn yet for this direction (e.g. side views).
+            ApplyBob(moving && !_sprites.HasOwnFrames(DirectionalCharacterSprites.Walking, _facing),
+                elapsed);
         }
 
         private void ApplyBob(bool active, float elapsed)

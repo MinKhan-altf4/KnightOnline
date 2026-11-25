@@ -26,6 +26,12 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
 - Không dùng Animator: 8 hướng × nhiều move sẽ cần hàng chục clip. Khi dùng Hero, Animator hiệp sĩ cũ của prefab Player bị tắt.
 - Người chơi khác dùng cùng cơ chế, với hướng lấy từ dead reckoning.
 
+## Frame bước đi hiện tại
+
+- **Nam, Bắc, Đông Nam, Đông Bắc** (Tây Nam, Tây Bắc lật từ đó) dùng `walk_*_strip8.png` do `Tools/PixelDoll/make_walk_from_standing.py` **sinh từ ảnh đứng** theo keypoint hông/gối/chân. 8 frame, chuyển động hình sin. Đi lên/xuống thì khép chân và co gối luân phiên; đi chéo thì giữ dáng đứng, hai chân đưa ngược pha nhau dọc hướng đi.
+- **Đông, Tây:** không sinh được vì hai chân trong ảnh đứng chồng khít. Vẽ tay theo bộ mẫu `KnightClient/ArtSource/Hero/` (có README), rồi tạo Tây bằng `--mirror`. Khi chưa có, hai hướng này dùng hiệu ứng nhún.
+- Đây là bản tạm: có frame thật từ PixelDoll hoặc vẽ tay thì chép đè file `walk_*`.
+
 ## Thêm animation bước đi
 
 1. Trong PixelDoll: mở `project.json`, thêm move `walking` (gợi ý 6–8 frame, loop, khoảng 100 ms/frame) cho 5 hướng gốc. Các hướng còn lại PixelDoll tự lật.
