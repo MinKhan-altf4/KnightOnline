@@ -22,6 +22,7 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
 - `DirectionalSpriteView` chọn move và frame mỗi khung hình:
   - đang di chuyển thì `walking` lặp, mỗi frame 100 ms;
   - dừng thì `standing` theo hướng cuối cùng.
+- Chưa có frame `walking` thì dùng **hiệu ứng nhún tạm**: khi di chuyển, sprite đứng nhảy nhẹ 3 pixel mỗi bước (0,3 giây/bước), làm tròn theo pixel. Có frame thật thì hiệu ứng tự tắt. Sprite vẽ trên object con `HeroVisual` để việc nhún không dịch chuyển Rigidbody/collider của Player.
 - Không dùng Animator: 8 hướng × nhiều move sẽ cần hàng chục clip. Khi dùng Hero, Animator hiệp sĩ cũ của prefab Player bị tắt.
 - Người chơi khác dùng cùng cơ chế, với hướng lấy từ dead reckoning.
 

@@ -92,9 +92,17 @@ namespace KnightOnline.Client.Core.Bootstrap
                 animator.enabled = false;
             if (_player.TryGetComponent(out PlayerAnimationController legacyAnimation))
                 legacyAnimation.enabled = false;
-            renderer.flipX = false;
+            // Draw the hero on a child object: the view moves it for the step
+            // bob, which must not move the Rigidbody/collider on the root.
+            renderer.enabled = false;
+            var visual = new GameObject("HeroVisual");
+            visual.transform.SetParent(_player.transform, false);
+            SpriteRenderer heroRenderer = visual.AddComponent<SpriteRenderer>();
+            heroRenderer.sortingLayerID = renderer.sortingLayerID;
+            heroRenderer.sortingOrder = renderer.sortingOrder;
+            heroRenderer.sharedMaterial = renderer.sharedMaterial;
             _player.gameObject.AddComponent<DirectionalSpriteView>()
-                .Initialize(renderer, sprites, () => _player.MoveDirection);
+                .Initialize(heroRenderer, sprites, () => _player.MoveDirection);
         }
 
         private static void DisableLegacyWalls()

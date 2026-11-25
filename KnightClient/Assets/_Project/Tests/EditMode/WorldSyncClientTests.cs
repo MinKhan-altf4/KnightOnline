@@ -120,6 +120,23 @@ namespace KnightOnline.Client.UI.Tests
             Assert.AreEqual(0, DirectionalCharacterSprites.FrameAt(12.3, 1, 0.1f));
         }
 
+        [TestCase(0.0, 0)]      // starts on the ground
+        [TestCase(0.15, 3)]     // top of the hop at half a step
+        [TestCase(0.3, 0)]      // lands at the end of a step
+        [TestCase(0.45, 3)]     // second step
+        [TestCase(0.05, 2)]     // rising (rounded to whole pixels)
+        public void Bob_HopsOncePerStep_InWholePixels(double elapsed, int expected)
+        {
+            Assert.AreEqual(expected, DirectionalSpriteView.BobOffsetPixels(elapsed, 0.3f, 3));
+        }
+
+        [Test]
+        public void Bob_IsZeroWhenDisabled()
+        {
+            Assert.AreEqual(0, DirectionalSpriteView.BobOffsetPixels(1.0, 0.3f, 0));
+            Assert.AreEqual(0, DirectionalSpriteView.BobOffsetPixels(-1.0, 0.3f, 3));
+        }
+
         // ---- WalkableBounds -------------------------------------------------
 
         [Test]
