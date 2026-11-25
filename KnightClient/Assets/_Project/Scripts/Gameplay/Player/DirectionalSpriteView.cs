@@ -24,6 +24,12 @@ namespace KnightOnline.Client.Gameplay.Player
         /// <summary>Hop height of the placeholder bob, in source pixels.</summary>
         public const int BobHeightPixels = 3;
 
+        /// <summary>
+        /// Body bob while playing walk frames, in source pixels: highest when
+        /// the legs pass each other, lowest at foot contact (walk-cycle rule).
+        /// </summary>
+        public const int WalkBodyBobPixels = 2;
+
         private SpriteRenderer _renderer;
         private Transform _visual;
         private Vector3 _visualRestPosition;
@@ -77,25 +83,48 @@ namespace KnightOnline.Client.Gameplay.Player
 
             float elapsed = Time.time - _moveStartedAt;
             Sprite[] frames = _sprites.Frames(_move, _facing);
-            Sprite sprite = frames[DirectionalCharacterSprites.FrameAt(
-                elapsed, frames.Length, _frameSeconds)];
+            int frame = DirectionalCharacterSprites.FrameAt(elapsed, frames.Length, _frameSeconds);
+            Sprite sprite = frames[frame];
             if (_renderer.sprite != sprite)
                 _renderer.sprite = sprite;
 
-            // Bob stands in for missing walk frames: no walking move at all,
-            // or none drawn yet for this direction (e.g. side views).
-            ApplyBob(moving && !_sprites.HasOwnFrames(DirectionalCharacterSprites.Walking, _facing),
-                elapsed);
+            int pixels = 0;
+            if (moving && _sprites.HasOwnFrames(DirectionalCharacterSprites.Walking, _facing))
+            {
+                // Real walk frames: bob the body in step with them.
+                pixels = WalkBobPixels(frame, frames.Length, WalkBodyBobPixels);
+            }
+            else if (moving)
+            {
+                // No walk frames for this direction: the hop stands in for steps.
+                pixels = BobOffsetPixels(elapsed, BobStepSeconds, BobHeightPixels);
+            }
+            ApplyBob(pixels);
         }
 
-        private void ApplyBob(bool active, float elapsed)
+        private void ApplyBob(int pixels)
         {
             if (_visual == null)
                 return;
 
-            int pixels = active ? BobOffsetPixels(elapsed, BobStepSeconds, BobHeightPixels) : 0;
             _visual.localPosition = _visualRestPosition +
                 new Vector3(0f, pixels / DirectionalCharacterSprites.PixelsPerUnit, 0f);
+        }
+
+        /// <summary>
+        /// Body height for walk frame <paramref name="frame"/> of a
+        /// <paramref name="frameCount"/>-frame cycle (two steps per cycle):
+        /// <paramref name="heightPixels"/> when the legs pass (frames 0 and
+        /// N/2), 0 at contact (N/4, 3N/4). Whole pixels, tied to the frame
+        /// shown so body and legs move together.
+        /// </summary>
+        public static int WalkBobPixels(int frame, int frameCount, int heightPixels)
+        {
+            if (frameCount < 2 || heightPixels <= 0)
+                return 0;
+            double phase = 2 * Math.PI * (((frame % frameCount) + frameCount) % frameCount) / frameCount;
+            return (int)Math.Round(heightPixels * Math.Abs(Math.Cos(phase)),
+                MidpointRounding.AwayFromZero);
         }
 
         /// <summary>

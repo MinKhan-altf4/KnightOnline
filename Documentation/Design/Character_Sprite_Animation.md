@@ -23,6 +23,7 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
   - đang di chuyển thì `walking` lặp, mỗi frame 100 ms;
   - dừng thì `standing` theo hướng cuối cùng.
 - Chưa có frame `walking` thì dùng **hiệu ứng nhún tạm**: khi di chuyển, sprite đứng nhảy nhẹ 3 pixel mỗi bước (0,3 giây/bước), làm tròn theo pixel. Có frame thật thì hiệu ứng tự tắt. Sprite vẽ trên object con `HeroVisual` để việc nhún không dịch chuyển Rigidbody/collider của Player.
+- **Nhún thân khi đi** (có frame `walk`): sprite nhún 2 px theo đúng frame đang hiện: cao nhất lúc hai chân đi qua nhau (frame 1 và 5), thấp nhất lúc chân chạm đất (frame 3 và 7), theo nguyên tắc chu kỳ đi. Đồng bộ với frame nên thân và chân luôn khớp nhịp; làm tròn theo pixel. Chỉnh bằng `DirectionalSpriteView.WalkBodyBobPixels`.
 - Không dùng Animator: 8 hướng × nhiều move sẽ cần hàng chục clip. Khi dùng Hero, Animator hiệp sĩ cũ của prefab Player bị tắt.
 - Người chơi khác dùng cùng cơ chế, với hướng lấy từ dead reckoning.
 

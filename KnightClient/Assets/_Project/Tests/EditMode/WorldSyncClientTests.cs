@@ -137,6 +137,24 @@ namespace KnightOnline.Client.UI.Tests
             Assert.AreEqual(0, DirectionalSpriteView.BobOffsetPixels(-1.0, 0.3f, 3));
         }
 
+        [TestCase(0, 2)]   // passing: body highest
+        [TestCase(1, 1)]
+        [TestCase(2, 0)]   // contact: body lowest
+        [TestCase(3, 1)]
+        [TestCase(4, 2)]   // passing (other leg)
+        [TestCase(6, 0)]   // contact (other leg)
+        [TestCase(8, 2)]   // wraps
+        public void WalkBob_HighAtPassing_LowAtContact(int frame, int expected)
+        {
+            Assert.AreEqual(expected, DirectionalSpriteView.WalkBobPixels(frame, 8, 2));
+        }
+
+        [Test]
+        public void WalkBob_SingleFrame_IsFlat()
+        {
+            Assert.AreEqual(0, DirectionalSpriteView.WalkBobPixels(0, 1, 2));
+        }
+
         // ---- WalkableBounds -------------------------------------------------
 
         [Test]
