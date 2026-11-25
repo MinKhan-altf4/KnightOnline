@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using KnightOnline.Client.Data.Models;
+using KnightOnline.Client.Gameplay.Player;
 using UnityEngine;
 
 namespace KnightOnline.Client.Gameplay.World
@@ -17,12 +18,14 @@ namespace KnightOnline.Client.Gameplay.World
         private readonly List<int> _removeBuffer = new();
         private RemotePlayerDirectory _directory;
         private Sprite _markerSprite;
+        private DirectionalCharacterSprites _heroSprites;
         private int _seenMembershipVersion = -1;
 
         public void Initialize(RemotePlayerDirectory directory)
         {
             _directory = directory;
             _markerSprite = CreateMarkerSprite();
+            _heroSprites = DirectionalCharacterSprites.Load("Hero");
         }
 
         private void Update()
@@ -79,15 +82,28 @@ namespace KnightOnline.Client.Gameplay.World
 
             var marker = new GameObject("Marker");
             marker.transform.SetParent(root.transform, false);
-            marker.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
             SpriteRenderer renderer = marker.AddComponent<SpriteRenderer>();
-            renderer.sprite = _markerSprite;
-            renderer.color = new Color(0.45f, 0.8f, 1f, 0.95f);
             renderer.sortingOrder = 8;
+            float labelHeight = 0.85f;
+            if (_heroSprites != null)
+            {
+                int characterId = player.CharacterId;
+                marker.AddComponent<DirectionalSpriteView>().Initialize(renderer, _heroSprites,
+                    () => _directory.TryGet(characterId, out RemotePlayerState state)
+                        ? state.Track.Direction
+                        : Vector2.zero);
+                labelHeight = 1.7f; // above the ~1.4-unit tall hero
+            }
+            else
+            {
+                marker.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
+                renderer.sprite = _markerSprite;
+                renderer.color = new Color(0.45f, 0.8f, 1f, 0.95f);
+            }
 
             var label = new GameObject("Name");
             label.transform.SetParent(root.transform, false);
-            label.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+            label.transform.localPosition = new Vector3(0f, labelHeight, 0f);
             TextMesh text = label.AddComponent<TextMesh>();
             text.text = $"{player.Name}  Lv.{player.Level}";
             text.fontSize = 32;

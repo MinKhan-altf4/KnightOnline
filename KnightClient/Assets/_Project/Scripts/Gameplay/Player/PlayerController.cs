@@ -46,6 +46,9 @@ namespace KnightOnline.Client.Gameplay.Player
         private IDisposable _boundsSubscription;
         private WalkableBounds? _bounds;
 
+        /// <summary>Hướng input hiện tại (dùng cho hiển thị hướng nhân vật).</summary>
+        public Vector2 MoveDirection => _currentDirection;
+
         /// <summary>Ưu tiên MoveSpeed từ CharacterData; fallback về giá trị Inspector.</summary>
         private float MoveSpeed => _characterData?.MoveSpeed ?? _defaultMoveSpeed;
 

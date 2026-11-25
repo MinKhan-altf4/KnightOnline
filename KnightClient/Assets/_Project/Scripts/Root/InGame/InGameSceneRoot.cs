@@ -55,6 +55,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             DisableLegacyNpcs();
             DisableLegacyWalls();
             ConfigureCameraFollow();
+            ConfigurePlayerSprite();
             _mapSubscription = _events.Subscribe<MapTransitionedEvent>(OnMapTransitioned);
             var presentation = new GameObject("AuthoritativeWorldPresentation")
                 .AddComponent<AuthoritativeWorldPresentation>();
@@ -75,6 +76,25 @@ namespace KnightOnline.Client.Core.Bootstrap
 #endif
             ApplyMapPresentation(_character.CurrentMapDefinitionId);
             RequestMapPresentation();
+        }
+
+        /// <summary>Shows the PixelDoll hero on the local player, facing its movement.</summary>
+        private void ConfigurePlayerSprite()
+        {
+            if (_player == null) return;
+            SpriteRenderer renderer = _player.GetComponent<SpriteRenderer>();
+            DirectionalCharacterSprites sprites = DirectionalCharacterSprites.Load("Hero");
+            if (renderer == null || sprites == null) return;
+            // The legacy knight Animator rewrites the sprite every frame and
+            // PlayerAnimationController flips it horizontally; the 8-direction
+            // set already contains mirrored directions, so both are disabled.
+            if (_player.TryGetComponent(out Animator animator))
+                animator.enabled = false;
+            if (_player.TryGetComponent(out PlayerAnimationController legacyAnimation))
+                legacyAnimation.enabled = false;
+            renderer.flipX = false;
+            _player.gameObject.AddComponent<DirectionalSpriteView>()
+                .Initialize(renderer, sprites, () => _player.MoveDirection);
         }
 
         private static void DisableLegacyWalls()

@@ -53,6 +53,32 @@ namespace KnightOnline.Client.UI.Tests
             Assert.IsFalse(prediction.TryReconcile(3, Vector2.one, out _));
         }
 
+        // ---- DirectionalCharacterSprites ----------------------------------
+
+        [TestCase(0f, -1f, 0)]   // south
+        [TestCase(1f, -1f, 1)]   // south-east
+        [TestCase(1f, 0f, 2)]    // east
+        [TestCase(1f, 1f, 3)]    // north-east
+        [TestCase(0f, 1f, 4)]    // north
+        [TestCase(-1f, 1f, 5)]   // north-west
+        [TestCase(-1f, 0f, 6)]   // west
+        [TestCase(-1f, -1f, 7)]  // south-west
+        public void Facing_MatchesPixelDollRowOrder(float x, float y, int expected)
+        {
+            Assert.AreEqual(expected,
+                DirectionalCharacterSprites.DirectionIndex(new Vector2(x, y), 0));
+            StringAssert.AreEqualIgnoringCase(
+                new[] { "south", "south-east", "east", "north-east", "north",
+                        "north-west", "west", "south-west" }[expected],
+                DirectionalCharacterSprites.DirectionIds[expected]);
+        }
+
+        [Test]
+        public void Facing_KeepsLastDirectionWhenStanding()
+        {
+            Assert.AreEqual(6, DirectionalCharacterSprites.DirectionIndex(Vector2.zero, 6));
+        }
+
         // ---- WalkableBounds -------------------------------------------------
 
         [Test]
