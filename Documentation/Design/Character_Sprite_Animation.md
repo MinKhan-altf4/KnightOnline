@@ -30,9 +30,9 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
 
 Cả 8 hướng dùng `walk_*_strip8.png` (8 frame, chuyển động hình sin) do `Tools/PixelDoll/make_walk_from_standing.py` sinh từ ảnh đứng theo keypoint hông/gối/chân:
 
-- **Nam, Bắc:** khi đi chỉ **đùi** nghiêng vào trong (3 px hướng Nam, 2 px hướng Bắc); từ gối xuống bàn chân giữ thẳng đứng, nên gối nằm ngay trên bàn chân (chỉ lúc đứng mới dạng chân). Chân đang bước **rút ngắn phần đùi** 3 px (gối nhô về trước, nhìn chính diện thấy gối nâng lên) và dịch vào thêm 1 px.
+- **Nam, Bắc:** giữ độ rộng chân gần như ảnh đứng (đùi chỉ nghiêng vào 1 px; khép nhiều hơn trông bị bóp, mất tự nhiên); từ gối xuống bàn chân thẳng đứng. Chân đang bước **rút ngắn phần đùi** 3 px, nên gối nhô lên luân phiên.
 - **Đông Nam, Đông Bắc** (Tây Nam, Tây Bắc lật từ đó): giữ dáng đứng, hai chân đưa ngược pha nhau dọc hướng đi.
-- **Đông** (Tây lật từ đó): ảnh đứng là một chân cộng bàn chân sau lòi ra sau mắt cá. Script **cắt bỏ bàn chân sau** theo keypoint mắt cá, vẽ lại viền chỗ cắt, rồi dùng chân đơn (pixel gốc) đó cho cả hai bên. Hai bản sao được xoay như rig 2 xương: đùi quanh hông ±20°, cẳng chân quanh gối gập tối đa 35°; chân sau tối 88%. Nét vẽ và cơ bắp giữ đúng ảnh gốc. Thân hạ xuống để chân trụ luôn chạm đất. Giữ nguyên ảnh gốc phía trên y = 88 (thân, quần lót, bàn tay che đùi).
+- **Đông** (Tây lật từ đó): ảnh đứng là một chân cộng bàn chân sau lòi ra sau mắt cá. Script **cắt bỏ bàn chân sau** theo keypoint mắt cá, vẽ lại viền chỗ cắt, rồi dùng chân đơn (pixel gốc) đó cho cả hai bên. Hai bản sao được xoay như rig 2 xương: đùi quanh hông ±12°, cẳng chân quanh gối gập tối đa 25° (biên độ lớn hơn trông hai chân tách quá xa); chân sau tối 88%. Nét vẽ và cơ bắp giữ đúng ảnh gốc. Thân hạ xuống để chân trụ luôn chạm đất. Giữ nguyên ảnh gốc phía trên y = 88 (thân, quần lót, bàn tay che đùi).
 - Muốn vẽ tay đẹp hơn cho hướng ngang: dùng bộ mẫu `KnightClient/ArtSource/Hero/` (có README), rồi tạo Tây bằng `--mirror`.
 - Đây là bản tạm: có frame thật từ PixelDoll hoặc vẽ tay thì chép đè file `walk_*`.
 

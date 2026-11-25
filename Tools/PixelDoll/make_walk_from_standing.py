@@ -11,8 +11,8 @@ Covered directions (8 frames, sin/cos phase, 1 px body dip near contact):
   east (and west mirrored)
                         one clean leg is cut from the ORIGINAL pixels (the
                         far foot peeking out behind the ankle is removed) and
-                        two copies are rotated like a hip/knee rig (thigh +/-20 deg, knee
-                        bend up to 35 deg), the far one darker; the body
+                        two copies are rotated like a hip/knee rig (thigh +/-12 deg, knee
+                        bend up to 25 deg), the far one darker; the body
                         drops so the stance foot stays on the ground.
 A hand-drawn walk_east can replace the generated one; make west from it with
 --mirror.
@@ -392,10 +392,10 @@ def main():
         split_x = round((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2)
         if direction in ('south', 'north'):
             frames = front_frames(img, top, knee, split_x, lift=3,
-                                  inward=3 if direction == 'south' else 2, swing_in=1)
+                                  inward=1, swing_in=0)
         elif direction == 'east':
             frames = side_frames_single(img, kp, keep_above=88, ground=115,
-                                        swing_deg=20, bend_deg=35)
+                                        swing_deg=12, bend_deg=25)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
