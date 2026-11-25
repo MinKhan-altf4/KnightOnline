@@ -542,57 +542,103 @@ def _segment_distance(px, py, a, b):
     t = max(0.0, min(1.0, ((px - a[0]) * vx + (py - a[1]) * vy) / length2))
     return math.hypot(px - (a[0] + vx * t), py - (a[1] + vy * t))
 
-def arm_mask(img, shoulder, elbow, wrist, below_shoulder=4):
-    """Opaque pixels within an arm's width of its bones, plus the hand past
-    the wrist. Rows just under the shoulder are left out so the torso edge
-    does not move."""
+DARK_EDGE = 260          # channel sum below this counts as an outline pixel
+
+def arm_mask(img, shoulder, elbow, wrist, below_shoulder=4, reach=5.5,
+             stop_at_outline=True):
+    """The arm's own pixels, row by row. Each row starts on the bone line
+    (shoulder-elbow-wrist-hand end) and walks left and right while the pixels
+    are opaque and within `reach`, stopping after the arm's outline (the first
+    dark pixel that follows a lighter one). Where the arm touches the body or
+    the thigh, the body's outline and skin therefore stay put instead of being
+    dragged along with the hand (the earlier distance-only mask took them).
+    A side-view hand has dark inner lines (fingers) and lies over the body,
+    so there `stop_at_outline=False` takes everything within reach."""
     hx, hy = wrist[0] - elbow[0], wrist[1] - elbow[1]
     norm = math.hypot(hx, hy) or 1.0
     hand_end = (wrist[0] + hx / norm * 7, wrist[1] + hy / norm * 7)
+    path = [shoulder, elbow, wrist, hand_end]
+    def bone_x(yc):
+        for p0, p1 in zip(path, path[1:]):
+            lo, hi = sorted((p0[1], p1[1]))
+            if lo <= yc <= hi:
+                t = 0.0 if hi == lo else (yc - p0[1]) / (p1[1] - p0[1])
+                return p0[0] + (p1[0] - p0[0]) * t
+        return None
+    def dark(p):
+        return sum(p[:3]) < DARK_EDGE
     mask = set()
-    for y in range(int(shoulder[1] + below_shoulder), min(CELL, int(hand_end[1] + 4))):
-        for x in range(CELL):
-            if not img[y][x][3]:
-                continue
-            px, py = x + 0.5, y + 0.5
-            # wide enough to take the arm's outer outline with it; a narrower
-            # mask left outline fragments floating where the arm used to be
-            if (_segment_distance(px, py, shoulder, elbow) <= 4.5 or
-                    _segment_distance(px, py, elbow, wrist) <= 4.5 or
-                    _segment_distance(px, py, wrist, hand_end) <= 5.0):
+    for y in range(int(shoulder[1] + below_shoulder), min(CELL, int(hand_end[1] + 3))):
+        bx = bone_x(y + 0.5)
+        if bx is None:
+            bx = hand_end[0]
+        x0 = int(bx)
+        if not (0 <= x0 < CELL and img[y][x0][3]):
+            continue
+        mask.add((x0, y))
+        for step in (1, -1):
+            seen_light = not dark(img[y][x0])
+            x = x0 + step
+            while 0 <= x < CELL and img[y][x][3] and abs(x + 0.5 - bx) <= reach:
                 mask.add((x, y))
+                if dark(img[y][x]):
+                    if seen_light and stop_at_outline:
+                        break
+                else:
+                    seen_light = True
+                x += step
     return mask, hand_end
 
-def pose_arms(img, arms):
+def _nearest_light(img, mask, x, y, reach=5):
+    for d in range(1, reach + 1):
+        for nx, ny in ((x + d, y), (x - d, y), (x, y + d), (x, y - d)):
+            if 0 <= nx < CELL and 0 <= ny < CELL and (nx, ny) not in mask:
+                p = img[ny][nx]
+                if p[3] and sum(p[:3]) >= DARK_EDGE:
+                    return p
+    return img[y][x]
+
+def pose_arms(img, arms, side_view=False):
     """arms: list of (shoulder, elbow, wrist, dx_hand, dy_hand, dy_shoulder).
-    Each arm shears from the shoulder (dy_shoulder) to the hand (dx_hand,
-    dy_hand added). Vacated pixels take the nearest non-arm pixel on the row
-    (torso behind the arm) or become transparent outside the body."""
-    out = [row[:] for row in img]
+    Returns (body, arm_layer): `body` is the image with the arms removed,
+    `arm_layer` holds the moved arms only, to be drawn on top of the finished
+    frame (after the legs), so a hand hanging over the thigh is never cut or
+    re-shaded with the legs. A vacated pixel takes the colour of the first
+    non-arm pixel on its row toward the centre when that pixel is body (arm in
+    front of the torso); when it is transparent (gap between arm and torso)
+    the pixel stays empty, so skin is never dragged across the gap."""
+    body = [row[:] for row in img]
+    arm_layer = blank()
+    centre = CELL // 2
     for shoulder, elbow, wrist, dx_hand, dy_hand, dy_shoulder in arms:
-        if not (dx_hand or dy_hand or dy_shoulder):
-            continue
-        mask, hand_end = arm_mask(img, shoulder, elbow, wrist)
+        mask, hand_end = arm_mask(img, shoulder, elbow, wrist,
+                                  stop_at_outline=not side_view)
         if not mask:
             continue
         span = max(1.0, hand_end[1] - shoulder[1])
         ys = [y for _, y in mask]
         y_min, y_max = min(ys), max(ys)
-        # 1) erase the arm, filling from the body beside it
-        centre = 64
         for x, y in mask:
+            inward = 1 if x < centre else -1
+            # Walk inward across the arm: the first pixel past it decides.
+            # Body there -> the arm covered the body, take its colour.
+            # Transparent there -> it was the gap beside the torso, stay empty.
+            if side_view:
+                # Side view: the arm lies across the body, so the body is
+                # under every vacated pixel. Take the nearest lighter body
+                # pixel (skin or cloth, not an outline, which would leave a
+                # dark streak), horizontally first, then from below.
+                body[y][x] = _nearest_light(img, mask, x, y)
+                continue
             fill = EMPTY
-            order = sorted(range(1, 5), key=lambda d: d)
-            for d in order:
-                for nx in ((x + d, x - d) if x < centre else (x - d, x + d)):
-                    if 0 <= nx < CELL and img[y][nx][3] and (nx, y) not in mask:
-                        fill = img[y][nx]
-                        break
-                if fill is not EMPTY:
+            for step in (inward, -inward):
+                nx = x + step
+                while 0 <= nx < CELL and (nx, y) in mask:
+                    nx += step
+                if 0 <= nx < CELL and img[y][nx][3]:
+                    fill = img[y][nx]
                     break
-            out[y][x] = fill
-        # 2) draw the moved arm by inverse mapping (no holes)
-        reach = int(abs(dx_hand)) + 2
+            body[y][x] = fill
         for y in range(max(0, y_min - 3), min(CELL, y_max + 4)):
             t = max(0.0, min(1.0, (y + 0.5 - shoulder[1]) / span))
             dx = dx_hand * t
@@ -601,8 +647,8 @@ def pose_arms(img, arms):
             for x in range(CELL):
                 sx = int(round(x - dx))
                 if (sx, sy) in mask:
-                    out[y][x] = img[sy][sx]
-    return out
+                    arm_layer[y][x] = img[sy][sx]
+    return body, arm_layer
 
 def arm_spec(kp, direction, s):
     """Per-direction arm swing for phase s = sin(phase angle). Arms swing
@@ -680,11 +726,15 @@ def main():
         if '--no-arms' in sys.argv:
             frames = leg_frames(img)
         else:
-            # Each frame: pose the arms for its phase, then build its legs.
+            # Each frame: remove the arms, build the legs from that body, then
+            # draw the moved arms on top with the frame's body bob.
             frames = []
             for k, (s, c) in enumerate(phases()):
-                posed = pose_arms(img, arm_spec(kp, direction, s))
-                frames.append(leg_frames(posed)[k])
+                body_img, arm_layer = pose_arms(img, arm_spec(kp, direction, s),
+                                                side_view=direction == 'east')
+                frame = leg_frames(body_img)[k]
+                bob = (1 if abs(s) < 0.3 else 0) if direction in ('south', 'north') else body_bob(s)
+                frames.append(compose([frame], shift(arm_layer, bob) if bob else arm_layer, 0))
         strips[direction] = frames
     for direction, source in MIRROR.items():
         strips[direction] = [flip(f) for f in strips[source]]
