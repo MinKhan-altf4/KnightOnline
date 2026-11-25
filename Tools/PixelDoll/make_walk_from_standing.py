@@ -235,26 +235,50 @@ def lowest_row(layer):
             return y
     return 0
 
-def single_leg(img, keypoints, keep_above):
-    """The side-view standing art is one leg plus the far foot peeking out
-    behind the ankle. Remove that far foot (rows between the far and near
-    ankles, right of the near ankle) and close the cut with the line colour,
-    leaving one clean leg in the original pixels."""
+def single_leg(img, keypoints, keep_above, thigh_half=3.5, shin_half=3.0):
+    """Cut ONE leg out of the side-view standing art, which shows the near leg
+    plus the far thigh beside it and the far foot behind the ankle. Keep only
+    pixels within half a leg width of the near leg's bones (hip -> knee ->
+    ankle) on the far side, drop the far foot, and close every cut with the
+    line colour. Both walk legs are built from this same shape, so they end
+    up the same size and the near leg no longer carries the far thigh."""
     kp = keypoints
     near, far = ('RIGHT', 'LEFT') if kp['RIGHT LEG'][1] >= kp['LEFT LEG'][1] else ('LEFT', 'RIGHT')
-    near_ankle_x, near_ankle_y = kp[f'{near} LEG']
+    hip, knee, ankle = kp[f'{near} HIP'], kp[f'{near} KNEE'], kp[f'{near} LEG']
+    far_x = kp[f'{far} KNEE'][0]
+    toward_far = 1 if far_x >= knee[0] else -1     # side where the far leg sits
     far_ankle_y = kp[f'{far} LEG'][1]
-    cut_x = round(near_ankle_x + 3.5)
-    y0, y1 = round(far_ankle_y - 1), round(near_ankle_y)
     line = outline_color(img)
+
+    def centre_x(y):
+        a, b = (hip, knee) if y <= knee[1] else (knee, ankle)
+        t = 0.0 if b[1] == a[1] else max(0.0, min(1.0, (y - a[1]) / (b[1] - a[1])))
+        return a[0] + (b[0] - a[0]) * t
+
     leg = blank()
     for y in range(keep_above, CELL):
         leg[y] = img[y][:]
-    for y in range(y0, y1 + 1):
-        for x in range(cut_x, CELL):
+    for y in range(keep_above, CELL):
+        if y <= ankle[1]:
+            half = thigh_half if y <= knee[1] else shin_half
+            limit = centre_x(y) + toward_far * half
+        elif y <= ankle[1] + 1:
+            limit = None
+        else:
+            continue                                    # near foot: keep whole
+        if y >= far_ankle_y - 1 and y <= ankle[1]:      # far foot behind the ankle
+            limit = ankle[0] + toward_far * 3.5 if limit is None else min(limit, ankle[0] + 3.5)                 if toward_far > 0 else max(limit, ankle[0] - 3.5)
+        if limit is None:
+            continue
+        edge = round(limit)
+        cut = range(edge + 1, CELL) if toward_far > 0 else range(0, edge)
+        removed = False
+        for x in cut:
+            if leg[y][x][3]:
+                removed = True
             leg[y][x] = EMPTY
-        if leg[y][cut_x - 1][3] and img[y][cut_x][3]:
-            leg[y][cut_x - 1] = line
+        if removed and 0 <= edge < CELL and leg[y][edge][3]:
+            leg[y][edge] = line
     return leg
 
 def bent_leg(src, seam, knee, knee_shift, shin_angle, tint=1.0):
