@@ -1,6 +1,6 @@
 # Hero — bộ vẽ frame bước đi hướng ngang
 
-Thư mục này nằm **ngoài** `Assets`, nên Unity không import. Bộ mẫu dùng để vẽ tay `walk_east`; hướng Tây được lật từ bản Đông.
+Thư mục này nằm **ngoài** `Assets`, nên Unity không import. Game đã có sẵn `walk_east` do script sinh (chân vẽ lại bằng code). Bộ mẫu này dùng khi muốn **thay bằng bản vẽ tay** đẹp hơn; hướng Tây được lật từ bản Đông.
 
 ## File
 

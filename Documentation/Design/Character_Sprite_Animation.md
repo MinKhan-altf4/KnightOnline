@@ -28,8 +28,12 @@ Import do `Editor/PixelCharacterImporter.cs` tự cấu hình: Sprite, Texture 2
 
 ## Frame bước đi hiện tại
 
-- **Nam, Bắc, Đông Nam, Đông Bắc** (Tây Nam, Tây Bắc lật từ đó) dùng `walk_*_strip8.png` do `Tools/PixelDoll/make_walk_from_standing.py` **sinh từ ảnh đứng** theo keypoint hông/gối/chân. 8 frame, chuyển động hình sin. Đi lên/xuống thì khép chân và co gối luân phiên; đi chéo thì giữ dáng đứng, hai chân đưa ngược pha nhau dọc hướng đi.
-- **Đông, Tây:** không sinh được vì hai chân trong ảnh đứng chồng khít. Vẽ tay theo bộ mẫu `KnightClient/ArtSource/Hero/` (có README), rồi tạo Tây bằng `--mirror`. Khi chưa có, hai hướng này dùng hiệu ứng nhún.
+Cả 8 hướng dùng `walk_*_strip8.png` (8 frame, chuyển động hình sin) do `Tools/PixelDoll/make_walk_from_standing.py` sinh từ ảnh đứng theo keypoint hông/gối/chân:
+
+- **Nam, Bắc:** khi đi chân khép vào đường giữa (5 px hướng Nam, 4 px hướng Bắc; chỉ lúc đứng mới dạng chân). Chân đang đưa gập gối nhẹ 3 px và bàn chân dịch vào trong thêm 2 px, tránh dáng chân vòng kiềng.
+- **Đông Nam, Đông Bắc** (Tây Nam, Tây Bắc lật từ đó): giữ dáng đứng, hai chân đưa ngược pha nhau dọc hướng đi.
+- **Đông** (Tây lật từ đó): hai chân trong ảnh đứng chồng khít nên **chân được vẽ lại**: đùi, cẳng chân, bàn chân dạng đoạn thuôn, đổ bóng 3 tông theo bảng màu da của Hero, viền 1 px, đùi ±22°, gập gối tối đa 40°; thân hạ xuống để chân trụ luôn chạm đất. Giữ nguyên ảnh gốc phía trên y = 88 (thân, quần lót, bàn tay che đùi).
+- Muốn vẽ tay đẹp hơn cho hướng ngang: dùng bộ mẫu `KnightClient/ArtSource/Hero/` (có README), rồi tạo Tây bằng `--mirror`.
 - Đây là bản tạm: có frame thật từ PixelDoll hoặc vẽ tay thì chép đè file `walk_*`.
 
 ## Thêm animation bước đi

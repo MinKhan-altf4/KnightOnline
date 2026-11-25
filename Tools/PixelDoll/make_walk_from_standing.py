@@ -7,9 +7,14 @@ Covered directions (8 frames, sin/cos phase, 1 px body dip near contact):
   south-east, north-east (and south-west, north-west mirrored)
                         natural stance kept; legs swing in opposite phase
                         along the walking axis, front leg lower/higher
-Side views (east/west) are NOT generated: both legs overlap in the standing
-art. Draw walk_east by hand (template: KnightClient/ArtSource/Hero) and make
-west from it with --mirror.
+  east (and west mirrored)
+                        legs overlap in the standing art, so they are
+                        REDRAWN: tapered thigh/shin/foot capsules shaded with
+                        the sprite's own skin ramp and outline, thigh +/-22
+                        deg, knee bend up to 40 deg, body drops so the
+                        stance foot stays on the ground.
+A hand-drawn walk_east can replace the generated one; make west from it with
+--mirror.
 
 These are stand-ins for real walk art: legs are transformed from the still
 pose, so they look stiffer than hand-drawn or PixelDoll-generated frames.
@@ -226,27 +231,119 @@ def diagonal_frames(img, top, foot, split_x, swing, depth, lift, axis_y):
         frames.append(compose([left_leg, right_leg], body, body_bob(s)))
     return frames
 
-def front_frames(img, top, knee, foot, split_x, lift, inward):
-    """Front/back view: while walking the feet come in toward the centre line
-    (the wide stance is only for standing still) and the knees bend
-    alternately."""
-    body, legs = split(img, top)
-    left, right = split_legs(legs, top, split_x)
-    narrow_left = sheared(left, top, foot, inward)
-    narrow_right = sheared(right, top, foot, -inward)
+def leg_palette(img, top):
+    """Skin ramp + outline sampled from the leg area of the source sprite."""
+    counts = {}
+    for y in range(top, CELL):
+        for x in range(CELL):
+            p = img[y][x]
+            if p[3] > 200 and sum(p[:3]) > 380:
+                counts[p] = counts.get(p, 0) + 1
+    skin = sorted(sorted(counts, key=counts.get, reverse=True)[:6],
+                  key=lambda p: sum(p[:3]), reverse=True)
+    light = skin[0]
+    mid = skin[min(2, len(skin) - 1)]
+    shadow = skin[min(4, len(skin) - 1)]
+    deep = tuple(max(0, round(v * 0.82)) for v in shadow[:3]) + (255,)
+    return {'light': light, 'mid': mid, 'shadow': shadow, 'deep': deep,
+            'line': outline_color(img)}
+
+def draw_segment(layer, ax, ay, bx, by, r0, r1, tone):
+    """Tapered capsule from A (radius r0) to B (radius r1) with 1 px outline
+    and 3-tone shading: light on the +x (facing) side, shadow on the back."""
+    vx, vy = bx - ax, by - ay
+    length2 = vx * vx + vy * vy or 1.0
+    length = math.sqrt(length2)
+    nx, ny = vy / length, -vx / length          # normal; flip so it points to +x
+    if nx < 0:
+        nx, ny = -nx, -ny
+    x0, x1 = int(min(ax, bx) - r0 - 2), int(max(ax, bx) + r0 + 2)
+    y0, y1 = int(min(ay, by) - r0 - 2), int(max(ay, by) + r0 + 2)
+    for y in range(max(0, y0), min(CELL, y1 + 1)):
+        for x in range(max(0, x0), min(CELL, x1 + 1)):
+            px, py = x + 0.5, y + 0.5
+            t = max(0.0, min(1.0, ((px - ax) * vx + (py - ay) * vy) / length2))
+            cx, cy = ax + vx * t, ay + vy * t
+            dist = math.hypot(px - cx, py - cy)
+            r = r0 + (r1 - r0) * t
+            if dist <= r:
+                side = ((px - cx) * nx + (py - cy) * ny) / max(r, 0.1)
+                colour = tone['light'] if side > 0.35 else tone['shadow'] if side < -0.4 else tone['mid']
+                layer[y][x] = colour
+            elif dist <= r + 1.0 and layer[y][x][3] == 0:
+                layer[y][x] = tone['line']
+
+def drawn_leg(hip, thigh_len, shin_len, thigh_angle, knee_bend, tone):
+    """One leg facing east; angles in radians, 0 = straight down, + = forward."""
+    hx, hy = hip
+    kx = hx + thigh_len * math.sin(thigh_angle)
+    ky = hy + thigh_len * math.cos(thigh_angle)
+    shin_angle = thigh_angle - knee_bend
+    ax = kx + shin_len * math.sin(shin_angle)
+    ay = ky + shin_len * math.cos(shin_angle)
+    layer = blank()
+    # foot first so the shin outline sits over it
+    toe_x, toe_y = ax + 6.5, ay + 2.0 + 1.5 * math.sin(knee_bend)
+    draw_segment(layer, ax - 1.0, ay + 1.5, toe_x, toe_y, 2.2, 1.6, tone)
+    draw_segment(layer, kx, ky, ax, ay, 2.6, 2.0, tone)
+    draw_segment(layer, hx, hy, kx, ky, 3.1, 2.7, tone)
+    return layer, max(ay + 3.5, toe_y + 1.6)     # lowest pixel row of the foot
+
+def side_frames_drawn(img, keypoints, keep_above, ground, swing_deg, bend_deg):
+    """Side view with legs redrawn from scratch (the source legs overlap and
+    cannot be separated). Rows above `keep_above` (torso, underwear, the hand
+    over the thigh) are kept; legs are drawn from a hip pivot hidden under
+    them. The body drops so the lowest foot always touches the ground."""
+    kp = keypoints
+    pal = leg_palette(img, keep_above)
+    near_tone = {'light': pal['light'], 'mid': pal['mid'], 'shadow': pal['shadow'], 'line': pal['line']}
+    far_tone = {'light': pal['mid'], 'mid': pal['shadow'], 'shadow': pal['deep'], 'line': pal['line']}
+    hip = ((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2, keep_above - 3.0)
+    knee_y = (kp['RIGHT KNEE'][1] + kp['LEFT KNEE'][1]) / 2
+    ankle_y = ground - 4.5
+    thigh_len, shin_len = knee_y - hip[1], ankle_y - knee_y
+    body = blank()
+    for y in range(keep_above):
+        body[y] = img[y][:]
     frames = []
     for s, c in phases():
-        layers = [knee_lifted(narrow_left, knee, lift * max(0.0, s)),
-                  knee_lifted(narrow_right, knee, lift * max(0.0, -s))]
-        frames.append(compose(layers, body, 1 if abs(s) < 0.3 else 0))
+        legs, lowest = [], 0.0
+        for sign, tone, dx in ((-1, far_tone, -1.0), (1, near_tone, 1.0)):
+            thigh_angle = math.radians(swing_deg * sign * s)
+            knee_bend = math.radians(bend_deg * max(0.0, sign * c))
+            layer, low = drawn_leg((hip[0] + dx, hip[1]), thigh_len, shin_len,
+                                   thigh_angle, knee_bend, tone)
+            legs.append(layer)
+            lowest = max(lowest, low)
+        drop = round(ground - lowest)            # stance foot back on the ground
+        frame = compose(legs, body, 0)
+        frames.append(shift(frame, drop) if drop else frame)
+    return frames
+
+def front_frames(img, top, knee, foot, split_x, lift, inward, swing_in):
+    """Front/back view: while walking the feet come in toward the centre line
+    (the wide stance is only for standing still). The swinging leg bends a
+    little at the knee and its foot moves further in, under the body, instead
+    of the shin lifting straight up (which looked bow-legged because the
+    source shins slant outward)."""
+    body, legs = split(img, top)
+    left, right = split_legs(legs, top, split_x)
+    frames = []
+    for s, c in phases():
+        left_swing, right_swing = max(0.0, s), max(0.0, -s)
+        left_leg = knee_lifted(
+            sheared(left, top, foot, inward + swing_in * left_swing), knee, lift * left_swing)
+        right_leg = knee_lifted(
+            sheared(right, top, foot, -(inward + swing_in * right_swing)), knee, lift * right_swing)
+        frames.append(compose([left_leg, right_leg], body, 1 if abs(s) < 0.3 else 0))
     return frames
 
 # ---------------------------------------------------------------- main
 # Side views (east/west) are NOT generated: in the standing art both legs
 # overlap, so they cannot be separated cleanly. Draw walk_east by hand
 # (template in KnightClient/ArtSource/Hero) and create west with --mirror.
-BASE = ['south', 'south-east', 'north-east', 'north']
-MIRROR = {'north-west': 'north-east', 'south-west': 'south-east'}
+BASE = ['south', 'south-east', 'east', 'north-east', 'north']
+MIRROR = {'west': 'east', 'north-west': 'north-east', 'south-west': 'south-east'}
 
 def strip_of(frames):
     return [sum((frames[i][y] for i in range(len(frames))), []) for y in range(CELL)]
@@ -282,7 +379,11 @@ def main():
         top = round(max(hip + 4, arm + 8))          # below the hanging hands/fingers
         split_x = round((kp['RIGHT HIP'][0] + kp['LEFT HIP'][0]) / 2)
         if direction in ('south', 'north'):
-            frames = front_frames(img, top, knee, foot, split_x, lift=5, inward=4)
+            frames = front_frames(img, top, knee, foot, split_x, lift=3,
+                                  inward=5 if direction == 'south' else 4, swing_in=2)
+        elif direction == 'east':
+            frames = side_frames_drawn(img, kp, keep_above=88, ground=115,
+                                       swing_deg=22, bend_deg=40)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
