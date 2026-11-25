@@ -363,6 +363,25 @@ def side_frames_single(img, keypoints, keep_above, ground, knee_shift, shin_deg,
         frames.append(shift(frame, drop) if drop else frame)
     return frames
 
+def side_frames_scissor(img, keypoints, keep_above, foot, stride, lift, far_scale, far_tint):
+    """Side view in the same style as the diagonal walk: straight legs that
+    scissor in opposite phase from the hip (0 px at the seam, `stride` px at
+    the foot), the swinging foot lifted a little, 1 px body dip near
+    contact. Both legs come from one clean leg cut from the original pixels;
+    the far leg moves `far_scale` of the near leg and is slightly darker."""
+    src = single_leg(img, keypoints, keep_above)
+    body = blank()
+    for y in range(keep_above):
+        body[y] = img[y][:]
+    frames = []
+    for s, c in phases():
+        far = sheared(src, keep_above, foot, -stride * far_scale * s,
+                      lift * max(0.0, -c))
+        far = [[darken(p, far_tint) if p[3] else p for p in row] for row in far]
+        near = sheared(src, keep_above, foot, stride * s, lift * max(0.0, c))
+        frames.append(compose([far, near], body, body_bob(s)))
+    return frames
+
 def warp_leg(leg, top, knee, inward, lift):
     """Front/back leg warp: the thigh (top..knee) leans in by `inward` and is
     foreshortened by `lift` px (knee coming forward reads as the knee rising);
@@ -442,9 +461,8 @@ def main():
             frames = front_frames(img, top, knee, split_x, lift=3,
                                   inward=1, swing_in=0)
         elif direction == 'east':
-            frames = side_frames_single(img, kp, keep_above=88, ground=115,
-                                        knee_shift=3, shin_deg=14, bend_deg=22,
-                                        far_scale=0.75)
+            frames = side_frames_scissor(img, kp, keep_above=88, foot=round(foot),
+                                         stride=7, lift=3, far_scale=0.85, far_tint=0.9)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
