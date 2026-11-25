@@ -363,21 +363,61 @@ def side_frames_single(img, keypoints, keep_above, ground, knee_shift, shin_deg,
         frames.append(shift(frame, drop) if drop else frame)
     return frames
 
+def clean_shade(leg, base, shade, line, back_dx=-1):
+    """Re-shade a leg for small sizes: outer outline, one flat skin tone, and a
+    1 px shadow column along the back edge (the side at `back_dx`). The
+    source's vertical muscle lines are dropped: at game size they split each
+    leg into two thin ones, so two legs read as four."""
+    out = blank()
+    def opaque(x, y):
+        return 0 <= x < CELL and 0 <= y < CELL and leg[y][x][3] > 0
+    for y in range(CELL):
+        for x in range(CELL):
+            if not leg[y][x][3]:
+                continue
+            if any(not opaque(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                out[y][x] = line
+            elif not opaque(x + 2 * back_dx, y) or not all(
+                    opaque(x + back_dx, y + dy) for dy in (-1, 0, 1)):
+                out[y][x] = shade
+            else:
+                out[y][x] = base
+    return out
+
+def leg_tones(img, top):
+    """Main skin tone and a shadow tone from the leg area of the source."""
+    counts = {}
+    for row in img[top:]:
+        for p in row:
+            if p[3] > 200 and sum(p[:3]) > 380:
+                counts[p] = counts.get(p, 0) + 1
+    ranked = sorted(counts, key=counts.get, reverse=True)
+    base = ranked[0] if ranked else (249, 207, 174, 255)
+    darker = [p for p in ranked if sum(p[:3]) < sum(base[:3]) - 120]
+    shade = darker[0] if darker else darken(base, 0.8)
+    return base, shade
+
 def side_frames_scissor(img, keypoints, keep_above, foot, stride, lift, far_scale, far_tint):
     """Side view in the same style as the diagonal walk: straight legs that
     scissor in opposite phase from the hip (0 px at the seam, `stride` px at
     the foot), the swinging foot lifted a little, 1 px body dip near
     contact. Both legs come from one clean leg cut from the original pixels;
-    the far leg moves `far_scale` of the near leg and is slightly darker."""
-    src = single_leg(img, keypoints, keep_above)
+    the far leg moves `far_scale` of the near leg. Legs are re-shaded flat
+    (clean_shade) and the far leg uses the skin shadow tone."""
+    base, shade = leg_tones(img, keep_above)
+    line = outline_color(img)
+    leg = single_leg(img, keypoints, keep_above)
+    src = clean_shade(leg, base, shade, line)
+    # far leg: same shape, skin shadow tone (keeps the skin hue, unlike
+    # darkening every channel, which turned it grey-brown)
+    far_src = clean_shade(leg, shade, darken(shade, far_tint), line)
     body = blank()
     for y in range(keep_above):
         body[y] = img[y][:]
     frames = []
     for s, c in phases():
-        far = sheared(src, keep_above, foot, -stride * far_scale * s,
+        far = sheared(far_src, keep_above, foot, -stride * far_scale * s,
                       lift * max(0.0, -c))
-        far = [[darken(p, far_tint) if p[3] else p for p in row] for row in far]
         near = sheared(src, keep_above, foot, stride * s, lift * max(0.0, c))
         frames.append(compose([far, near], body, body_bob(s)))
     return frames
@@ -462,7 +502,7 @@ def main():
                                   inward=1, swing_in=0)
         elif direction == 'east':
             frames = side_frames_scissor(img, kp, keep_above=88, foot=round(foot),
-                                         stride=7, lift=3, far_scale=0.85, far_tint=0.9)
+                                         stride=7, lift=3, far_scale=0.85, far_tint=0.85)
         else:
             axis_y = 1 if direction.startswith('south') else -1
             frames = diagonal_frames(img, top, foot, split_x, swing=3, depth=2,
