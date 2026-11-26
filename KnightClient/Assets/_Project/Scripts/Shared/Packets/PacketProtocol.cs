@@ -9,9 +9,11 @@ namespace KnightOnline.Client.Shared.Packets
     ///   1 - implicit (ConnectRequest without ProtocolVersion).
     ///   2 - P1: handshake required, WorldEntitiesSnapshot, tick snapshots.
     ///   3 - Dead reckoning: remote player Speed; Moved sent only on change.
+    ///   4 - Monster wander: MonsterMoved; monster snapshots carry the live
+    ///       position and the leg in progress (Target, MoveRemainingMilliseconds).
     /// </summary>
     public static class PacketProtocol
     {
-        public const int Version = 3;
+        public const int Version = 4;
     }
 }

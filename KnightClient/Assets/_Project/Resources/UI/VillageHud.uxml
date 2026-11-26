@@ -42,6 +42,12 @@
         </ui:VisualElement>
         <ui:Button name="function-menu-toggle" text="⌃" class="function-menu-toggle" />
     </ui:VisualElement>
+    <ui:VisualElement class="portal-popup-anchor" picking-mode="Ignore">
+        <ui:VisualElement name="portal-popup" class="portal-popup" picking-mode="Ignore">
+            <ui:Label name="portal-popup-title" text="CỔNG DỊCH CHUYỂN" class="portal-popup-title" picking-mode="Ignore" />
+            <ui:Label name="portal-popup-message" text="" class="portal-popup-message" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
     <ui:VisualElement name="connection-lost-overlay" class="connection-lost-overlay">
         <ui:VisualElement class="connection-lost-dialog">
             <ui:Label text="MẤT KẾT NỐI" class="connection-lost-title" />

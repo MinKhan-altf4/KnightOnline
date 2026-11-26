@@ -35,8 +35,8 @@ public sealed class MonsterCollisionMovementResolver(
                 continue;
 
             var center = new Vector2(
-                monster.SpawnPosition.X,
-                monster.SpawnPosition.Y);
+                monster.Position.X,
+                monster.Position.Y);
             Vector2 fromCenter = start - center;
             float radiusSquared = _combinedRadius * _combinedRadius;
 

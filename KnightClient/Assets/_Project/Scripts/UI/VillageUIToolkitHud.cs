@@ -33,6 +33,12 @@ namespace KnightOnline.Client.UI
         private VisualElement _functionMenuToggle;
         private VisualElement _logoutButton;
         private bool _collapsed;
+        private VisualElement _portalPopup;
+        private Label _portalPopupMessage;
+        private IVisualElementScheduledItem _portalPopupHide;
+        private IVisualElementScheduledItem _portalPopupRemove;
+        private const long PortalPopupVisibleMilliseconds = 2600;
+        private const long PortalPopupFadeMilliseconds = 200;
 
         /// <summary>UI Toolkit root, for sibling views on the same document.</summary>
         public VisualElement Root => _document != null ? _document.rootVisualElement : null;
@@ -87,6 +93,8 @@ namespace KnightOnline.Client.UI
             _functionMenuPanel = root.Q("function-menu-panel");
             _functionMenuToggle = root.Q("function-menu-toggle");
             _logoutButton = root.Q("logout-button");
+            _portalPopup = root.Q("portal-popup");
+            _portalPopupMessage = root.Q<Label>("portal-popup-message");
             LogMissingMenuElements(tree);
             _collapseButton.clicked += ToggleDetails;
             menuView?.Initialize(root, SetQuestCardVisible, tree.name);
@@ -120,7 +128,36 @@ namespace KnightOnline.Client.UI
         }
 
         private void OnPortalUseResult(PortalUseResultEvent value) =>
-            ShowNotice(HudPresentation.PortalResultMessage(value.Result));
+            ShowPortalPopup(HudPresentation.PortalResultMessage(value.Result,
+                value.PortalName, value.RequiredLevel));
+
+        /// <summary>
+        /// Popup in the upper middle of the screen when a touched portal
+        /// refuses the player (level, quest...). Touching again restarts the
+        /// timer instead of stacking popups; null does nothing (success).
+        /// </summary>
+        private void ShowPortalPopup(string message)
+        {
+            if (_portalPopup == null || _portalPopupMessage == null ||
+                string.IsNullOrEmpty(message))
+                return;
+
+            _portalPopupMessage.text = message;
+            _portalPopupRemove?.Pause();
+            _portalPopup.AddToClassList("portal-popup--visible");
+            // Next frame, so the opacity/translate transition has a start state.
+            _portalPopup.schedule.Execute(() =>
+                _portalPopup.AddToClassList("portal-popup--shown"));
+
+            _portalPopupHide?.Pause();
+            _portalPopupHide = _portalPopup.schedule.Execute(() =>
+            {
+                _portalPopup.RemoveFromClassList("portal-popup--shown");
+                _portalPopupRemove = _portalPopup.schedule.Execute(() =>
+                    _portalPopup.RemoveFromClassList("portal-popup--visible"))
+                    .StartingIn(PortalPopupFadeMilliseconds);
+            }).StartingIn(PortalPopupVisibleMilliseconds);
+        }
 
         /// <summary>Shows a warning in the card footer; null restores the hint.</summary>
         private void ShowNotice(string message)
@@ -177,7 +214,8 @@ namespace KnightOnline.Client.UI
         public void DebugPreviewMap(string mapId) => RenderMapName(mapId);
 
         public void DebugPreviewPortalResult(byte result) =>
-            ShowNotice(HudPresentation.PortalResultMessage(result));
+            ShowPortalPopup(HudPresentation.PortalResultMessage(result,
+                "Rừng Nhện", 3));
 
         public void DebugRestoreAuthoritative()
         {

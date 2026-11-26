@@ -52,6 +52,10 @@ public sealed class ClientConnection : IAsyncDisposable
         _dispatcher = dispatcher;
         _maximumPacketSize = maximumPacketSize;
         _anonymousTimeout = anonymousTimeout ?? Timeout.InfiniteTimeSpan;
+        // Small, latency-sensitive frames (snapshots, acks): without this,
+        // Nagle holds a frame until the previous one is ACKed, and the
+        // client's delayed ACK turns that into 40-200 ms stalls (rubber-band).
+        tcpClient.NoDelay = true;
         _stream = tcpClient.GetStream();
         RemoteAddress = (tcpClient.Client.RemoteEndPoint as IPEndPoint)?
             .Address.ToString() ?? "unknown";

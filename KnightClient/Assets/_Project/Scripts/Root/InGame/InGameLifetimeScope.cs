@@ -32,7 +32,9 @@ namespace KnightOnline.Client.Core.Bootstrap
             builder.RegisterEntryPoint<AuthoritativeNpcRequestPresenter>();
             builder.RegisterComponentInHierarchy<PlayerController>();
             builder.RegisterComponentInHierarchy<PlayerInteraction>();
-            builder.RegisterComponentInHierarchy<MonsterSpawner>();
+            builder.RegisterComponentInHierarchy<MonsterSpawner>()
+                .AsSelf()
+                .As<IMovementObstacleSource>();
             builder.RegisterComponentInHierarchy<SelectionMarkerView>();
             builder.RegisterComponentInHierarchy<InGameHUD>();
             builder.RegisterComponentInHierarchy<InGameMenuView>();

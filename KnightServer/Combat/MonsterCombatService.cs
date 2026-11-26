@@ -54,8 +54,8 @@ public sealed class MonsterCombatService(
 
         session.AdvancePosition(utcNow, movementResolver);
         var monsterPosition = new Vector2(
-            monster.SpawnPosition.X,
-            monster.SpawnPosition.Y);
+            monster.Position.X,
+            monster.Position.Y);
         if (Vector2.Distance(session.Position, monsterPosition) >
             options.AttackRange)
             return new MonsterAttackResolution(

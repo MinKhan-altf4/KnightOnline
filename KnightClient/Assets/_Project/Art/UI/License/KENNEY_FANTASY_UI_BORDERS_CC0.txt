@@ -1,0 +1,15 @@
+Asset: Fantasy UI Borders 1.0
+Author: Kenney (www.kenney.nl)
+Received: 2026-11-26 (downloaded by the project owner, local copy)
+License: CC0 1.0 (Creative Commons Zero), per License.txt in the pack.
+Attribution is not required; this record is kept for asset provenance and audit.
+
+Files used in this repository (copied unmodified, renamed):
+- ../../../Resources/UI/Kenney/frame-ornate.png   <- PNG/Default/Border/panel-border-002.png
+- ../../../Resources/UI/Kenney/frame-corners.png  <- PNG/Default/Border/panel-border-010.png
+- ../../../Resources/UI/Kenney/frame-plain.png    <- PNG/Default/Border/panel-border-015.png
+- ../../../Resources/UI/Kenney/button-fill.png    <- PNG/Default/Panel/panel-010.png
+- ../../../Resources/UI/Kenney/button-glass.png   <- PNG/Default/Transparent center/panel-transparent-center-010.png
+
+The images are white so USS tints them (-unity-background-image-tint-color).
+Sprite border is 12 px on every side (9-slice); keep -unity-slice-* at 12.

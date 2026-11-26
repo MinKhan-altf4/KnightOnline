@@ -128,7 +128,8 @@ namespace KnightOnline.Client.UI
 
         private void OnPortalUseResult(PortalUseResultEvent value)
         {
-            string message = HudPresentation.PortalResultMessage(value.Result);
+            string message = HudPresentation.PortalResultMessage(value.Result,
+                value.PortalName, value.RequiredLevel);
             if (_questText == null || message == null)
                 return;
             _questText.text = message;

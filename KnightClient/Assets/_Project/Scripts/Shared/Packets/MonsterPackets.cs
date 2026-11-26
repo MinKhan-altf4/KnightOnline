@@ -62,8 +62,14 @@ namespace KnightOnline.Client.Shared.Packets
         public int CurrentHealth { get; }
         public int MaximumHealth { get; }
         public bool IsAlive { get; }
+        /// <summary>Live position when the snapshot was taken.</summary>
         public float PositionX { get; }
         public float PositionY { get; }
+        /// <summary>End of the wander leg in progress (protocol 4).</summary>
+        public float TargetX { get; }
+        public float TargetY { get; }
+        /// <summary>Time left on that leg; 0 when the monster is resting.</summary>
+        public int MoveRemainingMilliseconds { get; }
 
         public MonsterSnapshotPacket(
             int monsterId,
@@ -75,7 +81,10 @@ namespace KnightOnline.Client.Shared.Packets
             int maximumHealth,
             bool isAlive,
             float positionX,
-            float positionY)
+            float positionY,
+            float targetX = 0f,
+            float targetY = 0f,
+            int moveRemainingMilliseconds = 0)
         {
             MonsterId = monsterId;
             DefinitionId = definitionId;
@@ -87,6 +96,40 @@ namespace KnightOnline.Client.Shared.Packets
             IsAlive = isAlive;
             PositionX = positionX;
             PositionY = positionY;
+            TargetX = targetX;
+            TargetY = targetY;
+            MoveRemainingMilliseconds = moveRemainingMilliseconds;
+        }
+    }
+
+    /// <summary>
+    /// Server -> map (protocol 4): a monster started walking in a straight
+    /// line from From to To, arriving after DurationMilliseconds. Clients
+    /// replay the leg locally; the server stays authoritative.
+    /// </summary>
+    public sealed class MonsterMovedPacket
+    {
+        public int MonsterId { get; }
+        public float FromX { get; }
+        public float FromY { get; }
+        public float ToX { get; }
+        public float ToY { get; }
+        public int DurationMilliseconds { get; }
+
+        public MonsterMovedPacket(
+            int monsterId,
+            float fromX,
+            float fromY,
+            float toX,
+            float toY,
+            int durationMilliseconds)
+        {
+            MonsterId = monsterId;
+            FromX = fromX;
+            FromY = fromY;
+            ToX = toX;
+            ToY = toY;
+            DurationMilliseconds = durationMilliseconds;
         }
     }
 

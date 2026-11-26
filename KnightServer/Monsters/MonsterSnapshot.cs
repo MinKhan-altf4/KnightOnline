@@ -12,4 +12,14 @@ public sealed record MonsterSnapshot(
     int MaximumHealth,
     bool IsAlive,
     WorldPosition SpawnPosition,
-    DateTime? RespawnAtUtc);
+    DateTime? RespawnAtUtc)
+{
+    /// <summary>Live position when the snapshot was taken (wandering monsters move).</summary>
+    public WorldPosition Position { get; init; } = SpawnPosition;
+
+    /// <summary>End of the current leg; equals <see cref="Position"/> when resting.</summary>
+    public WorldPosition MoveTarget { get; init; } = SpawnPosition;
+
+    /// <summary>Time left on the current leg; zero when resting.</summary>
+    public TimeSpan MoveRemaining { get; init; }
+}

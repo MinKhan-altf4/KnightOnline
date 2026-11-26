@@ -25,6 +25,11 @@ namespace KnightOnline.Client.Gameplay.Player
         [SerializeField, Min(0f)] private float _positionTolerance = 0.15f;
         [SerializeField, Min(0.01f)] private float _hardCorrectionDistance = 1f;
         [SerializeField, Min(0f)] private float _softCorrectionSpeed = 8f;
+        /// <summary>
+        /// Player + monster collision radius. Mirrors serverSettings.json
+        /// world.playerCollisionRadius (0.35) + world.monsterCollisionRadius (0.5).
+        /// </summary>
+        [SerializeField, Min(0f)] private float _monsterBlockRadius = 0.85f;
 
         private Rigidbody2D _rigidbody;
         private IMovementInputProvider _inputProvider;
@@ -45,6 +50,8 @@ namespace KnightOnline.Client.Gameplay.Player
         private Vector2 _pendingCorrection;
         private IDisposable _boundsSubscription;
         private WalkableBounds? _bounds;
+        private IMovementObstacleSource _obstacles;
+        private readonly System.Collections.Generic.List<Vector2> _obstacleCenters = new();
 
         /// <summary>Hướng input hiện tại (dùng cho hiển thị hướng nhân vật).</summary>
         public Vector2 MoveDirection => _currentDirection;
@@ -57,8 +64,10 @@ namespace KnightOnline.Client.Gameplay.Player
             IMovementInputProvider inputProvider,
             CharacterData characterData,
             NetworkClient networkClient,
-            IEventBus eventBus)
+            IEventBus eventBus,
+            IMovementObstacleSource obstacles)
         {
+            _obstacles = obstacles;
             _inputProvider = inputProvider;
             _characterData = characterData;
             _networkClient = networkClient;
@@ -68,6 +77,13 @@ namespace KnightOnline.Client.Gameplay.Player
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody2D>();
+            // Velocity is set explicitly every physics step (zero when no
+            // input), so damping is not needed to stop. Box2D applies damping
+            // before integrating: with 10 at 50 Hz the body moved at only
+            // ~83 % of MoveSpeed, drifted behind the server and got pulled
+            // forward by a correction on almost every snapshot.
+            _rigidbody.linearDamping = 0f;
+            _rigidbody.interpolation = RigidbodyInterpolation2D.Interpolate;
         }
 
         private void Start()
@@ -125,14 +141,24 @@ namespace KnightOnline.Client.Gameplay.Player
                 ? _currentDirection * MoveSpeed
                 : Vector2.zero;
 
-            ApplyPendingCorrection();
-            ReconcileAuthoritativePosition();
+            // Small corrections ride on the velocity so interpolation keeps
+            // working; only hard corrections teleport the body.
+            velocity += PendingCorrectionVelocity();
+            velocity += AuthoritativeSteeringVelocity();
+            velocity = BlockedByMonsters(velocity);
 
             // Same edge rule as the server: clamp the center and never step
             // past it, sliding along the edge instead of pushing into it.
             if (_bounds is WalkableBounds bounds)
             {
-                _rigidbody.position = bounds.Clamp(_rigidbody.position);
+                // Writing Rigidbody2D.position is a teleport that resets
+                // interpolation; doing it every step made the hero (and the
+                // camera locked to it) move in 50 Hz jumps. Only write when
+                // the body really is outside.
+                Vector2 current = _rigidbody.position;
+                Vector2 clamped = bounds.Clamp(current);
+                if (clamped != current)
+                    _rigidbody.position = clamped;
                 velocity = bounds.LimitVelocity(
                     _rigidbody.position, velocity, Time.fixedDeltaTime);
             }
@@ -174,42 +200,63 @@ namespace KnightOnline.Client.Gameplay.Player
             _hasAuthoritativePosition = true;
         }
 
-        private void ApplyPendingCorrection()
+        /// <summary>
+        /// Velocity that covers this step's share of the pending prediction
+        /// error (same exponential rate as before, applied by physics).
+        /// </summary>
+        private Vector2 PendingCorrectionVelocity()
         {
             if (_pendingCorrection == Vector2.zero || _rigidbody == null)
-                return;
+                return Vector2.zero;
 
-            float fraction = Mathf.Clamp01(
-                _softCorrectionSpeed * Time.fixedUnscaledDeltaTime);
+            float deltaTime = Time.fixedDeltaTime;
+            float fraction = Mathf.Clamp01(_softCorrectionSpeed * deltaTime);
             Vector2 step = _pendingCorrection * fraction;
             if (_pendingCorrection.sqrMagnitude < 0.0001f)
                 step = _pendingCorrection;
-            _rigidbody.position += step;
             _pendingCorrection -= step;
+            return step / deltaTime;
         }
 
-        private void ReconcileAuthoritativePosition()
+        /// <summary>
+        /// Shortens this step's move with the server's monster rule so the
+        /// predicted position stops exactly where the server will stop it.
+        /// </summary>
+        private Vector2 BlockedByMonsters(Vector2 velocity)
+        {
+            if (_obstacles == null || velocity == Vector2.zero || _rigidbody == null)
+                return velocity;
+
+            _obstacles.CollectObstacles(_obstacleCenters);
+            if (_obstacleCenters.Count == 0)
+                return velocity;
+
+            float deltaTime = Time.fixedDeltaTime;
+            Vector2 start = _rigidbody.position;
+            Vector2 end = CircleObstacleResolver.Resolve(start, start + velocity * deltaTime,
+                _obstacleCenters, _monsterBlockRadius);
+            return (end - start) / deltaTime;
+        }
+
+        private Vector2 AuthoritativeSteeringVelocity()
         {
             if (!_hasAuthoritativePosition || _rigidbody == null)
-                return;
+                return Vector2.zero;
 
             Vector2 delta = _authoritativePosition - _rigidbody.position;
             float distance = delta.magnitude;
             if (distance <= _positionTolerance)
-                return;
+                return Vector2.zero;
 
             if (distance >= _hardCorrectionDistance)
             {
                 _rigidbody.position = _authoritativePosition;
-                return;
+                return Vector2.zero;
             }
 
-            float correction = Mathf.Clamp01(
-                _softCorrectionSpeed * Time.fixedUnscaledDeltaTime);
-            _rigidbody.position = Vector2.Lerp(
-                _rigidbody.position,
-                _authoritativePosition,
-                correction);
+            float deltaTime = Time.fixedDeltaTime;
+            float fraction = Mathf.Clamp01(_softCorrectionSpeed * deltaTime);
+            return delta * fraction / deltaTime;
         }
 
         private void OnMapTransitioned(MapTransitionedEvent value)

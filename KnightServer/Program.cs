@@ -73,7 +73,10 @@ public static class Program
 
         MonsterService monsterService = CreateMonsterWorld(
             options.MonsterDefinitions,
-            options.MonsterSpawns);
+            options.MonsterSpawns,
+            options.World,
+            clock,
+            mapCatalog);
         IWorldMovementResolver movementResolver =
             new MonsterCollisionMovementResolver(
                 monsterService,
@@ -541,6 +544,16 @@ public static class Program
                     PacketType.MonsterRespawned,
                     new MonsterRespawnedPacket(ToPacket(snapshot)));
             }
+
+            // Wander legs: one packet per leg start, clients replay the line.
+            foreach (MonsterMovementLeg leg in
+                     monsterService.AdvanceWander(clock.UtcNow))
+            {
+                connections.BroadcastToMap(
+                    leg.MapDefinitionId,
+                    PacketType.MonsterMoved,
+                    MonsterPacketMapper.ToMovedPacket(leg));
+            }
         }
     }
 
@@ -656,17 +669,7 @@ public static class Program
     }
 
     private static MonsterSnapshotPacket ToPacket(MonsterSnapshot snapshot) =>
-        new(
-            snapshot.MonsterId,
-            snapshot.DefinitionId,
-            snapshot.Name,
-            snapshot.Level,
-            snapshot.MapDefinitionId,
-            snapshot.CurrentHealth,
-            snapshot.MaximumHealth,
-            snapshot.IsAlive,
-            snapshot.SpawnPosition.X,
-            snapshot.SpawnPosition.Y);
+        MonsterPacketMapper.ToPacket(snapshot);
 
     private static void ObserveBackgroundTask(Task task, string operation)
     {
@@ -739,9 +742,22 @@ public static class Program
 
     private static MonsterService CreateMonsterWorld(
         IReadOnlyList<MonsterDefinitionOptions> definitionOptions,
-        IReadOnlyList<MonsterSpawnOptions> spawns)
+        IReadOnlyList<MonsterSpawnOptions> spawns,
+        WorldOptions world,
+        IServerClock clock,
+        IMapCatalog maps)
     {
-        var monsterService = new MonsterService();
+        MonsterWanderPolicy? wander = world.MonsterWanderRadius > 0
+            ? new MonsterWanderPolicy(
+                world.MonsterWanderRadius,
+                world.MonsterWanderSpeed,
+                TimeSpan.FromMilliseconds(world.MonsterWanderMinimumIdleMilliseconds),
+                TimeSpan.FromMilliseconds(world.MonsterWanderMaximumIdleMilliseconds))
+            : null;
+        var monsterService = new MonsterService(
+            clock,
+            wander,
+            clampToMap: (mapId, position) => maps.ClampPosition(mapId, position));
         Dictionary<int, MonsterDefinition> definitions = definitionOptions
             .ToDictionary(
                 definition => definition.DefinitionId,

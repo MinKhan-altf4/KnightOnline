@@ -5,8 +5,8 @@
     "port": 7777,
     "maximumPacketBytes": 65536,
     "anonymousConnectionTimeoutSeconds": 120,
-    "minimumProtocolVersion": 3,
-    "maximumProtocolVersion": 3
+    "minimumProtocolVersion": 4,
+    "maximumProtocolVersion": 4
   },
   "capacity": {
     "maximumActiveAccounts": 500,
@@ -156,6 +156,10 @@
     "maximumMovementDeltaMilliseconds": 250,
     "playerCollisionRadius": 0.35,
     "monsterCollisionRadius": 0.5,
+    "monsterWanderRadius": 2.5,
+    "monsterWanderSpeed": 1.2,
+    "monsterWanderMinimumIdleMilliseconds": 2000,
+    "monsterWanderMaximumIdleMilliseconds": 6000,
     "respawnDisplacementAngularSamples": 32,
     "simulationTickMilliseconds": 50,
     "entitySnapshotEveryTicks": 2,
@@ -227,6 +231,232 @@
           "positionX": 0.0,
           "positionY": -2.5,
           "isSafeZone": true
+        },
+        {
+          "spawnPointId": "safe_zone_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "slime_meadow_01",
+      "displayName": "Đồng Slime",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "slime_meadow_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "slime_meadow_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "spider_woods_01",
+      "displayName": "Rừng Nhện",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "spider_woods_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "spider_woods_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "dragonfly_marsh_01",
+      "displayName": "Đầm Chuồn Chuồn",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "dragonfly_marsh_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "dragonfly_marsh_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "serpent_lake_01",
+      "displayName": "Hồ Rắn Nước",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "serpent_lake_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "serpent_lake_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "turtle_shore_01",
+      "displayName": "Bờ Rùa Gai",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "turtle_shore_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "turtle_shore_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "goblin_camp_01",
+      "displayName": "Trại Goblin",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "goblin_camp_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "goblin_camp_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "ghoul_swamp_01",
+      "displayName": "Đầm Lầy Quỷ",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "ghoul_swamp_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "ghoul_swamp_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "eye_ruins_01",
+      "displayName": "Phế Tích Mắt Quỷ",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "eye_ruins_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "eye_ruins_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "bone_graveyard_01",
+      "displayName": "Nghĩa Địa Xương",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "bone_graveyard_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "bone_graveyard_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        }
+      ]
+    },
+    {
+      "definitionId": "mage_tower_01",
+      "displayName": "Tháp Pháp Sư",
+      "minimumX": -10.0,
+      "maximumX": 10.0,
+      "minimumY": -6.0,
+      "maximumY": 6.0,
+      "spawnPoints": [
+        {
+          "spawnPointId": "mage_tower_01_west",
+          "positionX": -7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
+        },
+        {
+          "spawnPointId": "mage_tower_01_east",
+          "positionX": 7.0,
+          "positionY": 0.0,
+          "isSafeZone": true
         }
       ]
     }
@@ -236,6 +466,7 @@
       "definitionId": "mother_tutorial",
       "displayName": "Mẹ",
       "mapDefinitionId": "tutorial_map_01",
+      "appearanceId": "tavern_a",
       "positionX": 3.0,
       "positionY": 0.0,
       "interactionRange": 3.0,
@@ -243,6 +474,110 @@
       "progressDialogue": "Mẹ vẫn chờ con ở đây. Hãy cẩn thận với bầy Sói và trở về bình an nhé.",
       "completionDialogue": "Con đã trở về rồi... Mẹ tự hào về con. Đây là bộ giáp sắt Mẹ đã gìn giữ cho ngày con bắt đầu cuộc hành trình.",
       "farewellDialogue": "Hãy tiến về Safe Zone 1, gặp những người buôn bán và các hiệp sĩ khác. Dù con đi đâu, nơi này vẫn luôn là nhà. Tạm biệt con."
+    },
+    {
+      "definitionId": "village_elder",
+      "displayName": "Trưởng Làng",
+      "mapDefinitionId": "tutorial_map_01",
+      "positionX": -1.2,
+      "positionY": 3.8,
+      "interactionRange": 3.0,
+      "initialDialogue": "Ngọn lửa này đã sưởi ấm ngôi làng qua bao mùa đông. Chào mừng con, người trẻ tuổi.",
+      "progressDialogue": "Ngọn lửa này đã sưởi ấm ngôi làng qua bao mùa đông. Chào mừng con, người trẻ tuổi.",
+      "completionDialogue": "Ngọn lửa này đã sưởi ấm ngôi làng qua bao mùa đông. Chào mừng con, người trẻ tuổi.",
+      "farewellDialogue": "Ngọn lửa này đã sưởi ấm ngôi làng qua bao mùa đông. Chào mừng con, người trẻ tuổi.",
+      "appearanceId": "wizard"
+    },
+    {
+      "definitionId": "village_farmer",
+      "displayName": "Bác Nông Dân",
+      "mapDefinitionId": "tutorial_map_01",
+      "positionX": -6.6,
+      "positionY": -1.8,
+      "interactionRange": 3.0,
+      "initialDialogue": "Năm nay bắp cải tốt lắm. Chỉ mong lũ sói đừng mò vào ruộng nữa.",
+      "progressDialogue": "Năm nay bắp cải tốt lắm. Chỉ mong lũ sói đừng mò vào ruộng nữa.",
+      "completionDialogue": "Năm nay bắp cải tốt lắm. Chỉ mong lũ sói đừng mò vào ruộng nữa.",
+      "farewellDialogue": "Năm nay bắp cải tốt lắm. Chỉ mong lũ sói đừng mò vào ruộng nữa.",
+      "appearanceId": "peasant"
+    },
+    {
+      "definitionId": "village_guard",
+      "displayName": "Lính Gác Làng",
+      "mapDefinitionId": "tutorial_map_01",
+      "positionX": 7.4,
+      "positionY": 1.8,
+      "interactionRange": 3.0,
+      "initialDialogue": "Phía đông là Bãi Sói. Đi cẩn thận, và nhớ quay về trước khi trời tối.",
+      "progressDialogue": "Phía đông là Bãi Sói. Đi cẩn thận, và nhớ quay về trước khi trời tối.",
+      "completionDialogue": "Phía đông là Bãi Sói. Đi cẩn thận, và nhớ quay về trước khi trời tối.",
+      "farewellDialogue": "Phía đông là Bãi Sói. Đi cẩn thận, và nhớ quay về trước khi trời tối.",
+      "appearanceId": "knight"
+    },
+    {
+      "definitionId": "safe_zone_merchant",
+      "displayName": "Thương Nhân",
+      "mapDefinitionId": "safe_zone_01",
+      "positionX": -4.2,
+      "positionY": 3.0,
+      "interactionRange": 3.0,
+      "initialDialogue": "Hàng hóa đang trên đường tới. Lát nữa quay lại nhé, khách quý!",
+      "progressDialogue": "Hàng hóa đang trên đường tới. Lát nữa quay lại nhé, khách quý!",
+      "completionDialogue": "Hàng hóa đang trên đường tới. Lát nữa quay lại nhé, khách quý!",
+      "farewellDialogue": "Hàng hóa đang trên đường tới. Lát nữa quay lại nhé, khách quý!",
+      "appearanceId": "tavern_b"
+    },
+    {
+      "definitionId": "safe_zone_commander",
+      "displayName": "Hiệp Sĩ Chỉ Huy",
+      "mapDefinitionId": "safe_zone_01",
+      "positionX": 4.2,
+      "positionY": 3.0,
+      "interactionRange": 3.0,
+      "initialDialogue": "Các vùng đất phía đông đầy quái vật. Hãy rèn luyện thật tốt trước khi lên đường.",
+      "progressDialogue": "Các vùng đất phía đông đầy quái vật. Hãy rèn luyện thật tốt trước khi lên đường.",
+      "completionDialogue": "Các vùng đất phía đông đầy quái vật. Hãy rèn luyện thật tốt trước khi lên đường.",
+      "farewellDialogue": "Các vùng đất phía đông đầy quái vật. Hãy rèn luyện thật tốt trước khi lên đường.",
+      "appearanceId": "knight"
+    },
+    {
+      "definitionId": "safe_zone_mage",
+      "displayName": "Pháp Sư Lang Thang",
+      "mapDefinitionId": "safe_zone_01",
+      "positionX": -4.2,
+      "positionY": -0.8,
+      "interactionRange": 3.0,
+      "initialDialogue": "Ta cảm nhận được ma lực từ ngọn tháp xa kia... Một ngày nào đó con sẽ tới đó.",
+      "progressDialogue": "Ta cảm nhận được ma lực từ ngọn tháp xa kia... Một ngày nào đó con sẽ tới đó.",
+      "completionDialogue": "Ta cảm nhận được ma lực từ ngọn tháp xa kia... Một ngày nào đó con sẽ tới đó.",
+      "farewellDialogue": "Ta cảm nhận được ma lực từ ngọn tháp xa kia... Một ngày nào đó con sẽ tới đó.",
+      "appearanceId": "wizard"
+    },
+    {
+      "definitionId": "safe_zone_innkeeper",
+      "displayName": "Chủ Quán",
+      "mapDefinitionId": "safe_zone_01",
+      "positionX": 4.2,
+      "positionY": -0.8,
+      "interactionRange": 3.0,
+      "initialDialogue": "Mệt rồi thì ghé ngồi bên lửa một lát. Ở đây lúc nào cũng an toàn.",
+      "progressDialogue": "Mệt rồi thì ghé ngồi bên lửa một lát. Ở đây lúc nào cũng an toàn.",
+      "completionDialogue": "Mệt rồi thì ghé ngồi bên lửa một lát. Ở đây lúc nào cũng an toàn.",
+      "farewellDialogue": "Mệt rồi thì ghé ngồi bên lửa một lát. Ở đây lúc nào cũng an toàn.",
+      "appearanceId": "tavern_a"
+    },
+    {
+      "definitionId": "safe_zone_scout",
+      "displayName": "Trinh Sát",
+      "mapDefinitionId": "safe_zone_01",
+      "positionX": 6.8,
+      "positionY": 2.2,
+      "interactionRange": 3.0,
+      "initialDialogue": "Cổng phía đông dẫn tới Đồng Slime. Lũ slime chậm chạp, hợp để tập luyện.",
+      "progressDialogue": "Cổng phía đông dẫn tới Đồng Slime. Lũ slime chậm chạp, hợp để tập luyện.",
+      "completionDialogue": "Cổng phía đông dẫn tới Đồng Slime. Lũ slime chậm chạp, hợp để tập luyện.",
+      "farewellDialogue": "Cổng phía đông dẫn tới Đồng Slime. Lũ slime chậm chạp, hợp để tập luyện.",
+      "appearanceId": "rogue"
     }
   ],
   "portalDefinitions": [
@@ -288,6 +623,226 @@
       "interactionRange": 1.5,
       "destinationMapDefinitionId": "tutorial_map_01",
       "destinationSpawnPointId": "tutorial_spawn_default",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "safe_zone_01_to_slime_meadow_01",
+      "displayName": "Đồng Slime",
+      "sourceMapDefinitionId": "safe_zone_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "slime_meadow_01",
+      "destinationSpawnPointId": "slime_meadow_01_west",
+      "minimumLevel": 2
+    },
+    {
+      "definitionId": "slime_meadow_01_to_safe_zone_01",
+      "displayName": "Safe Zone 1",
+      "sourceMapDefinitionId": "slime_meadow_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "safe_zone_01",
+      "destinationSpawnPointId": "safe_zone_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "slime_meadow_01_to_spider_woods_01",
+      "displayName": "Rừng Nhện",
+      "sourceMapDefinitionId": "slime_meadow_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "spider_woods_01",
+      "destinationSpawnPointId": "spider_woods_01_west",
+      "minimumLevel": 3
+    },
+    {
+      "definitionId": "spider_woods_01_to_slime_meadow_01",
+      "displayName": "Đồng Slime",
+      "sourceMapDefinitionId": "spider_woods_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "slime_meadow_01",
+      "destinationSpawnPointId": "slime_meadow_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "spider_woods_01_to_dragonfly_marsh_01",
+      "displayName": "Đầm Chuồn Chuồn",
+      "sourceMapDefinitionId": "spider_woods_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "dragonfly_marsh_01",
+      "destinationSpawnPointId": "dragonfly_marsh_01_west",
+      "minimumLevel": 4
+    },
+    {
+      "definitionId": "dragonfly_marsh_01_to_spider_woods_01",
+      "displayName": "Rừng Nhện",
+      "sourceMapDefinitionId": "dragonfly_marsh_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "spider_woods_01",
+      "destinationSpawnPointId": "spider_woods_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "dragonfly_marsh_01_to_serpent_lake_01",
+      "displayName": "Hồ Rắn Nước",
+      "sourceMapDefinitionId": "dragonfly_marsh_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "serpent_lake_01",
+      "destinationSpawnPointId": "serpent_lake_01_west",
+      "minimumLevel": 5
+    },
+    {
+      "definitionId": "serpent_lake_01_to_dragonfly_marsh_01",
+      "displayName": "Đầm Chuồn Chuồn",
+      "sourceMapDefinitionId": "serpent_lake_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "dragonfly_marsh_01",
+      "destinationSpawnPointId": "dragonfly_marsh_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "serpent_lake_01_to_turtle_shore_01",
+      "displayName": "Bờ Rùa Gai",
+      "sourceMapDefinitionId": "serpent_lake_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "turtle_shore_01",
+      "destinationSpawnPointId": "turtle_shore_01_west",
+      "minimumLevel": 6
+    },
+    {
+      "definitionId": "turtle_shore_01_to_serpent_lake_01",
+      "displayName": "Hồ Rắn Nước",
+      "sourceMapDefinitionId": "turtle_shore_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "serpent_lake_01",
+      "destinationSpawnPointId": "serpent_lake_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "turtle_shore_01_to_goblin_camp_01",
+      "displayName": "Trại Goblin",
+      "sourceMapDefinitionId": "turtle_shore_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "goblin_camp_01",
+      "destinationSpawnPointId": "goblin_camp_01_west",
+      "minimumLevel": 7
+    },
+    {
+      "definitionId": "goblin_camp_01_to_turtle_shore_01",
+      "displayName": "Bờ Rùa Gai",
+      "sourceMapDefinitionId": "goblin_camp_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "turtle_shore_01",
+      "destinationSpawnPointId": "turtle_shore_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "goblin_camp_01_to_ghoul_swamp_01",
+      "displayName": "Đầm Lầy Quỷ",
+      "sourceMapDefinitionId": "goblin_camp_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "ghoul_swamp_01",
+      "destinationSpawnPointId": "ghoul_swamp_01_west",
+      "minimumLevel": 8
+    },
+    {
+      "definitionId": "ghoul_swamp_01_to_goblin_camp_01",
+      "displayName": "Trại Goblin",
+      "sourceMapDefinitionId": "ghoul_swamp_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "goblin_camp_01",
+      "destinationSpawnPointId": "goblin_camp_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "ghoul_swamp_01_to_eye_ruins_01",
+      "displayName": "Phế Tích Mắt Quỷ",
+      "sourceMapDefinitionId": "ghoul_swamp_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "eye_ruins_01",
+      "destinationSpawnPointId": "eye_ruins_01_west",
+      "minimumLevel": 9
+    },
+    {
+      "definitionId": "eye_ruins_01_to_ghoul_swamp_01",
+      "displayName": "Đầm Lầy Quỷ",
+      "sourceMapDefinitionId": "eye_ruins_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "ghoul_swamp_01",
+      "destinationSpawnPointId": "ghoul_swamp_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "eye_ruins_01_to_bone_graveyard_01",
+      "displayName": "Nghĩa Địa Xương",
+      "sourceMapDefinitionId": "eye_ruins_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "bone_graveyard_01",
+      "destinationSpawnPointId": "bone_graveyard_01_west",
+      "minimumLevel": 10
+    },
+    {
+      "definitionId": "bone_graveyard_01_to_eye_ruins_01",
+      "displayName": "Phế Tích Mắt Quỷ",
+      "sourceMapDefinitionId": "bone_graveyard_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "eye_ruins_01",
+      "destinationSpawnPointId": "eye_ruins_01_east",
+      "minimumLevel": 1
+    },
+    {
+      "definitionId": "bone_graveyard_01_to_mage_tower_01",
+      "displayName": "Tháp Pháp Sư",
+      "sourceMapDefinitionId": "bone_graveyard_01",
+      "positionX": 9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "mage_tower_01",
+      "destinationSpawnPointId": "mage_tower_01_west",
+      "minimumLevel": 11
+    },
+    {
+      "definitionId": "mage_tower_01_to_bone_graveyard_01",
+      "displayName": "Nghĩa Địa Xương",
+      "sourceMapDefinitionId": "mage_tower_01",
+      "positionX": -9.0,
+      "positionY": 0.0,
+      "interactionRange": 1.5,
+      "destinationMapDefinitionId": "bone_graveyard_01",
+      "destinationSpawnPointId": "bone_graveyard_01_east",
       "minimumLevel": 1
     }
   ],
@@ -340,6 +895,86 @@
       "maximumHealth": 50,
       "experienceReward": 0,
       "respawnSeconds": 10
+    },
+    {
+      "definitionId": 2,
+      "name": "Slime Xanh",
+      "level": 2,
+      "maximumHealth": 80,
+      "experienceReward": 14,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 3,
+      "name": "Nhện Hang",
+      "level": 3,
+      "maximumHealth": 100,
+      "experienceReward": 18,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 4,
+      "name": "Chuồn Chuồn Độc",
+      "level": 4,
+      "maximumHealth": 120,
+      "experienceReward": 23,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 5,
+      "name": "Rắn Nước",
+      "level": 5,
+      "maximumHealth": 140,
+      "experienceReward": 29,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 6,
+      "name": "Rùa Gai",
+      "level": 6,
+      "maximumHealth": 160,
+      "experienceReward": 36,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 7,
+      "name": "Goblin Chiến Binh",
+      "level": 7,
+      "maximumHealth": 180,
+      "experienceReward": 43,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 8,
+      "name": "Quỷ Đầm Lầy",
+      "level": 8,
+      "maximumHealth": 200,
+      "experienceReward": 52,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 9,
+      "name": "Mắt Quỷ",
+      "level": 9,
+      "maximumHealth": 220,
+      "experienceReward": 61,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 10,
+      "name": "Xương Thương Binh",
+      "level": 10,
+      "maximumHealth": 240,
+      "experienceReward": 71,
+      "respawnSeconds": 12
+    },
+    {
+      "definitionId": 11,
+      "name": "Pháp Sư Bóng Tối",
+      "level": 11,
+      "maximumHealth": 260,
+      "experienceReward": 82,
+      "respawnSeconds": 12
     }
   ],
   "monsterSpawns": [
@@ -390,6 +1025,366 @@
       "mapDefinitionId": "wolf_field_01",
       "positionX": 6.0,
       "positionY": -5.0
+    },
+    {
+      "definitionId": 2,
+      "mapDefinitionId": "slime_meadow_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 2,
+      "mapDefinitionId": "slime_meadow_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 2,
+      "mapDefinitionId": "slime_meadow_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 2,
+      "mapDefinitionId": "slime_meadow_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 2,
+      "mapDefinitionId": "slime_meadow_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 2,
+      "mapDefinitionId": "slime_meadow_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 3,
+      "mapDefinitionId": "spider_woods_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 3,
+      "mapDefinitionId": "spider_woods_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 3,
+      "mapDefinitionId": "spider_woods_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 3,
+      "mapDefinitionId": "spider_woods_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 3,
+      "mapDefinitionId": "spider_woods_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 3,
+      "mapDefinitionId": "spider_woods_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 4,
+      "mapDefinitionId": "dragonfly_marsh_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 4,
+      "mapDefinitionId": "dragonfly_marsh_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 4,
+      "mapDefinitionId": "dragonfly_marsh_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 4,
+      "mapDefinitionId": "dragonfly_marsh_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 4,
+      "mapDefinitionId": "dragonfly_marsh_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 4,
+      "mapDefinitionId": "dragonfly_marsh_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 5,
+      "mapDefinitionId": "serpent_lake_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 5,
+      "mapDefinitionId": "serpent_lake_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 5,
+      "mapDefinitionId": "serpent_lake_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 5,
+      "mapDefinitionId": "serpent_lake_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 5,
+      "mapDefinitionId": "serpent_lake_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 5,
+      "mapDefinitionId": "serpent_lake_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 6,
+      "mapDefinitionId": "turtle_shore_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 6,
+      "mapDefinitionId": "turtle_shore_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 6,
+      "mapDefinitionId": "turtle_shore_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 6,
+      "mapDefinitionId": "turtle_shore_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 6,
+      "mapDefinitionId": "turtle_shore_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 6,
+      "mapDefinitionId": "turtle_shore_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 7,
+      "mapDefinitionId": "goblin_camp_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 7,
+      "mapDefinitionId": "goblin_camp_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 7,
+      "mapDefinitionId": "goblin_camp_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 7,
+      "mapDefinitionId": "goblin_camp_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 7,
+      "mapDefinitionId": "goblin_camp_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 7,
+      "mapDefinitionId": "goblin_camp_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 8,
+      "mapDefinitionId": "ghoul_swamp_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 8,
+      "mapDefinitionId": "ghoul_swamp_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 8,
+      "mapDefinitionId": "ghoul_swamp_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 8,
+      "mapDefinitionId": "ghoul_swamp_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 8,
+      "mapDefinitionId": "ghoul_swamp_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 8,
+      "mapDefinitionId": "ghoul_swamp_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 9,
+      "mapDefinitionId": "eye_ruins_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 9,
+      "mapDefinitionId": "eye_ruins_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 9,
+      "mapDefinitionId": "eye_ruins_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 9,
+      "mapDefinitionId": "eye_ruins_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 9,
+      "mapDefinitionId": "eye_ruins_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 9,
+      "mapDefinitionId": "eye_ruins_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 10,
+      "mapDefinitionId": "bone_graveyard_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 10,
+      "mapDefinitionId": "bone_graveyard_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 10,
+      "mapDefinitionId": "bone_graveyard_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 10,
+      "mapDefinitionId": "bone_graveyard_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 10,
+      "mapDefinitionId": "bone_graveyard_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 10,
+      "mapDefinitionId": "bone_graveyard_01",
+      "positionX": 5.0,
+      "positionY": -3.0
+    },
+    {
+      "definitionId": 11,
+      "mapDefinitionId": "mage_tower_01",
+      "positionX": -3.0,
+      "positionY": 3.5
+    },
+    {
+      "definitionId": 11,
+      "mapDefinitionId": "mage_tower_01",
+      "positionX": 2.0,
+      "positionY": 4.0
+    },
+    {
+      "definitionId": 11,
+      "mapDefinitionId": "mage_tower_01",
+      "positionX": 5.5,
+      "positionY": 2.5
+    },
+    {
+      "definitionId": 11,
+      "mapDefinitionId": "mage_tower_01",
+      "positionX": -4.0,
+      "positionY": -3.5
+    },
+    {
+      "definitionId": 11,
+      "mapDefinitionId": "mage_tower_01",
+      "positionX": 1.0,
+      "positionY": -4.0
+    },
+    {
+      "definitionId": 11,
+      "mapDefinitionId": "mage_tower_01",
+      "positionX": 5.0,
+      "positionY": -3.0
     }
   ]
 }

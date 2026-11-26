@@ -20,7 +20,8 @@ namespace KnightOnline.Client.Network.Handlers
             if (packet == null) return;
             _events.Publish(new NpcListReceivedEvent(packet.Npcs.Select(value =>
                 new NpcSnapshotData(value.DefinitionId, value.DisplayName,
-                    value.PositionX, value.PositionY)).ToArray()));
+                    value.PositionX, value.PositionY,
+                    value.AppearanceId)).ToArray()));
         }
     }
     public sealed class InteractNpcResponseHandler : IClientPacketHandler
@@ -74,7 +75,8 @@ namespace KnightOnline.Client.Network.Handlers
             if (packet != null) _events.Publish(new PortalListReceivedEvent(
                 packet.Portals.Select(value => new PortalSnapshotData(
                     value.DefinitionId, value.DisplayName, value.PositionX,
-                    value.PositionY, value.InteractionRange)).ToArray(), packet.MinimumX,
+                    value.PositionY, value.InteractionRange,
+                    value.MinimumLevel)).ToArray(), packet.MinimumX,
                 packet.MaximumX, packet.MinimumY, packet.MaximumY));
         }
     }
@@ -100,7 +102,8 @@ namespace KnightOnline.Client.Network.Handlers
             var packet = JsonSerializer.Deserialize<UsePortalResponsePacket>(payload);
             if (packet != null)
                 _events.Publish(new PortalUseResultEvent(
-                    packet.RequestId, (byte)packet.Result));
+                    packet.RequestId, (byte)packet.Result,
+                    packet.PortalName, packet.RequiredLevel));
         }
     }
 
@@ -443,6 +446,26 @@ namespace KnightOnline.Client.Network.Handlers
             if (packet?.Monster != null)
                 _events.Publish(new MonsterRespawnedEvent(
                     MonsterPacketMapper.ToModel(packet.Monster)));
+        }
+    }
+
+    /// <summary>Protocol 4: a monster started a wander leg; the view replays it.</summary>
+    public sealed class MonsterMovedHandler : IClientPacketHandler
+    {
+        private readonly IEventBus _events;
+        public MonsterMovedHandler(IEventBus events) => _events = events;
+        public PacketType PacketType => PacketType.MonsterMoved;
+
+        public void Handle(string payload)
+        {
+            var packet = JsonSerializer.Deserialize<MonsterMovedPacket>(payload);
+            if (packet == null)
+                return;
+            _events.Publish(new MonsterMovedEvent(
+                packet.MonsterId,
+                new Vector2(packet.FromX, packet.FromY),
+                new Vector2(packet.ToX, packet.ToY),
+                packet.DurationMilliseconds / 1000f));
         }
     }
 
@@ -810,7 +833,11 @@ namespace KnightOnline.Client.Network.Handlers
                 CurrentHealth = packet.CurrentHealth,
                 MaximumHealth = packet.MaximumHealth,
                 IsAlive = packet.IsAlive,
-                Position = new Vector2(packet.PositionX, packet.PositionY)
+                Position = new Vector2(packet.PositionX, packet.PositionY),
+                MoveTarget = packet.MoveRemainingMilliseconds > 0
+                    ? new Vector2(packet.TargetX, packet.TargetY)
+                    : new Vector2(packet.PositionX, packet.PositionY),
+                MoveRemainingSeconds = packet.MoveRemainingMilliseconds / 1000f
             };
     }
 }

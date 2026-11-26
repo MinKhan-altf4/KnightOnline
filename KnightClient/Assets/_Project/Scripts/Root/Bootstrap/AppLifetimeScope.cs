@@ -77,6 +77,7 @@ namespace KnightOnline.Client.Root
             builder.Register<IClientPacketHandler, MonsterHealthChangedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterDiedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, MonsterRespawnedHandler>(Lifetime.Singleton);
+            builder.Register<IClientPacketHandler, MonsterMovedHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, SelectCharacterResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler, EnterWorldResponseHandler>(Lifetime.Singleton);
             builder.Register<IClientPacketHandler,
@@ -115,9 +116,26 @@ namespace KnightOnline.Client.Root
             // loops alive when the window loses focus. Mobile OS suspension is
             // still handled by server lease expiry and reconnect policy.
             Application.runInBackground = true;
+            ConfigureFramePacing();
             base.Awake();
             DontDestroyOnLoad(gameObject);
             SceneManager.LoadScene(_bootstrapSceneName, LoadSceneMode.Additive);
+        }
+
+        /// <summary>
+        /// Both quality levels shipped with vSync off and no frame cap: the
+        /// game rendered as fast as it could, so frame times were uneven
+        /// (visible micro-stutter, tearing, a hot GPU). Pace to the display
+        /// on desktop; mobile ignores vSync and needs an explicit target.
+        /// </summary>
+        private static void ConfigureFramePacing()
+        {
+#if UNITY_ANDROID || UNITY_IOS
+            Application.targetFrameRate = 60;
+#else
+            QualitySettings.vSyncCount = 1;
+            Application.targetFrameRate = -1;
+#endif
         }
     }
 }

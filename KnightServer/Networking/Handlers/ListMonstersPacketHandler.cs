@@ -18,17 +18,7 @@ public sealed class ListMonstersPacketHandler(
         MonsterSnapshotPacket[] monsters = monsterService.GetSnapshots()
             .Where(snapshot =>
                 snapshot.MapDefinitionId == mapDefinitionId)
-            .Select(snapshot => new MonsterSnapshotPacket(
-                snapshot.MonsterId,
-                snapshot.DefinitionId,
-                snapshot.Name,
-                snapshot.Level,
-                snapshot.MapDefinitionId,
-                snapshot.CurrentHealth,
-                snapshot.MaximumHealth,
-                snapshot.IsAlive,
-                snapshot.SpawnPosition.X,
-                snapshot.SpawnPosition.Y))
+            .Select(MonsterPacketMapper.ToPacket)
             .ToArray();
 
         return connection.SendAsync(

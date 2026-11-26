@@ -76,7 +76,9 @@ namespace KnightOnline.Client.Network
             {
                 _isDisconnecting = false;
                 _suppressNextDisconnectEvent = false;
-                _tcpClient = new TcpClient();
+                // Move inputs are tiny frames sent every ~100 ms: Nagle would
+                // batch them behind the server's delayed ACK (input lag/jitter).
+                _tcpClient = new TcpClient { NoDelay = true };
                 _cts = new CancellationTokenSource();
                 await _tcpClient.ConnectAsync(_settings.Host, _settings.Port);
                 _stream = _tcpClient.GetStream();
@@ -335,7 +337,12 @@ namespace KnightOnline.Client.Network
 
             var payloadJson = JsonSerializer.Serialize(payload);
             var envelopeJson = JsonSerializer.Serialize(new PacketEnvelope(type, payloadJson));
-            var bytes = Encoding.UTF8.GetBytes(envelopeJson);
+            // Length prefix and payload in one buffer and one write: two small
+            // writes per packet meant two TCP segments per move input.
+            int payloadLength = Encoding.UTF8.GetByteCount(envelopeJson);
+            var frame = new byte[4 + payloadLength];
+            BitConverter.TryWriteBytes(new Span<byte>(frame, 0, 4), payloadLength);
+            Encoding.UTF8.GetBytes(envelopeJson, 0, envelopeJson.Length, frame, 4);
             await _sendLock.WaitAsync();
             try
             {
@@ -349,11 +356,7 @@ namespace KnightOnline.Client.Network
                         "Connection closed before the packet could be sent.");
                 }
 
-                await stream.WriteAsync(
-                    BitConverter.GetBytes(bytes.Length),
-                    0,
-                    4);
-                await stream.WriteAsync(bytes, 0, bytes.Length);
+                await stream.WriteAsync(frame, 0, frame.Length);
             }
             catch (ObjectDisposedException) when (_isDisconnecting)
             {

@@ -25,7 +25,8 @@ public sealed class ListNpcsPacketHandler(IReadOnlyList<NpcDefinitionOptions> np
                 value.MapDefinitionId, session.MapDefinitionId,
                 StringComparison.OrdinalIgnoreCase)).Select(value =>
                     new NpcSnapshotPacket(value.DefinitionId, value.DisplayName,
-                        value.PositionX, value.PositionY)).ToArray()),
+                        value.PositionX, value.PositionY,
+                        value.AppearanceId)).ToArray()),
             cancellationToken);
     }
 }
@@ -68,6 +69,17 @@ public sealed class InteractNpcPacketHandler(
         if (Vector2.Distance(session.Position,
                 new Vector2(npc.PositionX, npc.PositionY)) > npc.InteractionRange)
         { await Respond(NpcInteractionResult.OutOfRange, request.RequestId, ""); return; }
+
+        // Only the starter quest NPC drives the tutorial. Every other NPC is
+        // talk-only for now (shops, trainers... come later): it must never
+        // advance quest state or grant rewards.
+        if (!string.Equals(npc.DefinitionId, tutorial.QuestNpcDefinitionId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            await Respond(NpcInteractionResult.Success, request.RequestId,
+                npc.InitialDialogue);
+            return;
+        }
 
         TutorialCommandResult result = await service.InteractWithQuestNpcAsync(
             request.RequestId, session.CharacterId, cancellationToken);
@@ -163,7 +175,7 @@ public sealed class ListPortalsPacketHandler(
                 StringComparison.OrdinalIgnoreCase)).Select(value =>
                     new PortalSnapshotPacket(value.DefinitionId,
                         value.DisplayName, value.PositionX, value.PositionY,
-                        value.InteractionRange))
+                        value.InteractionRange, value.MinimumLevel))
                 .ToArray(), map.MinimumX, map.MaximumX,
                 map.MinimumY, map.MaximumY), cancellationToken);
     }
@@ -214,7 +226,8 @@ public sealed class UsePortalPacketHandler(
             else status = PortalUseResult.Success;
         }
         await connection.SendAsync(PacketType.UsePortalResponse,
-            new UsePortalResponsePacket(request?.RequestId ?? Guid.Empty, status),
+            new UsePortalResponsePacket(request?.RequestId ?? Guid.Empty, status,
+                portal?.DisplayName ?? string.Empty, portal?.MinimumLevel ?? 0),
             cancellationToken);
         if (status != PortalUseResult.Success || portal == null) return;
         await InteractNpcPacketHandler.SendTransitionAsync(connection, session,

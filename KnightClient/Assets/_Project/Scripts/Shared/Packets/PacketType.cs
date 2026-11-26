@@ -56,5 +56,7 @@ namespace KnightOnline.Client.Shared.Packets
         InventorySnapshot = 51,
         // Protocol 2 (P1 world simulation).
         WorldEntitiesSnapshot = 52,
+        // Protocol 4 (monster wander).
+        MonsterMoved = 53,
     }
 }

@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Data.Models;
+using KnightOnline.Client.Gameplay.Player;
 using KnightOnline.Client.Gameplay.Targeting;
 using KnightOnline.Client.Network;
 using UnityEngine;
@@ -15,7 +16,7 @@ namespace KnightOnline.Client.Gameplay.Monster
     /// Presenter for monster snapshots. It keeps one view per server monster id,
     /// updates existing views, and removes views no longer present or alive.
     /// </summary>
-    public sealed class MonsterSpawner : MonoBehaviour
+    public sealed class MonsterSpawner : MonoBehaviour, IMovementObstacleSource
     {
         [Serializable]
         private struct PrefabMapping
@@ -35,6 +36,7 @@ namespace KnightOnline.Client.Gameplay.Monster
         private IDisposable _healthSubscription;
         private IDisposable _diedSubscription;
         private IDisposable _respawnedSubscription;
+        private IDisposable _movedSubscription;
         private IDisposable _attackResultSubscription;
         private IDisposable _mapTransitionSubscription;
         private IEventBus _eventBus;
@@ -54,6 +56,7 @@ namespace KnightOnline.Client.Gameplay.Monster
             _healthSubscription = eventBus.Subscribe<MonsterHealthChangedEvent>(OnHealthChanged);
             _diedSubscription = eventBus.Subscribe<MonsterDiedEvent>(OnMonsterDied);
             _respawnedSubscription = eventBus.Subscribe<MonsterRespawnedEvent>(OnMonsterRespawned);
+            _movedSubscription = eventBus.Subscribe<MonsterMovedEvent>(OnMonsterMoved);
             _attackResultSubscription = eventBus.Subscribe<AttackResultEvent>(OnAttackResult);
             _mapTransitionSubscription = eventBus.Subscribe<MapTransitionedEvent>(
                 _ => _targetSelection.Clear());
@@ -121,6 +124,7 @@ namespace KnightOnline.Client.Gameplay.Monster
             }
 
             view.Render(monster);
+            view.SyncMotion(monster);
         }
 
         private MonsterView ResolvePrefab(int definitionId) =>
@@ -148,6 +152,12 @@ namespace KnightOnline.Client.Gameplay.Monster
             view.Data.MaximumHealth = gameEvent.MaximumHealth;
             view.Data.IsAlive = gameEvent.CurrentHealth > 0;
             view.Render(view.Data);
+        }
+
+        private void OnMonsterMoved(MonsterMovedEvent gameEvent)
+        {
+            if (_views.TryGetValue(gameEvent.MonsterId, out MonsterView view) && view != null)
+                view.BeginMove(gameEvent.From, gameEvent.To, gameEvent.DurationSeconds);
         }
 
         private void OnMonsterDied(MonsterDiedEvent gameEvent)
@@ -178,6 +188,17 @@ namespace KnightOnline.Client.Gameplay.Monster
                     : "."));
         }
 
+        /// <summary>Alive monsters on the current map (dead ones are removed from <see cref="_views"/>).</summary>
+        public void CollectObstacles(List<Vector2> centers)
+        {
+            centers.Clear();
+            foreach (MonsterView view in _views.Values)
+            {
+                if (view != null && view.Data != null && view.Data.IsAlive)
+                    centers.Add(view.CurrentPosition);
+            }
+        }
+
         private void Remove(int monsterId)
         {
             if (!_views.Remove(monsterId, out var view) || view == null)
@@ -194,6 +215,7 @@ namespace KnightOnline.Client.Gameplay.Monster
             _healthSubscription?.Dispose();
             _diedSubscription?.Dispose();
             _respawnedSubscription?.Dispose();
+            _movedSubscription?.Dispose();
             _attackResultSubscription?.Dispose();
             _mapTransitionSubscription?.Dispose();
             _subscription = null;

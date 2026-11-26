@@ -6,6 +6,7 @@ using KnightOnline.Client.Core.Events;
 using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Data.Models;
 using KnightOnline.Client.Gameplay.World;
+using KnightOnline.Client.Gameplay.World.Environment;
 using System;
 using KnightOnline.Client.Gameplay.NPC;
 using KnightOnline.Client.Gameplay.Player;
@@ -23,6 +24,8 @@ namespace KnightOnline.Client.Core.Bootstrap
         private InGameMenuView _menuView;
         private RemotePlayerDirectory _remotePlayers;
         private IDisposable _mapSubscription;
+        private MapEnvironmentView _environment;
+        private string _shownMapId;
 
         [Inject]
         public void Construct(NetworkClient networkClient, IEventBus events,
@@ -56,6 +59,7 @@ namespace KnightOnline.Client.Core.Bootstrap
             DisableLegacyWalls();
             ConfigureCameraFollow();
             ConfigurePlayerSprite();
+            _environment = new GameObject("MapEnvironment").AddComponent<MapEnvironmentView>();
             _mapSubscription = _events.Subscribe<MapTransitionedEvent>(OnMapTransitioned);
             var presentation = new GameObject("AuthoritativeWorldPresentation")
                 .AddComponent<AuthoritativeWorldPresentation>();
@@ -100,6 +104,8 @@ namespace KnightOnline.Client.Core.Bootstrap
             SpriteRenderer heroRenderer = visual.AddComponent<SpriteRenderer>();
             heroRenderer.sortingLayerID = renderer.sortingLayerID;
             heroRenderer.sortingOrder = renderer.sortingOrder;
+            // Y-sorted against trees and bushes from the feet, not the sprite centre.
+            heroRenderer.spriteSortPoint = SpriteSortPoint.Pivot;
             heroRenderer.sharedMaterial = renderer.sharedMaterial;
             _player.gameObject.AddComponent<DirectionalSpriteView>()
                 .Initialize(heroRenderer, sprites, () => _player.MoveDirection);
@@ -144,24 +150,17 @@ namespace KnightOnline.Client.Core.Bootstrap
                 RequestMapPresentation();
         }
 
-        private static void ApplyMapPresentation(string mapId)
+        private void ApplyMapPresentation(string mapId)
         {
-            Color mapColor = mapId switch
-            {
-                "tutorial_map_01" => new Color(0.28f, 0.48f, 0.27f),
-                "wolf_field_01" => new Color(0.24f, 0.31f, 0.18f),
-                "safe_zone_01" => new Color(0.25f, 0.38f, 0.50f),
-                _ => new Color(0.25f, 0.35f, 0.25f),
-            };
+            // The flat legacy floor is replaced by the tiled environment.
             GameObject floor = GameObject.Find("Floor");
-            SpriteRenderer renderer = floor != null
-                ? floor.GetComponent<SpriteRenderer>()
-                : null;
-            if (renderer != null)
-                renderer.color = mapColor;
-            Camera camera = Camera.main;
-            if (camera != null)
-                camera.backgroundColor = mapColor * 0.55f;
+            if (floor != null)
+                floor.SetActive(false);
+            if (_environment == null ||
+                string.Equals(_shownMapId, mapId, StringComparison.OrdinalIgnoreCase))
+                return;
+            _shownMapId = mapId;
+            _environment.Show(mapId);
         }
 
         private void RequestMapPresentation()

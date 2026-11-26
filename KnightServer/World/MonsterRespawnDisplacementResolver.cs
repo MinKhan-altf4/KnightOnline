@@ -43,8 +43,8 @@ public sealed class MonsterRespawnDisplacementResolver(
         foreach (MonsterSnapshot blocker in blockers)
         {
             var center = new Vector2(
-                blocker.SpawnPosition.X,
-                blocker.SpawnPosition.Y);
+                blocker.Position.X,
+                blocker.Position.Y);
             for (int sample = 0; sample < _angularSamples; sample++)
             {
                 Vector2 candidate = center + Direction(
@@ -108,8 +108,8 @@ public sealed class MonsterRespawnDisplacementResolver(
         foreach (MonsterSnapshot blocker in blockers)
         {
             var center = new Vector2(
-                blocker.SpawnPosition.X,
-                blocker.SpawnPosition.Y);
+                blocker.Position.X,
+                blocker.Position.Y);
             if (Vector2.DistanceSquared(candidate, center) < radiusSquared)
                 return false;
         }

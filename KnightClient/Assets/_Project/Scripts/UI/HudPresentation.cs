@@ -66,10 +66,15 @@ namespace KnightOnline.Client.UI
         };
 
         /// <summary>Returns null when the portal result needs no message.</summary>
-        public static string PortalResultMessage(byte result) => result switch
+        public static string PortalResultMessage(byte result, string portalName = null,
+            int requiredLevel = 0) => result switch
         {
             PortalResultSuccess => null,
-            PortalResultLevelTooLow => "Safe Zone 1 yêu cầu nhân vật đạt level 2.",
+            PortalResultLevelTooLow when requiredLevel > 0 && !string.IsNullOrWhiteSpace(portalName) =>
+                $"Cổng {portalName} yêu cầu nhân vật đạt level {requiredLevel}.",
+            PortalResultLevelTooLow when requiredLevel > 0 =>
+                $"Cổng này yêu cầu nhân vật đạt level {requiredLevel}.",
+            PortalResultLevelTooLow => "Nhân vật chưa đủ level để dùng cổng này.",
             PortalResultNotInRange => "Hãy bước vào chính giữa cổng dịch chuyển.",
             _ => $"Hiện chưa thể sử dụng cổng này. (mã {result})",
         };

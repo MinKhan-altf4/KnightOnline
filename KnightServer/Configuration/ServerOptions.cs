@@ -210,6 +210,21 @@ public sealed class ServerOptions
             throw new InvalidDataException(
                 "World collision radii must be positive.");
         }
+        if (!float.IsFinite(World.MonsterWanderRadius) ||
+            World.MonsterWanderRadius is < 0 or > 20)
+            throw new InvalidDataException(
+                "World.MonsterWanderRadius must be between 0 and 20.");
+        if (World.MonsterWanderRadius > 0 &&
+            (!float.IsFinite(World.MonsterWanderSpeed) ||
+             World.MonsterWanderSpeed is <= 0 or > 20))
+            throw new InvalidDataException(
+                "World.MonsterWanderSpeed must be between 0 (exclusive) and 20.");
+        if (World.MonsterWanderMinimumIdleMilliseconds < 0 ||
+            World.MonsterWanderMaximumIdleMilliseconds <
+                World.MonsterWanderMinimumIdleMilliseconds ||
+            World.MonsterWanderMaximumIdleMilliseconds > 600000)
+            throw new InvalidDataException(
+                "World monster wander idle range is invalid (0 <= minimum <= maximum <= 600000 ms).");
         if (World.RespawnDisplacementAngularSamples < 8)
             throw new InvalidDataException(
                 "World.RespawnDisplacementAngularSamples must be at least 8.");
@@ -648,6 +663,19 @@ public sealed class WorldOptions
     public int MaximumMovementDeltaMilliseconds { get; set; }
     public float PlayerCollisionRadius { get; set; } = 0.35f;
     public float MonsterCollisionRadius { get; set; } = 0.5f;
+
+    /// <summary>
+    /// Monsters roam within this distance of their spawn point (world units).
+    /// 0 disables wandering: monsters stand on their spawn point.
+    /// </summary>
+    public float MonsterWanderRadius { get; set; }
+
+    /// <summary>Monster walking speed while wandering (world units per second).</summary>
+    public float MonsterWanderSpeed { get; set; } = 1.2f;
+
+    /// <summary>Random rest between two wander legs.</summary>
+    public int MonsterWanderMinimumIdleMilliseconds { get; set; } = 2000;
+    public int MonsterWanderMaximumIdleMilliseconds { get; set; } = 6000;
     public int RespawnDisplacementAngularSamples { get; set; } = 32;
 
     /// <summary>World simulation tick (P1). 50 ms = 20 Hz.</summary>
@@ -733,8 +761,18 @@ public sealed class NpcDefinitionOptions
     public string CompletionDialogue { get; set; } = string.Empty;
     public string FarewellDialogue { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Client look (Resources/Npcs/{AppearanceId}); empty = text label only.
+    /// Lower-case letters, digits and '_' so it is a safe resource path.
+    /// </summary>
+    public string AppearanceId { get; set; } = string.Empty;
+
     internal void Validate(IReadOnlySet<string> mapIds)
     {
+        if (AppearanceId.Any(character =>
+                !(character is >= 'a' and <= 'z' or >= '0' and <= '9' or '_')))
+            throw new InvalidDataException(
+                $"NPC '{DefinitionId}' has an invalid appearanceId.");
         if (string.IsNullOrWhiteSpace(DefinitionId) ||
             string.IsNullOrWhiteSpace(DisplayName) ||
             !mapIds.Contains(MapDefinitionId) ||

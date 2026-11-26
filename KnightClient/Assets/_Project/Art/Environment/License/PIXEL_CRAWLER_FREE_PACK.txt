@@ -1,0 +1,23 @@
+Asset: Pixel Crawler - Free Pack (Exterior 0.1)
+Author: Anokolisa (itch.io / Patreon: https://www.patreon.com/Anokolisa)
+Received: 2026-11-26 (downloaded by the project owner, local copy)
+License: author's Terms.txt shipped with the pack
+
+Summary of the terms (see the original Terms.txt in the pack):
+- Commercial and non-commercial use in projects is allowed.
+- Credit is not required (appreciated).
+- Assets may be modified (shape, color, pattern).
+- The assets themselves, modified or not, must NOT be sold, redistributed
+  as an asset pack, or marketed as a final product.
+
+Files used in this repository (cropped from the pack's sheets, unmodified pixels):
+- ../../../Resources/World/PixelCrawler/Tiles/*  (Environment/Tilesets/Floors_Tiles.png, Water_tiles.png)
+- ../../../Resources/World/PixelCrawler/Props/*  (Environment/Props/Static/Vegetation.png, Rocks.png,
+  Farm.png, Trees/Model_01/Size_04.png, Trees/Model_02/Size_03.png, Size_04.png,
+  Environment/Structures/Stations/Bonfire/Bonfire.png, Fire_01-Sheet.png)
+- ../../../Resources/Npcs/{knight,rogue,wizard,peasant,tavern_a,tavern_b}/idle_0..3.png
+  (Entities/Npc's/Knight, Rogue, Wizzard Idle-Sheet.png; Citizen_F/Peasant_A Idle-Sheet.png,
+  Tavern_A and Tavern_B Idle_Side-Sheet.png; frames cropped to a shared box, unmodified pixels)
+
+Note: if this repository becomes public, keep this record and do not ship the
+cropped files as a standalone pack.

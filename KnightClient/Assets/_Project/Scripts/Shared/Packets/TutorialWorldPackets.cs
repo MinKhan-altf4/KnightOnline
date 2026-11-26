@@ -12,14 +12,17 @@ namespace KnightOnline.Client.Shared.Packets
         public string DisplayName { get; }
         public float PositionX { get; }
         public float PositionY { get; }
+        /// <summary>Client look id (Resources/Npcs/{id}); empty = label only.</summary>
+        public string AppearanceId { get; }
 
         public NpcSnapshotPacket(string definitionId, string displayName,
-            float positionX, float positionY)
+            float positionX, float positionY, string appearanceId = "")
         {
             DefinitionId = definitionId ?? string.Empty;
             DisplayName = displayName ?? string.Empty;
             PositionX = positionX;
             PositionY = positionY;
+            AppearanceId = appearanceId ?? string.Empty;
         }
     }
 
@@ -89,9 +92,13 @@ namespace KnightOnline.Client.Shared.Packets
         public float PositionX { get; }
         public float PositionY { get; }
         public float InteractionRange { get; private set; } = 1f;
+        /// <summary>Character level needed to use the portal (shown on its label).</summary>
+        public int MinimumLevel { get; private set; } = 1;
         public PortalSnapshotPacket(string definitionId, string displayName,
-            float positionX, float positionY, float interactionRange = 1f)
+            float positionX, float positionY, float interactionRange = 1f,
+            int minimumLevel = 1)
         {
+            MinimumLevel = minimumLevel;
             DefinitionId = definitionId ?? string.Empty;
             DisplayName = displayName ?? string.Empty;
             PositionX = positionX;
@@ -136,10 +143,16 @@ namespace KnightOnline.Client.Shared.Packets
     {
         public Guid RequestId { get; }
         public PortalUseResult Result { get; }
-        public UsePortalResponsePacket(Guid requestId, PortalUseResult result)
+        /// <summary>Portal name and level requirement, so a refusal can say why.</summary>
+        public string PortalName { get; }
+        public int RequiredLevel { get; }
+        public UsePortalResponsePacket(Guid requestId, PortalUseResult result,
+            string portalName = "", int requiredLevel = 0)
         {
             RequestId = requestId;
             Result = result;
+            PortalName = portalName ?? string.Empty;
+            RequiredLevel = requiredLevel;
         }
     }
 

@@ -61,6 +61,24 @@ namespace KnightOnline.Client.Data.Events
         }
     }
 
+    /// <summary>A monster started walking from From to To over DurationSeconds.</summary>
+    public readonly struct MonsterMovedEvent : IGameEvent
+    {
+        public readonly int MonsterId;
+        public readonly UnityEngine.Vector2 From;
+        public readonly UnityEngine.Vector2 To;
+        public readonly float DurationSeconds;
+
+        public MonsterMovedEvent(int monsterId, UnityEngine.Vector2 from,
+            UnityEngine.Vector2 to, float durationSeconds)
+        {
+            MonsterId = monsterId;
+            From = from;
+            To = to;
+            DurationSeconds = durationSeconds;
+        }
+    }
+
     public enum AttackOutcome
     {
         Success,

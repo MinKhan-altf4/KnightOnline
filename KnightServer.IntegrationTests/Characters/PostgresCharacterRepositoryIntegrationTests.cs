@@ -221,6 +221,60 @@ public sealed class PostgresCharacterRepositoryIntegrationTests
 
     [Fact]
     [Trait("Category", "PostgreSQLIntegration")]
+    public async Task TalkOnlyNpc_AnswersWithoutTouchingTutorialState()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        TestContext context = await CreateContextAsync(database);
+        CreateCharacterResponsePacket created = await context.Repository.CreateAsync(
+            context.AccountKey,
+            CreateRequest(context.Options, $"TalkNpc{context.Suffix}", 1),
+            CancellationToken.None);
+        ServerOptions options = LoadServerOptions();
+        TutorialDefinitionOptions definition = options.TutorialDefinitions.Single();
+        var clock = new MutableClock(InitialUtc);
+        var leases = CreateLeaseStore();
+        await using NetworkTestConnection connection =
+            await NetworkTestConnection.CreateAsync(context, leases, clock);
+        await connection.AttachAccountAsync(context.AccountKey, leases,
+            clock.UtcNow);
+        await connection.SendAsync(PacketType.SelectCharacterRequest,
+            new SelectCharacterRequestPacket(created.Character!.CharacterId));
+        await connection.ReadPayloadAsync<SelectCharacterResponsePacket>(
+            PacketType.SelectCharacterResponse);
+
+        // A village NPC that is not the quest giver.
+        NpcDefinitionOptions elder = options.NpcDefinitions.First(value =>
+            value.MapDefinitionId == definition.ReturnMapDefinitionId &&
+            value.DefinitionId != definition.QuestNpcDefinitionId);
+        connection.TeleportPlayer(elder.MapDefinitionId, elder.PositionX,
+            elder.PositionY, clock.UtcNow);
+        await connection.SendAsync(PacketType.InteractNpcRequest,
+            new InteractNpcRequestPacket(Guid.NewGuid(), elder.DefinitionId));
+        InteractNpcResponsePacket talk =
+            await connection.ReadPayloadAsync<InteractNpcResponsePacket>(
+                PacketType.InteractNpcResponse);
+        Assert.Equal(NpcInteractionResult.Success, talk.Result);
+        Assert.Equal(elder.InitialDialogue, talk.Dialogue);
+
+        // Still on the first step: the quest giver accepts the quest now. The
+        // strict reader also proves no tutorial packet followed the talk above.
+        NpcDefinitionOptions mother = options.NpcDefinitions.Single(value =>
+            value.DefinitionId == definition.QuestNpcDefinitionId);
+        connection.TeleportPlayer(mother.MapDefinitionId, mother.PositionX,
+            mother.PositionY, clock.UtcNow);
+        await connection.SendAsync(PacketType.InteractNpcRequest,
+            new InteractNpcRequestPacket(Guid.NewGuid(), mother.DefinitionId));
+        InteractNpcResponsePacket accepted =
+            await connection.ReadPayloadAsync<InteractNpcResponsePacket>(
+                PacketType.InteractNpcResponse);
+        Assert.Equal(NpcInteractionResult.Success, accepted.Result);
+        Assert.Equal(mother.InitialDialogue, accepted.Dialogue);
+        await connection.ReadPayloadAsync<TutorialProgressSnapshotPacket>(
+            PacketType.TutorialProgressSnapshot);
+    }
+
+    [Fact]
+    [Trait("Category", "PostgreSQLIntegration")]
     public async Task ThreeSlots_HaveIndependentProgressionAndTutorialState()
     {
         await using TestDatabase database = await TestDatabase.CreateAsync();

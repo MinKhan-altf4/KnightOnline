@@ -6,6 +6,7 @@ using KnightOnline.Client.Data.Events;
 using KnightOnline.Client.Network;
 using UnityEngine;
 using KnightOnline.Client.Gameplay.Player;
+using KnightOnline.Client.Gameplay.World.Environment;
 
 namespace KnightOnline.Client.Gameplay.World
 {
@@ -48,10 +49,78 @@ namespace KnightOnline.Client.Gameplay.World
         {
             ClearObjects(_npcObjects);
             foreach (NpcSnapshotData npc in value.Npcs)
-                CreateLabel($"NPC: {npc.DisplayName}", npc.PositionX,
-                    npc.PositionY, new Color(0.9f, 0.45f, 0.8f), () =>
-                        _network.SendInteractNpcRequestAsync(npc.DefinitionId).Forget(),
+            {
+                string definitionId = npc.DefinitionId;
+                Action talk = () =>
+                    _network.SendInteractNpcRequestAsync(definitionId).Forget();
+                Sprite[] frames = LoadNpcFrames(npc.AppearanceId);
+                if (frames == null)
+                {
+                    // No art for this NPC yet: the old floating label.
+                    CreateLabel($"NPC: {npc.DisplayName}", npc.PositionX,
+                        npc.PositionY, new Color(0.9f, 0.45f, 0.8f), talk, _npcObjects);
+                    continue;
+                }
+                CreateNpcFigure(npc, frames, talk);
+                CreateLabel(npc.DisplayName, npc.PositionX,
+                    npc.PositionY + NpcNameHeight, new Color(1f, 0.9f, 0.6f), talk,
                     _npcObjects);
+            }
+        }
+
+        private const string NpcArtPath = "Npcs/";
+        private const float NpcNameHeight = 1.85f;
+        private const int NpcIdleFrames = 4;
+        private const float NpcIdleFramesPerSecond = 6f;
+        /// <summary>Same order as the hero, Y-sorted against him and the props.</summary>
+        private const int NpcSortingOrder = 1;
+        private static readonly Dictionary<string, Sprite[]> NpcFrameCache = new();
+
+        /// <summary>Resources/Npcs/{appearanceId}/idle_0..3, or null when missing.</summary>
+        private static Sprite[] LoadNpcFrames(string appearanceId)
+        {
+            if (string.IsNullOrWhiteSpace(appearanceId))
+                return null;
+            if (NpcFrameCache.TryGetValue(appearanceId, out Sprite[] cached))
+                return cached;
+
+            var frames = new List<Sprite>(NpcIdleFrames);
+            for (int index = 0; index < NpcIdleFrames; index++)
+            {
+                Sprite frame = Resources.Load<Sprite>(
+                    $"{NpcArtPath}{appearanceId}/idle_{index}");
+                if (frame != null)
+                    frames.Add(frame);
+            }
+            Sprite[] result = frames.Count > 0 ? frames.ToArray() : null;
+            if (result == null)
+                Debug.LogWarning($"[NPC] No art at Resources/{NpcArtPath}{appearanceId}.");
+            NpcFrameCache[appearanceId] = result;
+            return result;
+        }
+
+        /// <summary>Idle-animated NPC body standing on its server position (feet pivot).</summary>
+        private void CreateNpcFigure(NpcSnapshotData npc, Sprite[] frames, Action talk)
+        {
+            var figure = new GameObject($"NPC_{npc.DefinitionId}");
+            figure.transform.SetParent(transform, false);
+            figure.transform.position = new Vector3(npc.PositionX, npc.PositionY, 0f);
+            SpriteRenderer renderer = figure.AddComponent<SpriteRenderer>();
+            renderer.sprite = frames[0];
+            renderer.sortingOrder = NpcSortingOrder;
+            renderer.spriteSortPoint = SpriteSortPoint.Pivot;
+            if (frames.Length > 1)
+                figure.AddComponent<SpriteFrameAnimator>()
+                    .Initialize(renderer, frames, NpcIdleFramesPerSecond);
+
+            // Clicking the body talks too; trigger only, NPCs never block movement
+            // (the server has no NPC collision).
+            BoxCollider2D clickArea = figure.AddComponent<BoxCollider2D>();
+            clickArea.isTrigger = true;
+            clickArea.size = new Vector2(1f, 1.5f);
+            clickArea.offset = new Vector2(0f, 0.75f);
+            figure.AddComponent<WorldClickRelay>().Initialize(talk);
+            _npcObjects.Add(figure);
         }
 
         private void OnPortals(PortalListReceivedEvent value)
@@ -183,6 +252,9 @@ namespace KnightOnline.Client.Gameplay.World
             text.fontSize = 32;
             text.characterSize = 0.08f;
             text.anchor = TextAnchor.MiddleCenter;
+            // Above trees and characters (order 1) so names stay readable.
+            if (entity.TryGetComponent(out MeshRenderer textRenderer))
+                textRenderer.sortingOrder = 7;
             if (clicked != null)
             {
                 var clickCollider = entity.AddComponent<BoxCollider2D>();
