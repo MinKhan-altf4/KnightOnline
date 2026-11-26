@@ -577,7 +577,10 @@ def arm_mask(img, shoulder, elbow, wrist, below_shoulder=4, reach=5.5,
             continue
         mask.add((x0, y))
         for step in (1, -1):
-            seen_light = not dark(img[y][x0])
+            # Toward the body a dark start pixel is already the arm's edge:
+            # stop at the next dark pixel instead of crossing into the hip.
+            inward = (step > 0) == (bx < CELL / 2)
+            seen_light = inward or not dark(img[y][x0])
             x = x0 + step
             while 0 <= x < CELL and img[y][x][3] and abs(x + 0.5 - bx) <= reach:
                 mask.add((x, y))
@@ -603,12 +606,12 @@ def pose_arms(img, arms, side_view=False):
     Returns (body, arm_layer): `body` is the image with the arms removed,
     `arm_layer` holds the moved arms only, to be drawn on top of the finished
     frame (after the legs), so a hand hanging over the thigh is never cut or
-    re-shaded with the legs. A vacated pixel takes the colour of the first
-    non-arm pixel on its row toward the centre when that pixel is body (arm in
-    front of the torso); when it is transparent (gap between arm and torso)
-    the pixel stays empty, so skin is never dragged across the gap."""
+    re-shaded with the legs. Vacated pixels: in the side view the body lies
+    under the arm and fills them; elsewhere they become transparent and the
+    uncovered body edge gets an outline."""
     body = [row[:] for row in img]
     arm_layer = blank()
+    vacated = set()
     centre = CELL // 2
     for shoulder, elbow, wrist, dx_hand, dy_hand, dy_shoulder in arms:
         mask, hand_end = arm_mask(img, shoulder, elbow, wrist,
@@ -630,15 +633,25 @@ def pose_arms(img, arms, side_view=False):
                 # dark streak), horizontally first, then from below.
                 body[y][x] = _nearest_light(img, mask, x, y)
                 continue
-            fill = EMPTY
-            for step in (inward, -inward):
+            # Front, back and diagonal views: the arm hangs at the side of the
+            # body, not in front of it, so its place becomes transparent and
+            # the body edge it uncovers gets an outline below. (Filling it
+            # with the neighbouring body colour stretched the torso outline
+            # into dark blocks beside the moved arm.)
+            # When the body continues on both sides of the arm (an arm lying
+            # over the torso), the pixel is filled like the side view.
+            sides = 0
+            for step in (1, -1):
                 nx = x + step
                 while 0 <= nx < CELL and (nx, y) in mask:
                     nx += step
                 if 0 <= nx < CELL and img[y][nx][3]:
-                    fill = img[y][nx]
-                    break
-            body[y][x] = fill
+                    sides += 1
+            if sides == 2 or y <= y_min + 1:          # (top rows: shoulder, body all round)
+                body[y][x] = _nearest_light(img, mask, x, y)
+            else:
+                body[y][x] = EMPTY
+                vacated.add((x, y))
         for y in range(max(0, y_min - 3), min(CELL, y_max + 4)):
             t = max(0.0, min(1.0, (y + 0.5 - shoulder[1]) / span))
             dx = dx_hand * t
@@ -648,6 +661,47 @@ def pose_arms(img, arms, side_view=False):
                 sx = int(round(x - dx))
                 if (sx, sy) in mask:
                     arm_layer[y][x] = img[sy][sx]
+    # A hand that overlapped the hip leaves a thin slit when it swings away:
+    # an uncovered vacated run with the moved arm on one side and the body
+    # right after it on the other. The body was behind the hand there.
+    for x, y in sorted(vacated):
+        if body[y][x][3] or arm_layer[y][x][3]:
+            continue
+        found = {}
+        for step in (1, -1):
+            nx = x + step
+            while 0 <= nx < CELL and (nx, y) in vacated and not arm_layer[y][nx][3]:
+                nx += step
+            if 0 <= nx < CELL:
+                if arm_layer[y][nx][3]:
+                    found['arm'] = True
+                elif body[y][nx][3]:
+                    found['body'] = nx
+        if 'arm' in found and 'body' in found:
+            nx = found['body']
+            step = 1 if nx > x else -1
+            while 0 <= nx < CELL and sum(body[y][nx][:3]) < DARK_EDGE and body[y][nx][3]:
+                nx += step                      # past the body outline
+            if 0 <= nx < CELL and body[y][nx][3]:
+                body[y][x] = body[y][nx]
+                vacated.discard((x, y))
+    if vacated:
+        darks = {}
+        for row in img:
+            for p in row:
+                if p[3] and sum(p[:3]) < 150:
+                    darks[p] = darks.get(p, 0) + 1
+        line = max(darks, key=darks.get) if darks else (20, 14, 18, 255)
+        # Only where the moved arm does not cover the hole, and only beside
+        # it on the row (a line above the hole would cut across the shoulder).
+        for x, y in vacated:
+            if body[y][x][3] or arm_layer[y][x][3]:
+                continue
+            for nx, ny in ((x + 1, y), (x - 1, y)):
+                if (0 <= nx < CELL and 0 <= ny < CELL and body[ny][nx][3]
+                        and (nx, ny) not in vacated
+                        and sum(body[ny][nx][:3]) >= DARK_EDGE):
+                    body[ny][nx] = line
     return body, arm_layer
 
 def arm_spec(kp, direction, s):
@@ -668,9 +722,12 @@ def arm_spec(kp, direction, s):
             dy_shoulder = -1.0 if forward > 0.6 else 0.0    # shoulder of the forward arm lifts
             arms.append((*pts[name], 0.0, dy_hand, dy_shoulder))
     else:
+        # Diagonals (generated facing right; west-side ones are mirrors): only
+        # the near arm, on screen-left, swings. The far arm is mostly hidden
+        # behind the torso edge, and cutting it out took torso pixels with it,
+        # leaving holes and streaks beside the moved hand.
         axis_y = 1 if direction.startswith('south') else -1
-        for name, phase in ((screen_left, -s), (screen_right, s)):
-            arms.append((*pts[name], 2.0 * phase, 1.0 * axis_y * phase, 0.0))
+        arms.append((*pts[screen_left], -2.0 * s, -1.0 * axis_y * s, 0.0))
     return arms
 
 # ---------------------------------------------------------------- main
